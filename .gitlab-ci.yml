@@ -1,10 +1,6 @@
-image: nixos/nix
-
-before_script:
-  - nix-channel --add https://nixos.org/channels/nixpkgs-unstable
-  - nix-channel --update
-  - nix-shell --run 'cabal new-update'
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
 
 build:
   stage: build
-  script: nix-shell --run 'cabal new-build'
+  script: nix-shell --run 'cabal new-update && cabal new-build'
