@@ -1,0 +1,3 @@
+[submodule "vendor/hnix"]
+	path = vendor/hnix
+	url = https://github.com/haskell-nix/hnix
