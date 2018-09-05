@@ -40,6 +40,7 @@ pub struct FormatNode {
     pub indent_level: usize, // number of spaces
     pub single_line_length: usize, // number of characters
     pub line_span: usize, // number of newlines contained + 1
+    pub start_line: bool,
 }
 
 impl FormatNode {
@@ -163,6 +164,7 @@ fn convert(arena: &mut Arena<ASTNode>, id: NodeId, level: usize) -> FormatNode {
         indent_level: level,
         single_line_length: single_line_length,
         line_span: 0,
+        start_line: false,
     }
 }
 
@@ -284,6 +286,6 @@ fn main() {
 
         let mut converted = convert(&mut ast.arena, ast.root, 0);
         format_all_trivia(&mut converted);
-        eprintln!("{}", converted);
+        print!("{}", converted);
     }
 }
