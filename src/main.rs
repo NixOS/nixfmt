@@ -61,6 +61,60 @@ impl fmt::Debug for FormatNode {
     }
 }
 
+fn fmt_trivia(f: &mut fmt::Formatter, trivia: &[Trivia]) -> fmt::Result {
+    for trivium in trivia {
+        write!(f, "{}", trivium)?;
+    }
+    Ok(())
+}
+
+impl fmt::Display for FormatNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self.data {
+            Data::Error((_, err)) => panic!("Attempt to print out AST with error: {}", err),
+            Data::None => (),
+            Data::InterpolLiteral { original, .. } => write!(f, "{}", original)?,
+            Data::Interpol { meta, multiline } => {
+                fmt_trivia(f, &meta.leading)?;
+                write!(f, "{}", if *multiline { "''" } else { "\"" })?;
+            },
+
+            Data::Ident(meta, x) => {
+                fmt_trivia(f, &meta.leading)?;
+                write!(f, "{}", x)?;
+                fmt_trivia(f, &meta.trailing)?;
+            },
+
+            Data::Token(meta, x) => {
+                fmt_trivia(f, &meta.leading)?;
+                write!(f, "{}", x)?;
+                fmt_trivia(f, &meta.trailing)?;
+            },
+
+            Data::Value(meta, x) => {
+                fmt_trivia(f, &meta.leading)?;
+                write!(f, "{}", x)?;
+                fmt_trivia(f, &meta.trailing)?;
+            },
+        }
+
+        if self.kind == ASTKind::InterpolAst {
+            write!(f, "${{")?;
+        }
+
+        for child in &self.children {
+            write!(f, "{}", child)?;
+        }
+
+        if let Data::Interpol { meta, multiline } = &self.data {
+            write!(f, "{}", if *multiline { "''" } else { "\"" })?;
+            fmt_trivia(f, &meta.trailing)?;
+        }
+
+        Ok(())
+    }
+}
+
 fn span_size(span: Span) -> usize {
     match span {
         Span { start, end: Some(end) } => (end - start) as usize,
@@ -137,13 +191,26 @@ fn has_leading_comments(node: &FormatNode) -> bool {
     }
 }
 
+fn has_leading_newlines(node: &FormatNode) -> bool {
+    match node_meta(node) {
+        Some(meta) => meta.leading.iter().any(Trivia::is_newlines),
+        None => false,
+    }
+}
+
 fn format_comment(string: SmolStr, indent: usize) -> SmolStr {
     string
 }
 
-// Reformat all comments to start at the same indentation level
-fn format_trivia(trivia: Vec<Trivia>, indent: usize) -> Vec<Trivia> {
-    let mut result = vec![];
+fn format_trivia(node: &mut FormatNode) {
+    let indent = node.indent_level;
+    let mut meta = match node_meta_mut(node) {
+        Some(meta) => meta,
+        None => return,
+    };
+    let trivia = std::mem::replace(&mut meta.leading, vec![]);
+
+    let mut result = &mut meta.leading;
     let mut current_newlines = 0;
 
     for trivium in trivia {
@@ -151,6 +218,8 @@ fn format_trivia(trivia: Vec<Trivia>, indent: usize) -> Vec<Trivia> {
             Trivia::Comment { span, multiline, content } => {
                 result.push(Trivia::Newlines(max(current_newlines, 1)));
                 result.push(Trivia::Spaces(indent as u32));
+                current_newlines = 0;
+
                 result.push(Trivia::Comment {
                     span: span,
                     multiline: multiline,
@@ -164,16 +233,14 @@ fn format_trivia(trivia: Vec<Trivia>, indent: usize) -> Vec<Trivia> {
             }
         }
     }
+
     result.push(Trivia::Newlines(max(current_newlines, 1)));
     result.push(Trivia::Spaces(indent as u32));
-    result
 }
 
 fn format_all_trivia(node: &mut FormatNode) {
-    let indent_level = node.indent_level;
-    if let Some(meta) = node_meta_mut(node) {
-        let trivia = std::mem::replace(&mut meta.leading, vec![]);
-        meta.leading = format_trivia(trivia, indent_level);
+    if has_leading_comments(node) || has_leading_newlines(node) {
+        format_trivia(node);
     }
     node.children.iter_mut().for_each(format_all_trivia);
 }
@@ -215,7 +282,8 @@ fn main() {
             }
         };
 
-        let converted = convert(&mut ast.arena, ast.root, 0);
-        eprintln!("{:?}", converted);
+        let mut converted = convert(&mut ast.arena, ast.root, 0);
+        format_all_trivia(&mut converted);
+        eprintln!("{}", converted);
     }
 }
