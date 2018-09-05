@@ -1,0 +1,9 @@
+[package]
+name = "nix-format"
+version = "0.1.0"
+authors = ["Lars Jellema <lars.jellema@gmail.com>"]
+
+[dependencies]
+arenatree = "0.1.0"
+smol_str = "0.1.6"
+rnix = "0.4.0"
