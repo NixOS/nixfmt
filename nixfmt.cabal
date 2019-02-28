@@ -1,0 +1,19 @@
+cabal-version:       >=1.10
+
+name:                nixfmt
+version:             0.1.0
+build-type:          Simple
+
+executable nixfmt
+  main-is:             Main.hs
+  build-depends:
+      base >=4.12 && <4.13
+    , megaparsec
+    , prettyprinter
+  default-language:    Haskell2010
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wredundant-constraints
