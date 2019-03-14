@@ -12,11 +12,12 @@ module Nixfmt.Parser where
 
 import           Control.Monad
 import           Data.Char
-import           Data.Text            as Text hiding (length)
+import           Data.Text                  as Text hiding (length)
 import           Data.Void
 import           Nixfmt.Types
-import           Text.Megaparsec
+import           Text.Megaparsec            hiding (between)
 import           Text.Megaparsec.Char
+import           Text.Megaparsec.Char.Lexer (decimal)
 
 type Parser = Parsec Void Text
 
@@ -33,10 +34,10 @@ manyCat :: Parser Text -> Parser Text
 manyCat p = Text.concat <$> many p
 
 between :: Parser a -> Parser a -> Parser [a] -> Parser [a]
-between pre post body = do
-    pre <- pre
-    body <- body
-    post <- post
+between preParser postParser bodyParser = do
+    pre <- preParser
+    body <- bodyParser
+    post <- postParser
     return $ [pre] ++ body ++ [post]
 
 lineComment :: Parser Trivium
@@ -74,18 +75,29 @@ lexeme p = do
 symbol :: NixToken -> Parser (Ann AST)
 symbol t = lexeme $ string (pack $ show t) *> return (Leaf t)
 
+reservedNames :: [Text]
+reservedNames =
+    [ "let", "in"
+    , "if", "then", "else"
+    , "assert"
+    , "with"
+    , "rec"
+    , "inherit"
+    ]
+
 identChar :: Char -> Bool
 identChar x = isAlpha x || isDigit x || x == '_' || x == '\'' || x == '-'
 
-identifier = lexeme $ try $ do
+identifier :: Parser AST
+identifier = try $ Leaf <$> Identifier <$> do
     ident <- Text.cons <$> satisfy (\x -> isAlpha x || x == '_')
-                 <*> manyP identChar
+                       <*> manyP identChar
     guard $ not $ ident `elem` reservedNames
     return ident
 
-reserved :: NixToken -> Parser NixToken
-reserved t = try $ (string (show t)
-    *> lookAhead $ satisfy (\x -> not (identChar x) && not (pathChar x))
+reserved :: NixToken -> Parser (Ann AST)
+reserved t = try $ lexeme $ Leaf <$> (string (pack $ show t)
+    *> lookAhead (satisfy (\x -> not (identChar x) && not (pathChar x)))
     *> return t)
 
 pathChar :: Char -> Bool
@@ -107,6 +119,17 @@ nixPath = try $ Literal <$> NixURI <$> liftM2 Text.append
     (manyP pathChar)
     (someCat $ liftM2 Text.cons (char '/') (someP pathChar))
 
-nixValue :: Parser AST
-nixValue = Leaf <$> (nixSearchPath <|> nixPath)
+nixInt :: Parser NixToken
+nixInt = try $ Literal <$> NixInt <$> decimal
 
+nixValue :: Parser AST
+nixValue = Leaf <$> (nixSearchPath <|> nixPath <|> nixInt)
+
+nixTerm :: Parser (Ann AST)
+nixTerm = lexeme $ (nixValue <|> identifier <|> try nixList)
+
+brackets :: Parser [Ann AST] -> Parser [Ann AST]
+brackets = between (symbol TBrackOpen) (symbol TBrackClose)
+
+nixList :: Parser AST
+nixList = Node List <$> (brackets $ many nixTerm)
