@@ -6,6 +6,7 @@ let
   ghc = hpkgs.ghcWithHoogle (hpkgs: with hpkgs; [
     megaparsec
     prettyprinter
+    text
   ]);
 
 in stdenv.mkDerivation {
