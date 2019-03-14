@@ -74,8 +74,8 @@ lexeme p = do
     postTrivia <- trailingTrivia
     return $ Ann preTrivia (Just startPos) content (Just endPos) postTrivia
 
-symbol :: NixToken -> Parser (Ann AST)
-symbol t = lexeme $ string (pack $ show t) *> return (Leaf t)
+symbol :: NixToken -> Parser AST
+symbol t = Leaf <$> lexeme (string (pack $ show t) *> return t)
 
 reservedNames :: [Text]
 reservedNames =
@@ -91,14 +91,14 @@ identChar :: Char -> Bool
 identChar x = isAlpha x || isDigit x || x == '_' || x == '\'' || x == '-'
 
 identifier :: Parser AST
-identifier = try $ Leaf <$> Identifier <$> do
+identifier = liftM Leaf $ try $ lexeme $ Identifier <$> do
     ident <- Text.cons <$> satisfy (\x -> isAlpha x || x == '_')
                        <*> manyP identChar
     guard $ not $ ident `elem` reservedNames
     return ident
 
-reserved :: NixToken -> Parser (Ann AST)
-reserved t = try $ lexeme $ Leaf <$> (string (pack $ show t)
+reserved :: NixToken -> Parser AST
+reserved t = try $ Leaf <$> lexeme (string (pack $ show t)
     *> lookAhead (satisfy (\x -> not (identChar x) && not (pathChar x)))
     *> return t)
 
@@ -125,12 +125,12 @@ nixInt :: Parser NixToken
 nixInt = try $ Literal <$> NixInt <$> decimal
 
 nixValue :: Parser AST
-nixValue = Leaf <$> (nixSearchPath <|> nixPath <|> nixInt)
+nixValue = Leaf <$> lexeme (nixSearchPath <|> nixPath <|> nixInt)
 
-nixTerm :: Parser (Ann AST)
-nixTerm = lexeme $ (nixValue <|> identifier <|> try nixList)
+nixTerm :: Parser AST
+nixTerm = nixValue <|> identifier <|> try nixList
 
-brackets :: Parser [Ann AST] -> Parser [Ann AST]
+brackets :: Parser [AST] -> Parser [AST]
 brackets = between (symbol TBrackOpen) (symbol TBrackClose)
 
 nixList :: Parser AST
@@ -139,5 +139,5 @@ nixList = Node List <$> (brackets $ many nixTerm)
 nixFile :: Parser AST
 nixFile = do
     term <- nixTerm
-    eofToken <- lexeme $ Leaf <$> (eof *> return TEOF)
+    eofToken <- Leaf <$> lexeme (eof *> return TEOF)
     return $ Node File $ [term, eofToken]

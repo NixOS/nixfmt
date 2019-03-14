@@ -12,8 +12,8 @@ data Ann e = Ann
     } deriving (Show)
 
 data AST
-    = Node NodeType [Ann AST]
-    | Leaf NixToken
+    = Node NodeType [AST]
+    | Leaf (Ann NixToken)
 
 instance Show AST where
     show (Leaf t) = show t
