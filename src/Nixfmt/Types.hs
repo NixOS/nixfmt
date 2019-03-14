@@ -1,6 +1,6 @@
 module Nixfmt.Types where
 
-import           Data.Text
+import           Data.Text       hiding (concat, map)
 import           Text.Megaparsec (SourcePos)
 
 data Ann e = Ann
@@ -14,13 +14,22 @@ data Ann e = Ann
 data AST
     = Node NodeType [Ann AST]
     | Leaf NixToken
-    deriving (Show)
+
+instance Show AST where
+    show (Leaf t) = show t
+    show (Node t l) = concat
+        [ show t
+        , "("
+        , concat $ map show l
+        , ")"
+        ]
 
 data NodeType
     = Abstraction
     | SetAbstraction
     | Apply
     | Assert
+    | File
     | IfElse
     | Inherit
     | InheritFrom
@@ -117,3 +126,5 @@ instance Show NixToken where
     show TParenClose    = ")"
 
     show TComma         = ","
+
+    show TEOF           = ""

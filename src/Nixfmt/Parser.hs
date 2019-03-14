@@ -8,7 +8,9 @@
 
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
-module Nixfmt.Parser where
+module Nixfmt.Parser
+    ( nixFile
+    ) where
 
 import           Control.Monad
 import           Data.Char
@@ -133,3 +135,9 @@ brackets = between (symbol TBrackOpen) (symbol TBrackClose)
 
 nixList :: Parser AST
 nixList = Node List <$> (brackets $ many nixTerm)
+
+nixFile :: Parser AST
+nixFile = do
+    term <- nixTerm
+    eofToken <- lexeme $ Leaf <$> (eof *> return TEOF)
+    return $ Node File $ [term, eofToken]
