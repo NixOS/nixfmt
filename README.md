@@ -14,7 +14,7 @@ The CLI is not yet ready.
 
 ## For Contributers
 
-We welcome issues and pull requests on Gtihub.
+We welcome issues and pull requests on Github.
 
 ## About Serokell
 
