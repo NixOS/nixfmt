@@ -1,12 +1,5 @@
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFunctor      #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE NamedFieldPuns     #-}
-{-# LANGUAGE OverloadedStrings  #-}
-
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Nixfmt.Parser
     ( nixFile
@@ -43,27 +36,30 @@ between preParser postParser bodyParser = do
     return $ [pre] ++ body ++ [post]
 
 lineComment :: Parser Trivium
-lineComment = string "#" *>
-    (LineComment <$> takeWhileP Nothing (\x -> x /= '\n' && x /= '\r'))
+lineComment = try $ string "#" *>
+    (LineComment <$> manyP (\x -> x /= '\n' && x /= '\r'))
 
 blockComment :: Parser Trivium
-blockComment = string "/*" *>
+blockComment = try $ string "/*" *>
     (BlockComment <$> pack <$> manyTill anySingle (string "*/"))
 
-newlines :: Parser Trivium
-newlines = Newlines <$> length <$> some eol
+spacing :: Char -> Bool
+spacing x = isSpace x && x /= '\n' && x /= '\r'
 
-tabs :: Parser Trivium
-tabs = Tabs <$> length <$> some tab
+preSpace :: Parser Trivium
+preSpace = try (manyP spacing *> eol *> manyP spacing *>
+             some (eol *> manyP spacing) *> return DoubleLine)
+       <|> try (manyP spacing *> eol *> manyP spacing *> return SingleSpace)
+       <|> try (someP spacing *> return SingleSpace)
 
-spaces :: Parser Trivium
-spaces = Spaces <$> length <$> some (char ' ')
+postSpace :: Parser Trivium
+postSpace = try (someP spacing *> return SingleSpace)
 
-trailingTrivia :: Parser [Trivium]
-trailingTrivia = many (lineComment <|> blockComment <|> tabs <|> spaces)
+trailingTrivia :: Parser Trivia
+trailingTrivia = many (postSpace <|> lineComment <|> blockComment)
 
-leadingTrivia :: Parser [Trivium]
-leadingTrivia = many (lineComment <|> blockComment <|> tabs <|> spaces <|> newlines)
+leadingTrivia :: Parser Trivia
+leadingTrivia = many (preSpace <|> lineComment <|> blockComment)
 
 lexeme :: Parser a -> Parser (Ann a)
 lexeme p = do

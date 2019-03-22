@@ -3,12 +3,22 @@ module Nixfmt.Types where
 import           Data.Text       hiding (concat, map)
 import           Text.Megaparsec (SourcePos)
 
+data Trivium
+    = SingleSpace
+    | SingleLine
+    | DoubleLine
+    | LineComment  Text
+    | BlockComment Text
+    deriving (Show, Eq, Ord)
+
+type Trivia = [Trivium]
+
 data Ann e = Ann
-    { preTrivia  :: [Trivium]
+    { preTrivia  :: Trivia
     , startPos   :: Maybe SourcePos
     , annotated  :: e
     , endPos     :: Maybe SourcePos
-    , postTrivia :: [Trivium]
+    , postTrivia :: Trivia
     } deriving (Show)
 
 data AST
@@ -34,14 +44,6 @@ data NodeType
     | Inherit
     | InheritFrom
     | List
-    deriving (Show)
-
-data Trivium
-    = Newlines     Int
-    | Spaces       Int
-    | Tabs         Int
-    | LineComment  Text
-    | BlockComment Text
     deriving (Show)
 
 data NixValue
