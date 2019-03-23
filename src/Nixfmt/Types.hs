@@ -1,38 +1,25 @@
 module Nixfmt.Types where
 
 import           Data.Text       hiding (concat, map)
-import           Text.Megaparsec (SourcePos)
+import           Data.Void
+import           Text.Megaparsec (Parsec, SourcePos)
 
-data Trivium
-    = SingleSpace
-    | SingleLine
-    | DoubleLine
-    | LineComment  Text
-    | BlockComment Text
-    deriving (Show, Eq, Ord)
+type Parser = Parsec Void Text
+
+data Trivium = EmptyLine
+             | TrailingComment Text
+             | LineComment     Text
+             | BlockComment    [Text]
+             deriving (Show)
 
 type Trivia = [Trivium]
 
-data Ann e = Ann
-    { preTrivia  :: Trivia
-    , startPos   :: Maybe SourcePos
-    , annotated  :: e
-    , endPos     :: Maybe SourcePos
-    , postTrivia :: Trivia
-    } deriving (Show)
+data Positioned a = Positioned SourcePos a SourcePos
 
-data AST
-    = Node NodeType [AST]
-    | Leaf (Ann NixToken)
+data AST n l = Node n [AST n l]
+             | Leaf l
 
-instance Show AST where
-    show (Leaf t) = show t
-    show (Node t l) = concat
-        [ show t
-        , "("
-        , concat $ map show l
-        , ")"
-        ]
+type NixAST = AST NodeType NixToken
 
 data NodeType
     = Abstraction
@@ -46,17 +33,14 @@ data NodeType
     | List
     deriving (Show)
 
-data NixValue
-    = NixFloat Text
-    | NixInt   Int
-    | NixText  Text
-    | NixURI   Text
-    deriving (Show)
-
 data NixToken
-    = Literal    NixValue
+    = EnvPath    Text
     | Identifier Text
-    | EnvPath    Text
+    | NixFloat   Text
+    | NixInt     Int
+    | NixText    Text
+    | NixURI     Text
+    | Trivia     Trivia
 
     | TAssert
     | TElse
@@ -105,10 +89,23 @@ data NixToken
 
     | TEOF
 
+instance (Show n, Show l) => Show (AST n l) where
+    show (Leaf l) = show l
+    show (Node n xs) = concat
+        [ show n
+        , "("
+        , concat $ map show xs
+        , ")"
+        ]
+
 instance Show NixToken where
-    show (Literal v)    = show v
     show (Identifier s) = show s
     show (EnvPath p)    = show p
+    show (NixFloat f)   = show f
+    show (NixInt i)     = show i
+    show (NixURI uri)   = show uri
+    show (NixText text) = show text
+    show (Trivia ts)    = show ts
 
     show TAssert        = "assert"
     show TElse          = "else"

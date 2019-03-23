@@ -1,11 +1,17 @@
 module Main where
 
-import           Data.Text.IO    hiding (putStrLn)
+import           Data.Text.IO                   (getContents)
+import           Data.Text.Prettyprint.Doc
+import           Data.Text.Prettyprint.Doc.Util
 import           Nixfmt.Parser
-import           Prelude         hiding (getContents)
+import           Nixfmt.Pretty                  ()
+import           Prelude                        hiding (getContents)
+import           System.IO                      (hPutStr, stderr)
 import           Text.Megaparsec
 
 main :: IO ()
 main = do
     contents <- getContents
-    putStrLn $ show $ parse nixFile "<stdin>" contents
+    case parse nixFile "<stdin>" contents of
+        Left err     -> hPutStr stderr $ errorBundlePretty err
+        Right parsed -> putDocW 80 $ pretty parsed

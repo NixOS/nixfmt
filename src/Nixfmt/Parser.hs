@@ -1,4 +1,3 @@
-{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Nixfmt.Parser
@@ -7,71 +6,21 @@ module Nixfmt.Parser
 
 import           Control.Monad
 import           Data.Char
-import           Data.Text                  as Text hiding (length)
-import           Data.Void
+import           Data.Text                  as Text hiding (length, map, tail)
+import           Nixfmt.Lexer
 import           Nixfmt.Types
-import           Text.Megaparsec            hiding (between)
+import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import           Text.Megaparsec.Char.Lexer (decimal)
 
-type Parser = Parsec Void Text
+someList :: Parser [a] -> Parser [a]
+someList p = Prelude.concat <$> some p
 
-someP :: (Char -> Bool) -> Parser Text
-someP = takeWhile1P Nothing
+manyList :: Parser [a] -> Parser [a]
+manyList p = Prelude.concat <$> many p
 
-manyP :: (Char -> Bool) -> Parser Text
-manyP = takeWhileP Nothing
-
-someCat :: Parser Text -> Parser Text
-someCat p = Text.concat <$> some p
-
-manyCat :: Parser Text -> Parser Text
-manyCat p = Text.concat <$> many p
-
-between :: Parser a -> Parser a -> Parser [a] -> Parser [a]
-between preParser postParser bodyParser = do
-    pre <- preParser
-    body <- bodyParser
-    post <- postParser
-    return $ [pre] ++ body ++ [post]
-
-lineComment :: Parser Trivium
-lineComment = try $ string "#" *>
-    (LineComment <$> manyP (\x -> x /= '\n' && x /= '\r'))
-
-blockComment :: Parser Trivium
-blockComment = try $ string "/*" *>
-    (BlockComment <$> pack <$> manyTill anySingle (string "*/"))
-
-spacing :: Char -> Bool
-spacing x = isSpace x && x /= '\n' && x /= '\r'
-
-preSpace :: Parser Trivium
-preSpace = try (manyP spacing *> eol *> manyP spacing *>
-             some (eol *> manyP spacing) *> return DoubleLine)
-       <|> try (manyP spacing *> eol *> manyP spacing *> return SingleSpace)
-       <|> try (someP spacing *> return SingleSpace)
-
-postSpace :: Parser Trivium
-postSpace = try (someP spacing *> return SingleSpace)
-
-trailingTrivia :: Parser Trivia
-trailingTrivia = many (postSpace <|> lineComment <|> blockComment)
-
-leadingTrivia :: Parser Trivia
-leadingTrivia = many (preSpace <|> lineComment <|> blockComment)
-
-lexeme :: Parser a -> Parser (Ann a)
-lexeme p = do
-    preTrivia <- leadingTrivia
-    startPos <- getSourcePos
-    content <- p
-    endPos <- getSourcePos
-    postTrivia <- trailingTrivia
-    return $ Ann preTrivia (Just startPos) content (Just endPos) postTrivia
-
-symbol :: NixToken -> Parser AST
-symbol t = Leaf <$> lexeme (string (pack $ show t) *> return t)
+node :: NodeType -> Parser [NixAST] -> Parser [NixAST]
+node nodeType p = pure . Node nodeType <$> p
 
 reservedNames :: [Text]
 reservedNames =
@@ -86,16 +35,16 @@ reservedNames =
 identChar :: Char -> Bool
 identChar x = isAlpha x || isDigit x || x == '_' || x == '\'' || x == '-'
 
-identifier :: Parser AST
-identifier = liftM Leaf $ try $ lexeme $ Identifier <$> do
+identifier :: Parser [NixAST]
+identifier = try $ lexeme $ Identifier <$> do
     ident <- Text.cons <$> satisfy (\x -> isAlpha x || x == '_')
                        <*> manyP identChar
     guard $ not $ ident `elem` reservedNames
     return ident
 
-reserved :: NixToken -> Parser AST
-reserved t = try $ Leaf <$> lexeme (string (pack $ show t)
-    *> lookAhead (satisfy (\x -> not (identChar x) && not (pathChar x)))
+reserved :: NixToken -> Parser [NixAST]
+reserved t = try $ lexeme (string (pack $ show t)
+    *> lookAhead (satisfy (\x -> not $ identChar x || pathChar x))
     *> return t)
 
 pathChar :: Char -> Bool
@@ -113,27 +62,24 @@ nixSearchPath = try $ EnvPath <$> Text.concat <$> sequence
     ]
 
 nixPath :: Parser NixToken
-nixPath = try $ Literal <$> NixURI <$> liftM2 Text.append
+nixPath = try $ NixURI <$> liftM2 Text.append
     (manyP pathChar)
     (someCat $ liftM2 Text.cons (char '/') (someP pathChar))
 
 nixInt :: Parser NixToken
-nixInt = try $ Literal <$> NixInt <$> decimal
+nixInt = try $ NixInt <$> decimal
 
-nixValue :: Parser AST
-nixValue = Leaf <$> lexeme (nixSearchPath <|> nixPath <|> nixInt)
+nixValue :: Parser [NixAST]
+nixValue = lexeme (nixSearchPath <|> nixPath <|> nixInt)
 
-nixTerm :: Parser AST
+nixTerm :: Parser [NixAST]
 nixTerm = nixValue <|> identifier <|> try nixList
 
-brackets :: Parser [AST] -> Parser [AST]
-brackets = between (symbol TBrackOpen) (symbol TBrackClose)
+brackets :: Parser [NixAST] -> Parser [NixAST]
+brackets p = (symbol TBrackOpen) <> p <> (symbol TBrackClose)
 
-nixList :: Parser AST
-nixList = Node List <$> (brackets $ many nixTerm)
+nixList :: Parser [NixAST]
+nixList = node List $ brackets $ manyList nixTerm
 
-nixFile :: Parser AST
-nixFile = do
-    term <- nixTerm
-    eofToken <- Leaf <$> lexeme (eof *> return TEOF)
-    return $ Node File $ [term, eofToken]
+nixFile :: Parser NixAST
+nixFile = Node File <$> trivia <> nixTerm
