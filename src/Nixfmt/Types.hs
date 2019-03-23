@@ -2,7 +2,7 @@ module Nixfmt.Types where
 
 import           Data.Text       hiding (concat, map)
 import           Data.Void
-import           Text.Megaparsec (Parsec, SourcePos)
+import           Text.Megaparsec (Parsec)
 
 type Parser = Parsec Void Text
 
@@ -13,8 +13,6 @@ data Trivium = EmptyLine
              deriving (Show)
 
 type Trivia = [Trivium]
-
-data Positioned a = Positioned SourcePos a SourcePos
 
 data AST n l = Node n [AST n l]
              | Leaf l

@@ -5,16 +5,6 @@ module Nixfmt.Lexer
     ( trivia
     , lexeme
     , symbol
-    , someP
-    , manyP
-    , someCat
-    , manyCat
-    , lineComment
-    , blockComment
-    , newlines
-    , convertTrivia
-    , convertTrailing
-    , convertLeading
     ) where
 
 import           Data.Char
@@ -24,25 +14,10 @@ import           Nixfmt.Util
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
-someP :: (Char -> Bool) -> Parser Text
-someP = takeWhile1P Nothing
-
-manyP :: (Char -> Bool) -> Parser Text
-manyP = takeWhileP Nothing
-
-someCat :: Parser Text -> Parser Text
-someCat p = Text.concat <$> some p
-
-manyCat :: Parser Text -> Parser Text
-manyCat p = Text.concat <$> many p
-
 data ParseTrivium = PTNewlines     Int
                   | PTLineComment  Text
                   | PTBlockComment [Text]
                   deriving (Show)
-
-positioned :: Parser a -> Parser (Positioned a)
-positioned p = Positioned <$> getSourcePos <*> p <*> getSourcePos
 
 preLexeme :: Parser a -> Parser a
 preLexeme p = p <* manyP (\x -> isSpace x && x /= '\n' && x /= '\r')

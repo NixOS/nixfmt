@@ -9,15 +9,10 @@ import           Data.Char
 import           Data.Text                  as Text hiding (length, map, tail)
 import           Nixfmt.Lexer
 import           Nixfmt.Types
+import           Nixfmt.Util
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import           Text.Megaparsec.Char.Lexer (decimal)
-
-someList :: Parser [a] -> Parser [a]
-someList p = Prelude.concat <$> some p
-
-manyList :: Parser [a] -> Parser [a]
-manyList p = Prelude.concat <$> many p
 
 node :: NodeType -> Parser [NixAST] -> Parser [NixAST]
 node nodeType p = pure . Node nodeType <$> p
@@ -57,14 +52,14 @@ nixSearchPath :: Parser NixToken
 nixSearchPath = try $ EnvPath <$> Text.concat <$> sequence
     [ singleton <$> char '<'
     , someP pathChar
-    , manyCat $ liftM2 Text.cons (char '/') (someP pathChar)
+    , manyText $ liftM2 Text.cons (char '/') (someP pathChar)
     , singleton <$> char '>'
     ]
 
 nixPath :: Parser NixToken
 nixPath = try $ NixURI <$> liftM2 Text.append
     (manyP pathChar)
-    (someCat $ liftM2 Text.cons (char '/') (someP pathChar))
+    (someText $ liftM2 Text.cons (char '/') (someP pathChar))
 
 nixInt :: Parser NixToken
 nixInt = try $ NixInt <$> decimal
