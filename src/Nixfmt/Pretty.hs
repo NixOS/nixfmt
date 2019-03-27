@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Nixfmt.Pretty where
@@ -17,32 +18,36 @@ text = pretty
 
 instance Pretty Trivium where
     pretty EmptyLine            = hardline
-    pretty (TrailingComment tc) = text " #" <> pretty tc <> hardline
     pretty (LineComment lc)     = text "#" <> pretty lc <> hardline
     pretty (BlockComment bc)
         = text "/*" <>
           hcat (intersperse hardline $ map pretty bc) <>
-          text "*/"
+          text "*/" <> hardline
 
     prettyList []                                = emptyDoc
-    prettyList (tc@(TrailingComment _) : trivia) = pretty tc <>
-                                                   hcat (map pretty trivia)
     prettyList trivia                            = hardline <>
                                                    hcat (map pretty trivia)
 
 instance Pretty NixToken where
     pretty (Identifier i) = text i
-    pretty (Trivia t)     = pretty t
 
     pretty t              = pretty $ show t
 
 split :: NixToken -> [NixAST] -> ([NixAST], NixAST, [NixAST])
 split t xs =
-    let (leading, matching : trailing) = span (/= Leaf t) xs
+    let matchLeaf (Leaf t' _) = t == t'
+        matchLeaf _           = False
+        (leading, matching : trailing) = span matchLeaf xs
     in (leading, matching, trailing)
 
+thenLine :: NixAST -> Doc ann
+thenLine (Leaf t Nothing) = pretty t <> line
+thenLine x                = pretty x
+
 instance Pretty NixAST where
-    pretty (Leaf l) = pretty l
+    pretty (Leaf l Nothing) = pretty l
+    pretty (Leaf l (Just comment)) = pretty l <> text (" #" <> comment) <> hardline
+    pretty (Trivia t) = pretty t
 
     pretty (Node File children) = pretty children
 
@@ -50,12 +55,10 @@ instance Pretty NixAST where
         let (leading, brackOpen, children1) = split TBrackOpen children0
             (items, brackClose, trailing) = split TBrackClose children1
         in pretty leading <>
-           group (pretty brackOpen <>
-                  nest 2 (case (filter (/=Leaf (Trivia [])) items) of
+           group (thenLine brackOpen <>
+                  nest 2 (case (filter (/=Trivia []) items) of
                       []        -> emptyDoc
-                      someItems -> line <>
-                                   vsep (map pretty someItems) <>
-                                   line) <>
+                      someItems -> hcat (map thenLine someItems)) <>
                   pretty brackClose) <>
            pretty trailing
 

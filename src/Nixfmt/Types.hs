@@ -7,7 +7,6 @@ import           Text.Megaparsec (Parsec)
 type Parser = Parsec Void Text
 
 data Trivium = EmptyLine
-             | TrailingComment Text
              | LineComment     Text
              | BlockComment    [Text]
              deriving (Eq, Show)
@@ -15,7 +14,9 @@ data Trivium = EmptyLine
 type Trivia = [Trivium]
 
 data AST n l = Node n [AST n l]
-             | Leaf l
+             -- | A token followed by an optional trailing comment
+             | Leaf l (Maybe Text)
+             | Trivia Trivia
              deriving (Eq)
 
 type NixAST = AST NodeType NixToken
@@ -39,7 +40,6 @@ data NixToken
     | NixInt     Int
     | NixText    Text
     | NixURI     Text
-    | Trivia     Trivia
 
     | TAssert
     | TElse
@@ -90,8 +90,10 @@ data NixToken
     deriving (Eq)
 
 instance (Show n, Show l) => Show (AST n l) where
-    show (Leaf l) = show l
-    show (Node n xs) = concat
+    show (Leaf l Nothing)  = show l
+    show (Leaf l (Just c)) = show l <> show "/*" <> show c <> show "*/"
+    show (Trivia ts)       = show ts
+    show (Node n xs)       = concat
         [ show n
         , "("
         , concat $ map show xs
@@ -105,7 +107,6 @@ instance Show NixToken where
     show (NixInt i)     = show i
     show (NixURI uri)   = show uri
     show (NixText text) = show text
-    show (Trivia ts)    = show ts
 
     show TAssert        = "assert"
     show TElse          = "else"

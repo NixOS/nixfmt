@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Nixfmt.Lexer
-    ( trivia
+    ( file
     , lexeme
     , symbol
     ) where
@@ -36,10 +36,10 @@ blockComment :: Parser ParseTrivium
 blockComment = try $ preLexeme $ string "/*" *>
     (PTBlockComment . splitLines . pack <$> manyTill anySingle (string "*/"))
 
-convertTrailing :: [ParseTrivium] -> [Trivium]
+convertTrailing :: [ParseTrivium] -> Maybe Text
 convertTrailing = (\case
-        "" -> []
-        tc -> [TrailingComment $ cons ' ' tc]
+        "" -> Nothing
+        tc -> Just $ cons ' ' tc
     ) . intercalate " " . filter (/="") . map (\case
         (PTLineComment lc) -> strip lc
         (PTBlockComment [bc]) -> strip bc
@@ -57,16 +57,24 @@ isTrailing (PTLineComment _)    = True
 isTrailing (PTBlockComment [_]) = True
 isTrailing _                    = False
 
-convertTrivia :: [ParseTrivium] -> Trivia
+convertTrivia :: [ParseTrivium] -> (Maybe Text, Trivia)
 convertTrivia pts = let (trailing, leading) = span isTrailing pts
-                    in convertTrailing trailing ++ convertLeading leading
+                    in (convertTrailing trailing, convertLeading leading)
 
-trivia :: Parser [NixAST]
-trivia = pure . Leaf . Trivia . convertTrivia
-    <$> many (lineComment <|> blockComment <|> newlines)
+trivia :: Parser [ParseTrivium]
+trivia = many (lineComment <|> blockComment <|> newlines)
 
 lexeme :: Parser NixToken -> Parser [NixAST]
-lexeme p = preLexeme (pure . Leaf <$> p) <> trivia
+lexeme p = do
+    token <- preLexeme p
+    (trailing, leading) <- convertTrivia <$> trivia
+    return [Leaf token trailing, Trivia leading]
 
 symbol :: NixToken -> Parser [NixAST]
 symbol t = lexeme (string (pack $ show t) *> return t)
+
+file :: Parser [NixAST] -> Parser NixAST
+file p = do
+    leading <- convertLeading <$> trivia
+    body <- p
+    return (Node File (Trivia leading : body))

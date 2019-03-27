@@ -77,4 +77,4 @@ nixList :: Parser [NixAST]
 nixList = node List $ brackets $ manyList nixTerm
 
 nixFile :: Parser NixAST
-nixFile = Node File <$> trivia <> nixTerm
+nixFile = file nixTerm
