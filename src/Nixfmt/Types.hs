@@ -10,12 +10,13 @@ data Trivium = EmptyLine
              | TrailingComment Text
              | LineComment     Text
              | BlockComment    [Text]
-             deriving (Show)
+             deriving (Eq, Show)
 
 type Trivia = [Trivium]
 
 data AST n l = Node n [AST n l]
              | Leaf l
+             deriving (Eq)
 
 type NixAST = AST NodeType NixToken
 
@@ -29,7 +30,7 @@ data NodeType
     | Inherit
     | InheritFrom
     | List
-    deriving (Show)
+    deriving (Eq, Show)
 
 data NixToken
     = EnvPath    Text
@@ -86,6 +87,7 @@ data NixToken
     | TOr
 
     | TEOF
+    deriving (Eq)
 
 instance (Show n, Show l) => Show (AST n l) where
     show (Leaf l) = show l
