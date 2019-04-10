@@ -10,7 +10,9 @@ run and `cabal v1-repl` for a REPL.
 
 ## Usage
 
-The CLI is not yet ready.
+Run `nix-build` in the root of the project. The binary can then be called with
+`result/bin/nixfmt`. It reads nix code from stdin and writes a formatted version
+to stdout. Currently, many parts of the syntax are still unsupported.
 
 ## For Contributers
 
