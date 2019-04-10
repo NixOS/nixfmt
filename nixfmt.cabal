@@ -15,6 +15,7 @@ executable nixfmt
   other-modules:
     Nixfmt.Lexer
     Nixfmt.Parser
+    Nixfmt.Predoc
     Nixfmt.Pretty
     Nixfmt.Types
     Nixfmt.Util

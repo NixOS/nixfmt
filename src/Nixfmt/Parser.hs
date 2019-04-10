@@ -46,15 +46,12 @@ pathChar :: Char -> Bool
 pathChar x = isAlpha x || isDigit x
     || x == '.' || x == '_' || x == '-' || x == '+' || x == '~'
 
--- | A path surrounded by angle brackets, indicating that it should be
--- looked up in the NIX_PATH environment variable at evaluation.
 nixSearchPath :: Parser NixToken
-nixSearchPath = try $ EnvPath <$> Text.concat <$> sequence
-    [ singleton <$> char '<'
-    , someP pathChar
-    , manyText $ liftM2 Text.cons (char '/') (someP pathChar)
-    , singleton <$> char '>'
-    ]
+nixSearchPath = try $ EnvPath <$> (char '<' *>
+    liftM2 Text.append
+        (someP pathChar)
+        (manyText $ liftM2 Text.cons (char '/') (someP pathChar))
+    <* char '>')
 
 nixPath :: Parser NixToken
 nixPath = try $ NixURI <$> liftM2 Text.append

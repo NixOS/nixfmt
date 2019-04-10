@@ -4,17 +4,11 @@
 
 module Nixfmt.Pretty where
 
-import           Data.List                 hiding (group)
-import           Data.Text                 (Text)
-import qualified Data.Text                 as Text
-import           Data.Text.Prettyprint.Doc hiding (prettyList)
-import qualified Data.Text.Prettyprint.Doc
+import           Data.List     hiding (group)
+import           Data.Text     (Text, pack)
+import qualified Data.Text     as Text
+import           Nixfmt.Predoc
 import           Nixfmt.Types
-
--- | This fixes ambiguity with OverloadedStrings when pretty is applied to a
--- String literal
-text :: Text -> Doc ann
-text = pretty
 
 instance Pretty Trivium where
     pretty EmptyLine            = hardline
@@ -24,24 +18,28 @@ instance Pretty Trivium where
           hcat (intersperse hardline $ map pretty bc) <>
           text "*/" <> hardline
 
-    prettyList []                                = emptyDoc
-    prettyList trivia                            = hardline <>
-                                                   hcat (map pretty trivia)
+instance Pretty [Trivium] where
+    pretty []     = mempty
+    pretty trivia = hardline <> hcat (map pretty trivia)
 
 instance Pretty NixToken where
     pretty (Identifier i) = text i
+    pretty (EnvPath p)    = text ("<" <> p <> ">")
+    pretty (NixURI u)     = text u
+    pretty (NixFloat f)   = text f
+    pretty (NixInt i)     = text $ pack $ show i
 
     pretty t              = pretty $ show t
 
 split :: NixToken -> [NixAST] -> ([NixAST], NixAST, [NixAST])
 split t xs =
-    let matchLeaf (Leaf t' _) = t == t'
-        matchLeaf _           = False
-        (leading, matching : trailing) = span matchLeaf xs
+    let nonmatching (Leaf t' _) = t /= t'
+        nonmatching _           = True
+        (leading, matching : trailing) = span nonmatching xs
     in (leading, matching, trailing)
 
-thenLine :: NixAST -> Doc ann
-thenLine (Leaf t Nothing) = pretty t <> line
+thenLine :: NixAST -> Doc
+thenLine (Leaf t Nothing) = pretty t <> space
 thenLine x                = pretty x
 
 instance Pretty NixAST where
@@ -56,12 +54,11 @@ instance Pretty NixAST where
             (items, brackClose, trailing) = split TBrackClose children1
         in pretty leading <>
            group (thenLine brackOpen <>
-                  nest 2 (case (filter (/=Trivia []) items) of
-                      []        -> emptyDoc
-                      someItems -> hcat (map thenLine someItems)) <>
-                  pretty brackClose) <>
+                  nest 2 (hcat (map thenLine items)) <>
+                  thenLine brackClose) <>
            pretty trailing
 
     pretty node     = pretty $ show node
 
-    prettyList nodes = hcat (map pretty nodes)
+instance Pretty [NixAST] where
+    pretty nodes = hcat (map pretty nodes)

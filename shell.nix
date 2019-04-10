@@ -2,8 +2,7 @@
 
 let
   inherit (pkgs) stdenv;
-  hpkgs = pkgs.haskell.packages.ghc863;
-  ghc = hpkgs.ghcWithHoogle (hpkgs: with hpkgs; [
+  ghc = haskellPackages.ghcWithHoogle (hpkgs: with hpkgs; [
     megaparsec
     prettyprinter
     text
