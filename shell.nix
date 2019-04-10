@@ -2,7 +2,7 @@
 
 let
   inherit (pkgs) stdenv;
-  ghc = haskellPackages.ghcWithHoogle (hpkgs: with hpkgs; [
+  ghc = pkgs.haskellPackages.ghcWithHoogle (hpkgs: with hpkgs; [
     megaparsec
     prettyprinter
     text
@@ -10,7 +10,6 @@ let
 
 in stdenv.mkDerivation {
   name = "nixfmt";
-  src = ./.;
   buildInputs = with pkgs; [
     cabal-install
     ghc
