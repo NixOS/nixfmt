@@ -77,4 +77,5 @@ file :: Parser [NixAST] -> Parser NixAST
 file p = do
     leading <- convertLeading <$> trivia
     body <- p
+    eof
     return (Node File (Trivia leading : body))

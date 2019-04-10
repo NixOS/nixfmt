@@ -142,6 +142,8 @@ moveLinesOut (x : xs) = x : moveLinesOut xs
 mergeLines :: DocList -> DocList
 mergeLines []                     = []
 mergeLines (Line a : Line b : xs) = Line (max a b) : mergeLines xs
+mergeLines (Group [] : xs)        = mergeLines xs
+mergeLines (Nest _ [] : xs)       = mergeLines xs
 mergeLines (Group xs : ys)        = Group (mergeLines xs) : mergeLines ys
 mergeLines (Nest n xs : ys)       = Nest n (mergeLines xs) : mergeLines ys
 mergeLines (x : xs)               = x : mergeLines xs

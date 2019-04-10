@@ -23,14 +23,19 @@ type NixAST = AST NodeType NixToken
 
 data NodeType
     = Abstraction
-    | SetAbstraction
     | Apply
     | Assert
+    | Assignment
+    | ContextParameter
+    | FieldParameter
     | File
     | IfElse
     | Inherit
-    | InheritFrom
+    | Let
     | List
+    | Set
+    | SetParameter
+    | With
     deriving (Eq, Show)
 
 data NixToken
@@ -126,5 +131,13 @@ instance Show NixToken where
     show TParenClose    = ")"
 
     show TComma         = ","
+    show TAssign        = "="
+    show TAt            = "@"
+    show TColon         = ":"
+    show TComma         = ","
+    show TDot           = "."
+    show TEllipsis      = "..."
+    show TQuestion      = "?"
+    show TSemicolon     = ";"
 
     show TEOF           = ""
