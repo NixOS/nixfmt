@@ -21,18 +21,49 @@ data AST n l = Node n [AST n l]
 
 type NixAST = AST NodeType NixToken
 
+data Fixity = Prefix
+            | InfixL
+            | InfixN
+            | InfixR
+            | Postfix
+
+data Operator = Op Fixity NixToken
+              | Apply
+
+operators :: [[Operator]]
+operators = [ [ Apply ]
+            , [ Op Prefix TMinus ]
+            , [ Op Postfix TQuestion ]
+            , [ Op InfixR TConcat ]
+            , [ Op InfixL TMul
+              , Op InfixL TDiv ]
+            , [ Op InfixL TPlus
+              , Op InfixL TMinus ]
+            , [ Op Prefix TUpdate ]
+            , [ Op InfixN TLess
+              , Op InfixN TGreater
+              , Op InfixN TLessEqual
+              , Op InfixN TGreaterEqual ]
+            , [ Op InfixN TEqual
+              , Op InfixN TUnequal ]
+            , [ Op InfixL TBoolAnd ]
+            , [ Op InfixL TBoolOr ]
+            , [ Op InfixL TImplies ]
+            ]
+
 data NodeType
     = Abstraction
-    | Apply
+    | Application
     | Assert
     | Assignment
     | ContextParameter
-    | FieldParameter
+    | AttrParameter
     | File
     | IfElse
     | Inherit
     | Let
     | List
+    | Parenthesized
     | Set
     | SetParameter
     | With
@@ -52,6 +83,7 @@ data NixToken
     | TIn
     | TInherit
     | TLet
+    | TOr
     | TRec
     | TThen
     | TWith
@@ -74,22 +106,22 @@ data NixToken
 
     | TConcat
     | TNegate
-    | TMerge
+    | TUpdate
 
-    | TAdd
-    | TSub
+    | TPlus
+    | TMinus
     | TMul
     | TDiv
 
-    | TAnd
+    | TBoolAnd
     | TEqual
     | TImplies
     | TLess
-    | TLessOrEqual
+    | TLessEqual
     | TGreater
-    | TGreaterOrEqual
-    | TNotEqual
-    | TOr
+    | TGreaterEqual
+    | TUnequal
+    | TBoolOr
 
     | TEOF
     deriving (Eq)
@@ -106,12 +138,12 @@ instance (Show n, Show l) => Show (AST n l) where
         ]
 
 instance Show NixToken where
-    show (Identifier s) = show s
+    show (Identifier i) = show i
     show (EnvPath p)    = show p
     show (NixFloat f)   = show f
     show (NixInt i)     = show i
-    show (NixURI uri)   = show uri
-    show (NixText text) = show text
+    show (NixURI u)     = show u
+    show (NixText t)    = show t
 
     show TAssert        = "assert"
     show TElse          = "else"
@@ -119,6 +151,7 @@ instance Show NixToken where
     show TIn            = "in"
     show TInherit       = "inherit"
     show TLet           = "let"
+    show TOr            = "or"
     show TRec           = "rec"
     show TThen          = "then"
     show TWith          = "with"
@@ -130,7 +163,6 @@ instance Show NixToken where
     show TParenOpen     = "("
     show TParenClose    = ")"
 
-    show TComma         = ","
     show TAssign        = "="
     show TAt            = "@"
     show TColon         = ":"
@@ -139,5 +171,22 @@ instance Show NixToken where
     show TEllipsis      = "..."
     show TQuestion      = "?"
     show TSemicolon     = ";"
+
+    show TPlus          = "+"
+    show TMinus         = "-"
+    show TMul           = "*"
+    show TDiv           = "/"
+    show TConcat        = "++"
+    show TUpdate        = "//"
+
+    show TBoolAnd       = "&&"
+    show TBoolOr        = "||"
+    show TImplies       = "->"
+    show TEqual         = "=="
+    show TUnequal       = "!="
+    show TLess          = "<"
+    show TGreater       = ">"
+    show TLessEqual     = "<="
+    show TGreaterEqual  = ">="
 
     show TEOF           = ""

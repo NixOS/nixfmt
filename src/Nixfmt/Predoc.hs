@@ -12,7 +12,9 @@ module Nixfmt.Predoc
     , trivia
     , group
     , nest
+    , softbreak
     , break
+    , softline
     , space
     , hardline
     , emptyline
@@ -37,7 +39,9 @@ data Tree a = EmptyTree
 -- | Sequential Lines are reduced to a single Line by taking the maximum. This
 -- means that e.g. a Space followed by an Emptyline results in just an
 -- Emptyline.
-data Line = Break
+data Line = Softbreak
+          | Break
+          | Softline
           | Space
           | Hardline
           | Emptyline
@@ -87,8 +91,14 @@ group = Leaf . Group
 nest :: Int -> Doc -> Doc
 nest level = Leaf . Nest level
 
+softbreak :: Doc
+softbreak = Leaf (Line Softbreak)
+
 break :: Doc
 break = Leaf (Line Break)
+
+softline :: Doc
+softline = Leaf (Line Softline)
 
 space :: Doc
 space = Leaf (Line Space)
@@ -173,7 +183,9 @@ instance PP.Pretty Doc where
 instance PP.Pretty (Predoc []) where
     pretty (Trivia t)        = PP.pretty t
     pretty (Text t)          = PP.pretty t
+    pretty (Line Softbreak)  = PP.softline'
     pretty (Line Break)      = PP.line'
+    pretty (Line Softline)   = PP.softline
     pretty (Line Space)      = PP.line
     pretty (Line Hardline)   = PP.hardline
     pretty (Line Emptyline)  = PP.hardline <> PP.hardline

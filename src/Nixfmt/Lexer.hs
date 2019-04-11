@@ -62,13 +62,15 @@ convertTrivia pts = let (trailing, leading) = span isTrailing pts
                     in (convertTrailing trailing, convertLeading leading)
 
 trivia :: Parser [ParseTrivium]
-trivia = many (lineComment <|> blockComment <|> newlines)
+trivia = many $ hidden $ lineComment <|> blockComment <|> newlines
 
 lexeme :: Parser NixToken -> Parser [NixAST]
 lexeme p = do
     token <- preLexeme p
     (trailing, leading) <- convertTrivia <$> trivia
-    return [Leaf token trailing, Trivia leading]
+    return $ case leading of
+                  [] -> [Leaf token trailing]
+                  _  -> [Leaf token trailing, Trivia leading]
 
 symbol :: NixToken -> Parser [NixAST]
 symbol t = lexeme (string (pack $ show t) *> return t)

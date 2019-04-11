@@ -10,6 +10,7 @@ executable nixfmt
   build-depends:
       base >=4.12 && <4.13
     , megaparsec
+    , parser-combinators
     , prettyprinter
     , text
   other-modules:
