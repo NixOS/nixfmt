@@ -29,12 +29,12 @@ splitLines :: Text -> [Text]
 splitLines = Text.lines . replace "\r\n" "\n"
 
 lineComment :: Parser ParseTrivium
-lineComment = preLexeme $ string "#" *>
+lineComment = preLexeme $ chunk "#" *>
     (PTLineComment <$> manyP (\x -> x /= '\n' && x /= '\r'))
 
 blockComment :: Parser ParseTrivium
-blockComment = try $ preLexeme $ string "/*" *>
-    (PTBlockComment . splitLines . pack <$> manyTill anySingle (string "*/"))
+blockComment = try $ preLexeme $ chunk "/*" *>
+    (PTBlockComment . splitLines . pack <$> manyTill anySingle (chunk "*/"))
 
 convertTrailing :: [ParseTrivium] -> Maybe Text
 convertTrailing = (\case
@@ -73,7 +73,7 @@ lexeme p = do
                   _  -> [Leaf token trailing, Trivia leading]
 
 symbol :: NixToken -> Parser [NixAST]
-symbol t = lexeme (string (pack $ show t) *> return t)
+symbol t = lexeme (chunk (pack $ show t) *> return t)
 
 file :: Parser [NixAST] -> Parser NixAST
 file p = do

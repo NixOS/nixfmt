@@ -29,6 +29,7 @@ instance Pretty NixToken where
     pretty (NixURI u)     = text u
     pretty (NixFloat f)   = text f
     pretty (NixInt i)     = text $ pack $ show i
+    pretty (NixText t)    = text t
 
     pretty t              = pretty $ show t
 
@@ -103,7 +104,7 @@ instance Pretty NixAST where
             Just (params, braceClose, trailing) = splitT TBraceClose children1
             go xs = case splitT TComma xs of
                          Just (before, comma, after)
-                                 -> pretty before <> break <>
+                                 -> nest 2 (pretty before) <> break <>
                                     pretty comma <> text " " <>
                                     go after
                          Nothing -> pretty xs
@@ -113,9 +114,10 @@ instance Pretty NixAST where
 
     pretty (Node AttrParameter children0) =
         case splitT TQuestion children0 of
-             Just (name, question, expr) -> group $ pretty name <> text " " <>
-                                            pretty question <> space <>
-                                            pretty expr
+             Just (name, question, expr)
+                     -> group $ pretty name <> softline <>
+                        pretty question <> space <>
+                        nest 2 (pretty expr)
              Nothing -> pretty children0
 
     pretty (Node Inherit children0) =
@@ -126,6 +128,12 @@ instance Pretty NixAST where
            pretty semicolon <> pretty trailing
 
     pretty (Node Parenthesized children) = pretty children
+    pretty (Node SimpleString children) = pretty children
+    pretty (Node IndentedString children) = pretty children
+    pretty (Node Interpolation children) = pretty children
+
+    pretty (Node Application (first : xs)) = pretty first <>
+        hcat (map (\x -> softline <> pretty x) xs)
 
     pretty node     = pretty $ show node
 

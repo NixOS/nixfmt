@@ -39,7 +39,8 @@ operators = [ [ Apply ]
               , Op InfixL TDiv ]
             , [ Op InfixL TPlus
               , Op InfixL TMinus ]
-            , [ Op Prefix TUpdate ]
+            , [ Op Prefix TNot ]
+            , [ Op InfixR TUpdate ]
             , [ Op InfixN TLess
               , Op InfixN TGreater
               , Op InfixN TLessEqual
@@ -56,16 +57,21 @@ data NodeType
     | Application
     | Assert
     | Assignment
-    | ContextParameter
     | AttrParameter
+    | ContextParameter
     | File
-    | IfElse
+    | If
+    | IndentedString
     | Inherit
+    | Interpolation
     | Let
     | List
     | Parenthesized
+    | Selector
+    | SelectorPath
     | Set
     | SetParameter
+    | SimpleString
     | With
     deriving (Eq, Show)
 
@@ -92,6 +98,8 @@ data NixToken
     | TBraceClose
     | TBrackOpen
     | TBrackClose
+    | TInterOpen
+    | TInterClose
     | TParenOpen
     | TParenClose
 
@@ -100,6 +108,8 @@ data NixToken
     | TColon
     | TComma
     | TDot
+    | TDoubleQuote
+    | TDoubleSingleQuote
     | TEllipsis
     | TQuestion
     | TSemicolon
@@ -114,14 +124,15 @@ data NixToken
     | TDiv
 
     | TBoolAnd
+    | TBoolOr
     | TEqual
+    | TGreater
+    | TGreaterEqual
     | TImplies
     | TLess
     | TLessEqual
-    | TGreater
-    | TGreaterEqual
+    | TNot
     | TUnequal
-    | TBoolOr
 
     | TEOF
     deriving (Eq)
@@ -138,55 +149,60 @@ instance (Show n, Show l) => Show (AST n l) where
         ]
 
 instance Show NixToken where
-    show (Identifier i) = show i
-    show (EnvPath p)    = show p
-    show (NixFloat f)   = show f
-    show (NixInt i)     = show i
-    show (NixURI u)     = show u
-    show (NixText t)    = show t
+    show (Identifier i)     = show i
+    show (EnvPath p)        = show p
+    show (NixFloat f)       = show f
+    show (NixInt i)         = show i
+    show (NixURI u)         = show u
+    show (NixText t)        = show t
 
-    show TAssert        = "assert"
-    show TElse          = "else"
-    show TIf            = "if"
-    show TIn            = "in"
-    show TInherit       = "inherit"
-    show TLet           = "let"
-    show TOr            = "or"
-    show TRec           = "rec"
-    show TThen          = "then"
-    show TWith          = "with"
+    show TAssert            = "assert"
+    show TElse              = "else"
+    show TIf                = "if"
+    show TIn                = "in"
+    show TInherit           = "inherit"
+    show TLet               = "let"
+    show TOr                = "or"
+    show TRec               = "rec"
+    show TThen              = "then"
+    show TWith              = "with"
 
-    show TBraceOpen     = "{"
-    show TBraceClose    = "}"
-    show TBrackOpen     = "["
-    show TBrackClose    = "]"
-    show TParenOpen     = "("
-    show TParenClose    = ")"
+    show TBraceOpen         = "{"
+    show TBraceClose        = "}"
+    show TBrackOpen         = "["
+    show TBrackClose        = "]"
+    show TInterOpen         = "${"
+    show TInterClose        = "}"
+    show TParenOpen         = "("
+    show TParenClose        = ")"
 
-    show TAssign        = "="
-    show TAt            = "@"
-    show TColon         = ":"
-    show TComma         = ","
-    show TDot           = "."
-    show TEllipsis      = "..."
-    show TQuestion      = "?"
-    show TSemicolon     = ";"
+    show TAssign            = "="
+    show TAt                = "@"
+    show TColon             = ":"
+    show TComma             = ","
+    show TDot               = "."
+    show TDoubleQuote       = "\""
+    show TDoubleSingleQuote = "''"
+    show TEllipsis          = "..."
+    show TQuestion          = "?"
+    show TSemicolon         = ";"
 
-    show TPlus          = "+"
-    show TMinus         = "-"
-    show TMul           = "*"
-    show TDiv           = "/"
-    show TConcat        = "++"
-    show TUpdate        = "//"
+    show TPlus              = "+"
+    show TMinus             = "-"
+    show TMul               = "*"
+    show TDiv               = "/"
+    show TConcat            = "++"
+    show TUpdate            = "//"
 
-    show TBoolAnd       = "&&"
-    show TBoolOr        = "||"
-    show TImplies       = "->"
-    show TEqual         = "=="
-    show TUnequal       = "!="
-    show TLess          = "<"
-    show TGreater       = ">"
-    show TLessEqual     = "<="
-    show TGreaterEqual  = ">="
+    show TBoolAnd           = "&&"
+    show TBoolOr            = "||"
+    show TEqual             = "=="
+    show TGreater           = ">"
+    show TGreaterEqual      = ">="
+    show TImplies           = "->"
+    show TLess              = "<"
+    show TLessEqual         = "<="
+    show TNot               = "!"
+    show TUnequal           = "!="
 
-    show TEOF           = ""
+    show TEOF               = ""
