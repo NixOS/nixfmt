@@ -67,11 +67,13 @@ data NodeType
     | Let
     | List
     | Parenthesized
+    | Selection
     | Selector
     | SelectorPath
     | Set
     | SetParameter
     | SimpleString
+    | URIString
     | With
     deriving (Eq, Show)
 

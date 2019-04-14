@@ -38,8 +38,20 @@ reservedNames =
     , "inherit"
     ]
 
+charClass :: String -> Char -> Bool
+charClass s c = isAlpha c || isDigit c || elem c s
+
 identChar :: Char -> Bool
-identChar x = isAlpha x || isDigit x || x == '_' || x == '\'' || x == '-'
+identChar = charClass "_'-"
+
+pathChar :: Char -> Bool
+pathChar = charClass "._-+~"
+
+schemeChar :: Char -> Bool
+schemeChar = charClass "-.+"
+
+uriChar :: Char -> Bool
+uriChar = charClass "~!@$%&*-=_+:',./?"
 
 identifier :: Parser [NixAST]
 identifier = try $ lexeme $ Identifier <$> do
@@ -53,10 +65,6 @@ reserved t = try $ lexeme (chunk (pack $ show t)
     *> lookAhead (satisfy (\x -> not $ identChar x || pathChar x))
     *> return t)
 
-pathChar :: Char -> Bool
-pathChar x = isAlpha x || isDigit x
-    || x == '.' || x == '_' || x == '-' || x == '+' || x == '~'
-
 slash :: Parser Text
 slash = chunk "/" <* notFollowedBy (char '/')
 
@@ -68,9 +76,12 @@ nixSearchPath = try $ EnvPath <$> (char '<' *>
     <* char '>')
 
 nixPath :: Parser NixToken
-nixPath = try $ NixURI <$> liftM2 Text.append
-    (manyP pathChar)
-    (someText $ slash <> someP pathChar)
+nixPath = try $ NixURI <$>
+    manyP pathChar <> someText (slash <> someP pathChar)
+
+uri :: Parser [NixAST]
+uri = try $ node URIString $ lexeme $ NixText <$>
+    someP schemeChar <> chunk ":" <> someP uriChar
 
 nixInt :: Parser NixToken
 nixInt = try $ NixInt <$> decimal
@@ -118,7 +129,7 @@ indentedString = node IndentedString $ rawSymbol TDoubleSingleQuote <>
     symbol TDoubleSingleQuote
 
 string :: Parser [NixAST]
-string = simpleString <|> indentedString
+string = simpleString <|> indentedString <|> uri
 
 brackets :: Parser [NixAST] -> Parser [NixAST]
 brackets p = symbol TBrackOpen <> p <> symbol TBrackClose
@@ -174,6 +185,10 @@ ifThenElse = node If $
     reserved TThen <> expression <>
     reserved TElse <> expression
 
+assert :: Parser [NixAST]
+assert = node Assert $ reserved TAssert <> expression <>
+    symbol TSemicolon <> expression
+
 nixSet :: Parser [NixAST]
 nixSet = try $ node Set $
     optional (reserved TRec) <> (braces binders)
@@ -181,8 +196,8 @@ nixSet = try $ node Set $
 nixValue :: Parser [NixAST]
 nixValue = lexeme (nixSearchPath <|> nixPath <|> nixInt)
 
-term :: Parser [NixAST]
-term = selectorPath <|> nixValue <|> string <|>
+simpleTerm :: Parser [NixAST]
+simpleTerm = string <|> identifier <|> nixValue <|>
     nixParens <|> nixSet <|> nixList <?> "term"
 
 nixList :: Parser [NixAST]
@@ -192,12 +207,20 @@ nixParens :: Parser [NixAST]
 nixParens = try $ node Parenthesized $ parens $ expression
 
 selector :: Parser [NixAST]
-selector = try $ node Selector $ symbol TDot <>
+selector = try $ node Selector $
     (identifier <|> interpolation <|> simpleString) <>
     optional (symbol TOr <> term)
 
 selectorPath :: Parser [NixAST]
-selectorPath = try $ node SelectorPath $ identifier <> manyList selector
+selectorPath = node SelectorPath $
+    selector <> manyList (try $ symbol TDot <> selector)
+
+term :: Parser [NixAST]
+term = do
+    t <- simpleTerm
+    p <- optional $ try $ symbol TDot <> selectorPath
+    return $ case p of [] -> t
+                       _  -> [Node Selection (t <> p)]
 
 opChars :: String
 opChars = "<>=+-*/"
@@ -234,7 +257,8 @@ operation :: Parser [NixAST]
 operation = MPExpr.makeExprParser term $ map (map opCombiner) operators
 
 expression :: Parser [NixAST]
-expression = abstraction <|> nixWith <|> nixLet <|> ifThenElse <|>
+expression = uri <|> abstraction <|>
+    nixWith <|> nixLet <|> ifThenElse <|> assert <|>
     operation <?> "expression"
 
 nixFile :: Parser NixAST
