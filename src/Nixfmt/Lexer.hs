@@ -2,16 +2,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Nixfmt.Lexer
-    ( file
-    , lexeme
+    ( lexeme
     , symbol
     ) where
 
 import           Data.Char
 import           Data.Text            as Text hiding (filter, length, map, span)
-import           Nixfmt.Types
+import           Nixfmt.Types         (Ann (..), Parser, Trivia, Trivium (..))
 import           Nixfmt.Util
-import           Text.Megaparsec
+import           Text.Megaparsec      hiding (Token)
 import           Text.Megaparsec.Char
 
 data ParseTrivium = PTNewlines     Int
@@ -64,20 +63,11 @@ convertTrivia pts = let (trailing, leading) = span isTrailing pts
 trivia :: Parser [ParseTrivium]
 trivia = many $ hidden $ lineComment <|> blockComment <|> newlines
 
-lexeme :: Parser NixToken -> Parser [NixAST]
+lexeme :: Parser a -> Parser (Ann a)
 lexeme p = do
     token <- preLexeme p
     (trailing, leading) <- convertTrivia <$> trivia
-    return $ case leading of
-                  [] -> [Leaf token trailing]
-                  _  -> [Leaf token trailing, Trivia leading]
+    return $ Ann token trailing leading
 
-symbol :: NixToken -> Parser [NixAST]
+symbol :: Show a => a -> Parser (Ann a)
 symbol t = lexeme (chunk (pack $ show t) *> return t)
-
-file :: Parser [NixAST] -> Parser NixAST
-file p = do
-    leading <- convertLeading <$> trivia
-    body <- p
-    eof
-    return (Node File (Trivia leading : body))

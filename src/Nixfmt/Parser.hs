@@ -2,30 +2,35 @@
 
 module Nixfmt.Parser where
 
+import           Prelude                        hiding (String)
+
 import           Control.Monad
 import qualified Control.Monad.Combinators.Expr as MPExpr
 import           Data.Char
-import           Data.Text                      as Text hiding (length, map,
-                                                         tail)
+import           Data.Foldable                  (toList)
+import           Data.Text                      as Text hiding (concat, map)
+import           Data.Void
+import           Text.Megaparsec                hiding (Token)
+import           Text.Megaparsec.Char           (char)
+import           Text.Megaparsec.Char.Lexer     (decimal)
+
 import           Nixfmt.Lexer
 import           Nixfmt.Types
 import           Nixfmt.Util
-import           Text.Megaparsec                hiding (optional, sepBy)
-import           Text.Megaparsec.Char           hiding (string)
-import           Text.Megaparsec.Char.Lexer     (decimal)
 
-optional :: Parser [a] -> Parser [a]
-optional = option []
+-- HELPER FUNCTIONS
 
-sepBy :: NixToken -> Parser [NixAST] -> Parser [NixAST]
-sepBy sep p = optional $ p <> manyList (try $ symbol sep <> p)
+ann :: (a -> b) -> Parser a -> Parser (Ann b)
+ann f p = try $ lexeme $ f <$> p
 
-node :: NodeType -> Parser [NixAST] -> Parser [NixAST]
-node nodeType p = pure . Node nodeType <$> p
+pair :: Parser a -> Parser b -> Parser (a, b)
+pair p q = do x <- p
+              y <- q
+              return (x, y)
 
 -- | parses a token without parsing trivia after it
-rawSymbol :: NixToken -> Parser [NixAST]
-rawSymbol t = chunk (pack $ show t) *> return [Leaf t Nothing]
+rawSymbol :: Token -> Parser Token
+rawSymbol t = chunk (pack $ show t) *> return t
 
 reservedNames :: [Text]
 reservedNames =
@@ -38,7 +43,7 @@ reservedNames =
     , "inherit"
     ]
 
-charClass :: String -> Char -> Bool
+charClass :: [Char] -> Char -> Bool
 charClass s c = isAlpha c || isDigit c || elem c s
 
 identChar :: Char -> Bool
@@ -53,60 +58,55 @@ schemeChar = charClass "-.+"
 uriChar :: Char -> Bool
 uriChar = charClass "~!@$%&*-=_+:',./?"
 
-identifier :: Parser [NixAST]
-identifier = try $ lexeme $ Identifier <$> do
+reserved :: Token -> Parser (Ann Token)
+reserved t = try $ lexeme (chunk (pack $ show t)
+    *> lookAhead (satisfy (\x -> not $ identChar x || pathChar x))
+    *> return t)
+
+-- VALUES
+
+integer :: Parser (Ann Token)
+integer = ann Integer decimal
+
+identifier :: Parser (Ann Token)
+identifier = ann Identifier $ do
     ident <- Text.cons <$> satisfy (\x -> isAlpha x || x == '_')
                        <*> manyP identChar
     guard $ not $ ident `elem` reservedNames
     return ident
 
-reserved :: NixToken -> Parser [NixAST]
-reserved t = try $ lexeme (chunk (pack $ show t)
-    *> lookAhead (satisfy (\x -> not $ identChar x || pathChar x))
-    *> return t)
-
 slash :: Parser Text
 slash = chunk "/" <* notFollowedBy (char '/')
 
-nixSearchPath :: Parser NixToken
-nixSearchPath = try $ EnvPath <$> (char '<' *>
-    liftM2 Text.append
-        (someP pathChar)
-        (manyText $ slash <> someP pathChar)
-    <* char '>')
+envPath :: Parser (Ann Token)
+envPath = ann EnvPath $ char '<' *>
+    someP pathChar <> manyText (slash <> someP pathChar)
+    <* char '>'
 
-nixPath :: Parser NixToken
-nixPath = try $ NixURI <$>
-    manyP pathChar <> someText (slash <> someP pathChar)
+path :: Parser (Ann Token)
+path = ann Path $ manyP pathChar <> someText (slash <> someP pathChar)
 
-uri :: Parser [NixAST]
-uri = try $ node URIString $ lexeme $ NixText <$>
-    someP schemeChar <> chunk ":" <> someP uriChar
+uri :: Parser String
+uri = URIString <$> ann id (someP schemeChar <> chunk ":" <> someP uriChar)
 
-nixInt :: Parser NixToken
-nixInt = try $ NixInt <$> decimal
+-- STRINGS
 
-stringLeaf :: Parser Text -> Parser [NixAST]
-stringLeaf p = do
-    parsed <- p
-    return [Leaf (NixText parsed) Nothing]
+interpolation :: Parser StringPart
+interpolation = Interpolation <$>
+    symbol TInterOpen <*> expression <*> rawSymbol TInterClose
 
-interpolation :: Parser [NixAST]
-interpolation = node Interpolation $
-    symbol TInterOpen <> expression <> rawSymbol TInterClose
-
-simpleStringPart :: Parser [NixAST]
-simpleStringPart = stringLeaf $ someText $
+simpleStringPart :: Parser StringPart
+simpleStringPart = TextPart <$> someText (
     chunk "\\n" *> "\n" <|>
     chunk "\\r" *> "\r" <|>
     chunk "\\t" *> "\t" <|>
     chunk "\\" *> (Text.singleton <$> anySingle) <|>
     chunk "$$" <> manyP (=='$') <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
-    someP (\t -> t /= '"' && t /= '\\' && t /= '$')
+    someP (\t -> t /= '"' && t /= '\\' && t /= '$'))
 
-indentedStringPart :: Parser [NixAST]
-indentedStringPart = stringLeaf $ someText $
+indentedStringPart :: Parser StringPart
+indentedStringPart = TextPart <$> someText (
     chunk "''\\n" *> "\n" <|>
     chunk "''\\r" *> "\r" <|>
     chunk "''\\t" *> "\t" <|>
@@ -116,150 +116,144 @@ indentedStringPart = stringLeaf $ someText $
     chunk "$$" <> manyP (=='$') <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     try (chunk "'" <* notFollowedBy (char '\'')) <|>
-    someP (\t -> t /= '\'' && t /= '$')
+    someP (\t -> t /= '\'' && t /= '$'))
 
-simpleString :: Parser [NixAST]
-simpleString = node SimpleString $ rawSymbol TDoubleQuote <>
-    manyList (simpleStringPart <|> interpolation) <>
+simpleString :: Parser String
+simpleString = SimpleString <$> rawSymbol TDoubleQuote <*>
+    many (simpleStringPart <|> interpolation) <*>
     symbol TDoubleQuote
 
-indentedString :: Parser [NixAST]
-indentedString = node IndentedString $ rawSymbol TDoubleSingleQuote <>
-    manyList (indentedStringPart <|> interpolation) <>
+indentedString :: Parser String
+indentedString = IndentedString <$> rawSymbol TDoubleSingleQuote <*>
+    many (indentedStringPart <|> interpolation) <*>
     symbol TDoubleSingleQuote
 
-string :: Parser [NixAST]
+string :: Parser String
 string = simpleString <|> indentedString <|> uri
 
-brackets :: Parser [NixAST] -> Parser [NixAST]
-brackets p = symbol TBrackOpen <> p <> symbol TBrackClose
+-- TERMS
 
-braces :: Parser [NixAST] -> Parser [NixAST]
-braces p = symbol TBraceOpen <> p <> symbol TBraceClose
+parens :: Parser Term
+parens = Parenthesized <$>
+    symbol TParenOpen <*> expression <*> symbol TParenClose
 
-parens :: Parser [NixAST] -> Parser [NixAST]
-parens p = symbol TParenOpen <> p <> symbol TParenClose
+selector :: Maybe (Parser Leaf) -> Parser Selector
+selector parseDot = Selector <$> sequence parseDot <*>
+    ((IDSelector <$> identifier) <|>
+     (InterpolSelector <$> interpolation) <|>
+     (StringSelector <$> simpleString)) <*>
+    optional (pair (symbol KOr) term)
 
-attrParameter :: Parser [NixAST]
-attrParameter = node AttrParameter $
-    identifier <> optional (symbol TQuestion <> expression)
+selectorPath :: Parser [Selector]
+selectorPath = (pure <$> selector Nothing) <>
+    many (selector $ Just $ symbol TDot)
 
-setParameter :: Parser [NixAST]
-setParameter = try $ node SetParameter $ braces $ optional $
-    manyList (try $ attrParameter <> symbol TComma) <>
-    (attrParameter <|> symbol TEllipsis)
+term :: Parser Term
+term = (String <$> string) <|>
+    (Token <$> (integer <|> identifier)) <|>
+    parens
 
-contextParameter :: Parser [NixAST]
-contextParameter = node ContextParameter $
-    try (setParameter <> symbol TAt <> identifier) <|>
-    try (identifier <> symbol TAt <> setParameter)
+-- ABSTRACTIONS
 
-abstraction :: Parser [NixAST]
-abstraction = node Abstraction $ try (
-    (contextParameter <|> setParameter <|> identifier) <>
-    symbol TColon) <> expression
+attrParameter :: Maybe (Parser Leaf) -> Parser ParamAttr
+attrParameter parseComma = ParamAttr <$>
+    identifier <*> optional (pair (symbol TQuestion) expression) <*>
+    sequence parseComma
 
-nixInherit :: Parser [NixAST]
-nixInherit = node Inherit $
-    reserved TInherit <> optional nixParens <> manyList identifier <>
-    symbol TSemicolon
+idParameter :: Parser Parameter
+idParameter = IDParameter <$> identifier
 
-assignment :: Parser [NixAST]
-assignment = node Assignment $
-    selectorPath <> symbol TAssign <> expression <> symbol TSemicolon
+setParameter :: Parser Parameter
+setParameter = SetParameter <$> symbol TBraceOpen <*>
+    (concat <$> optional
+     (many (try $ attrParameter $ Just $ symbol TComma) <>
+      (pure <$> (attrParameter Nothing <|>
+                 (ParamEllipsis <$> symbol TEllipsis))))) <*>
+    symbol TBraceClose
 
-binders :: Parser [NixAST]
-binders = manyList (assignment <|> nixInherit)
+contextParameter :: Parser Parameter
+contextParameter =
+    try (ContextParameter <$> setParameter <*> symbol TAt <*> idParameter) <|>
+    try (ContextParameter <$> idParameter <*> symbol TAt <*> setParameter)
 
-nixWith :: Parser [NixAST]
-nixWith = node With $
-    reserved TWith <> expression <> symbol TSemicolon <> expression
+abstraction :: Parser Expression
+abstraction = try (Abstraction <$>
+    (contextParameter <|> setParameter <|> idParameter) <*>
+    symbol TColon) <*> expression
 
-nixLet :: Parser [NixAST]
-nixLet = try $ node Let $
-    reserved TLet <> binders <> reserved TIn <> expression
+-- SETS AND LISTS
 
-ifThenElse :: Parser [NixAST]
-ifThenElse = node If $
-    reserved TIf <> expression <>
-    reserved TThen <> expression <>
-    reserved TElse <> expression
+inherit :: Parser Binder
+inherit = Inherit <$> reserved KInherit <*> optional parens <*>
+    many identifier <*> symbol TSemicolon
 
-assert :: Parser [NixAST]
-assert = node Assert $ reserved TAssert <> expression <>
-    symbol TSemicolon <> expression
+assignment :: Parser Binder
+assignment = Assignment <$>
+    selectorPath <*> symbol TAssign <*> expression <*> symbol TSemicolon
 
-nixSet :: Parser [NixAST]
-nixSet = try $ node Set $
-    optional (reserved TRec) <> (braces binders)
+binders :: Parser [Binder]
+binders = many (assignment <|> inherit)
 
-nixValue :: Parser [NixAST]
-nixValue = lexeme (nixSearchPath <|> nixPath <|> nixInt)
+set :: Parser Term
+set = Set <$> optional (reserved KRec) <*>
+    symbol TBraceOpen <*> binders <*> symbol TBraceClose
 
-simpleTerm :: Parser [NixAST]
-simpleTerm = string <|> identifier <|> nixValue <|>
-    nixParens <|> nixSet <|> nixList <?> "term"
+list :: Parser Term
+list = List <$> symbol TBrackOpen <*>
+    many (ListItem <$> term) <*> symbol TBrackClose
 
-nixList :: Parser [NixAST]
-nixList = try $ node List $ brackets $ manyList term
+-- OPERATORS
 
-nixParens :: Parser [NixAST]
-nixParens = try $ node Parenthesized $ parens $ expression
-
-selector :: Parser [NixAST]
-selector = try $ node Selector $
-    (identifier <|> interpolation <|> simpleString) <>
-    optional (symbol TOr <> term)
-
-selectorPath :: Parser [NixAST]
-selectorPath = node SelectorPath $
-    selector <> manyList (try $ symbol TDot <> selector)
-
-term :: Parser [NixAST]
-term = do
-    t <- simpleTerm
-    p <- optional $ try $ symbol TDot <> selectorPath
-    return $ case p of [] -> t
-                       _  -> [Node Selection (t <> p)]
-
-opChars :: String
+opChars :: [Char]
 opChars = "<>=+-*/"
 
-operator :: NixToken -> Parser [NixAST]
+operator :: Token -> Parser Leaf
 operator t = try (symbol t <* notFollowedBy (oneOf opChars)) <?> "operator"
 
-opCombiner :: Operator -> MPExpr.Operator Parser [NixAST]
-opCombiner Apply = MPExpr.InfixL $ return $ \x y -> [Node Application (x <> y)]
-opCombiner (Op Prefix tok) = MPExpr.Prefix $ do
-    parsed <- operator tok
-    return (<> parsed)
+opCombiner :: Operator -> MPExpr.Operator Parser Expression
+opCombiner Apply = MPExpr.InfixL $ return Application
 
-opCombiner (Op Postfix TQuestion) = MPExpr.Postfix $ do
-    tok <- operator TQuestion
-    sel <- selector
-    return (<> (tok <> sel))
+opCombiner (Op Prefix TMinus) = MPExpr.Prefix $ Negation <$> operator TMinus
+opCombiner (Op Prefix TNot)   = MPExpr.Prefix $ Inversion <$> operator TNot
+opCombiner (Op Prefix _)      = undefined
+
+opCombiner (Op Postfix TQuestion) = MPExpr.Postfix $
+    (\question sel expr -> MemberCheck expr question sel) <$>
+    operator TQuestion <*> selector Nothing
 
 opCombiner (Op Postfix _) = undefined
 
-opCombiner (Op InfixL tok) = MPExpr.InfixL $ do
-    parsed <- operator tok
-    return $ \x y -> x <> parsed <> y
+opCombiner (Op InfixL tok) = MPExpr.InfixL $ flip Operation <$> operator tok
+opCombiner (Op InfixN tok) = MPExpr.InfixN $ flip Operation <$> operator tok
+opCombiner (Op InfixR tok) = MPExpr.InfixR $ flip Operation <$> operator tok
 
-opCombiner (Op InfixN tok) = MPExpr.InfixN $ do
-    parsed <- operator tok
-    return $ \x y -> x <> parsed <> y
+operation :: Parser Expression
+operation = MPExpr.makeExprParser (Term <$> term) $
+    map (map opCombiner) operators
 
-opCombiner (Op InfixR tok) = MPExpr.InfixR $ do
-    parsed <- operator tok
-    return $ \x y -> x <> parsed <> y
+-- EXPRESSIONS
 
-operation :: Parser [NixAST]
-operation = MPExpr.makeExprParser term $ map (map opCombiner) operators
+with :: Parser Expression
+with = With <$>
+    reserved KWith <*> expression <*> symbol TSemicolon <*> expression
 
-expression :: Parser [NixAST]
-expression = uri <|> abstraction <|>
-    nixWith <|> nixLet <|> ifThenElse <|> assert <|>
+letIn :: Parser Expression
+letIn = Let <$> reserved KLet <*> binders <*> reserved KIn <*> expression
+
+ifThenElse :: Parser Expression
+ifThenElse = If <$>
+    reserved KIf <*> expression <*>
+    reserved KThen <*> expression <*>
+    reserved KElse <*> expression
+
+assert :: Parser Expression
+assert = Assert <$> reserved KAssert <*> expression <*>
+    symbol TSemicolon <*> expression
+
+expression :: Parser Expression
+expression = (Term . String <$> uri) <|> abstraction <|>
+    with <|> letIn <|> ifThenElse <|> assert <|>
     operation <?> "expression"
 
-nixFile :: Parser NixAST
-nixFile = file expression
+file :: Parser File
+file = File <$> try (lexeme (return SOF)) <*> expression <* eof
