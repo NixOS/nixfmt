@@ -7,12 +7,6 @@ build-type:          Simple
 executable nixfmt
   main-is:             Main.hs
   hs-source-dirs:      src
-  build-depends:
-      base >=4.12 && <4.13
-    , megaparsec
-    , parser-combinators
-    , prettyprinter
-    , text
   other-modules:
     Nixfmt.Lexer
     Nixfmt.Parser
@@ -20,6 +14,36 @@ executable nixfmt
     Nixfmt.Pretty
     Nixfmt.Types
     Nixfmt.Util
+  build-depends:
+      base >=4.12 && <4.13
+    , nixfmt
+    , megaparsec
+    , parser-combinators
+    , prettyprinter
+    , text
+  default-language:    Haskell2010
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wredundant-constraints
+
+library
+  exposed-modules:
+    Nixfmt.Lexer
+    Nixfmt.Parser
+    Nixfmt.Predoc
+    Nixfmt.Pretty
+    Nixfmt.Types
+    Nixfmt.Util
+  hs-source-dirs:      src
+  build-depends:
+      base >=4.12 && <4.13
+    , megaparsec
+    , parser-combinators
+    , prettyprinter
+    , text
   default-language:    Haskell2010
   ghc-options:
     -Wall
