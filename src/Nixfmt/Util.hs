@@ -11,7 +11,6 @@ module Nixfmt.Util
 import           Data.Char
 import           Data.Maybe
 import           Data.Text       as Text hiding (filter, map)
-import           Data.Void
 import           Text.Megaparsec hiding (empty)
 
 -- | Match one or more characters that match a predicate.

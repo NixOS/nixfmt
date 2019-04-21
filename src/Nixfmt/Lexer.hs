@@ -7,7 +7,8 @@ module Nixfmt.Lexer
     ) where
 
 import           Data.Char
-import           Data.Text            as Text hiding (filter, length, map, span)
+import           Data.Text            as Text (Text, cons, intercalate, lines,
+                                               pack, replace, strip)
 import           Nixfmt.Types         (Ann (..), Parser, Trivia, Trivium (..))
 import           Nixfmt.Util
 import           Text.Megaparsec      hiding (Token, token)
@@ -37,16 +38,17 @@ blockComment = try $ preLexeme $ chunk "/*" *>
     (PTBlockComment . splitLines . pack <$> manyTill anySingle (chunk "*/"))
 
 convertTrailing :: [ParseTrivium] -> Maybe Text
-convertTrailing = (\case
-        "" -> Nothing
-        tc -> Just $ cons ' ' tc
-    ) . intercalate " " . filter (/="") . map (\case
-        (PTLineComment lc) -> strip lc
-        (PTBlockComment [bc]) -> strip bc
-        _ -> "")
+convertTrailing = toMaybe . join . map toText
+    where toText (PTLineComment c)    = strip c
+          toText (PTBlockComment [c]) = strip c
+          toText _                    = ""
+          join = intercalate " " . filter (/="")
+          toMaybe "" = Nothing
+          toMaybe c  = Just (cons ' ' c)
+
 
 convertLeading :: [ParseTrivium] -> Trivia
-convertLeading = Prelude.concat . map (\case
+convertLeading = concatMap (\case
     (PTNewlines 1) -> []
     (PTNewlines _) -> [EmptyLine]
     (PTLineComment lc) -> [LineComment lc]

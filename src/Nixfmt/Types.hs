@@ -14,23 +14,13 @@ data Trivium
     = EmptyLine
     | LineComment     Text
     | BlockComment    [Text]
+    deriving (Show)
 
 type Trivia = [Trivium]
 
-instance Show Trivium where
-    show EmptyLine         = "EmptyLine"
-    show (LineComment lc)  = " # " <> unpack lc
-    show (BlockComment bc) = "/*" <> concat (map unpack bc) <> "*/"
-
-    showList []     end = end
-    showList (x:xs) end = show x ++ (showList xs end)
-
-data Ann a = Ann a (Maybe Text) Trivia
-
-instance Show a => Show (Ann a) where
-    show (Ann x Nothing leading) = show x <> show leading
-    show (Ann x (Just trailing) leading) =
-        show x <> show ("/*" <> trailing <> "*/") <> show leading
+data Ann a
+    = Ann a (Maybe Text) Trivia
+    deriving (Show)
 
 type Leaf = Ann Token
 
@@ -179,6 +169,8 @@ data Operator
     | Apply
     deriving (Show)
 
+-- | A list of lists of operators where lists that come first contain operators
+-- that bind more strongly.
 operators :: [[Operator]]
 operators =
     [ [ Apply ]

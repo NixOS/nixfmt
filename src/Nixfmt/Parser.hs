@@ -22,9 +22,7 @@ ann :: (a -> b) -> Parser a -> Parser (Ann b)
 ann f p = try $ lexeme $ f <$> p
 
 pair :: Parser a -> Parser b -> Parser (a, b)
-pair p q = do x <- p
-              y <- q
-              return (x, y)
+pair p q = (,) <$> p <*> q
 
 -- | parses a token without parsing trivia after it
 rawSymbol :: Token -> Parser Token

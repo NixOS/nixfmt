@@ -31,21 +31,23 @@ import qualified Data.Text.Prettyprint.Doc      as PP
 import qualified Data.Text.Prettyprint.Doc.Util as PPU
 import           Prelude                        hiding (break)
 
-data Tree a = EmptyTree
-            | Leaf a
-            | Node (Tree a) (Tree a)
-            deriving (Show, Functor)
+data Tree a
+    = EmptyTree
+    | Leaf a
+    | Node (Tree a) (Tree a)
+    deriving (Show, Functor)
 
 -- | Sequential Lines are reduced to a single Line by taking the maximum. This
 -- means that e.g. a Space followed by an Emptyline results in just an
 -- Emptyline.
-data Line = Softbreak
-          | Break
-          | Softline
-          | Space
-          | Hardline
-          | Emptyline
-          deriving (Show, Eq, Ord)
+data Line
+    = Softbreak
+    | Break
+    | Softline
+    | Space
+    | Hardline
+    | Emptyline
+    deriving (Show, Eq, Ord)
 
 data Predoc f
     = Trivia Text
