@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Nixfmt.Parser
-    ( module Nixfmt.Parser
-    , errorBundlePretty
-    , parse
-    ) where
+module Nixfmt.Parser where
 
 import           Prelude                        hiding (String)
 
@@ -15,7 +11,6 @@ import           Data.Text                      as Text hiding (concat, map)
 import           Text.Megaparsec                hiding (Token)
 import           Text.Megaparsec.Char           (char)
 import           Text.Megaparsec.Char.Lexer     (decimal)
-import           Text.Megaparsec.Error          (errorBundlePretty)
 
 import           Nixfmt.Lexer
 import           Nixfmt.Types

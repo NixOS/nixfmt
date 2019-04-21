@@ -8,7 +8,9 @@
 -- easier to use.
 module Nixfmt.Predoc
     ( text
+    , sepBy
     , hcat
+    , vsep
     , trivia
     , group
     , nest
@@ -25,6 +27,7 @@ module Nixfmt.Predoc
     , putDocW
     ) where
 
+import           Data.List                      hiding (group)
 import           Data.Text                      (Text, pack)
 import qualified Data.Text.Prettyprint.Doc      as PP
 import qualified Data.Text.Prettyprint.Doc.Util as PPU
@@ -77,6 +80,10 @@ instance Pretty String where
 instance Pretty Doc where
     pretty = id
 
+instance Pretty a => Pretty (Maybe a) where
+    pretty Nothing  = mempty
+    pretty (Just x) = pretty x
+
 instance Semigroup (Tree a) where
     left <> right = Node left right
 
@@ -116,9 +123,16 @@ hardline = Leaf (Spacing Hardline)
 emptyline :: Doc
 emptyline = Leaf (Spacing Emptyline)
 
+sepBy :: Pretty a => Doc -> [a] -> Doc
+sepBy separator = mconcat . intersperse separator . map pretty
+
 -- | Concatenate documents horizontally without spacing.
 hcat :: Pretty a => [a] -> Doc
 hcat = mconcat . map pretty
+
+-- | Concatenate documents horizontally with spaces or vertically with newlines.
+vsep :: Pretty a => [a] -> Doc
+vsep = sepBy line
 
 flatten :: Doc -> DocList
 flatten = go []
@@ -181,10 +195,10 @@ dropEmpty (x : xs)         = x : dropEmpty xs
 mergeLines :: DocList -> DocList
 mergeLines []                           = []
 mergeLines (Spacing Break : Spacing Softspace : xs)
-    = Spacing Space : mergeLines xs
+    = mergeLines $ Spacing Space : xs
 mergeLines (Spacing Softspace : Spacing Break : xs)
-    = Spacing Space : mergeLines xs
-mergeLines (Spacing a : Spacing b : xs) = Spacing (max a b) : mergeLines xs
+    = mergeLines $ Spacing Space : xs
+mergeLines (Spacing a : Spacing b : xs) = mergeLines $ Spacing (max a b) : xs
 mergeLines (Group xs : ys)              = Group (mergeLines xs) : mergeLines ys
 mergeLines (Nest n xs : ys)             = Nest n (mergeLines xs) : mergeLines ys
 mergeLines (x : xs)                     = x : mergeLines xs

@@ -21,6 +21,7 @@ executable nixfmt
 
 library
   exposed-modules:
+    Nixfmt
     Nixfmt.Lexer
     Nixfmt.Parser
     Nixfmt.Predoc
