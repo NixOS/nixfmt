@@ -10,13 +10,14 @@ import           Data.Char
 import           Data.Text            as Text hiding (filter, length, map, span)
 import           Nixfmt.Types         (Ann (..), Parser, Trivia, Trivium (..))
 import           Nixfmt.Util
-import           Text.Megaparsec      hiding (Token)
+import           Text.Megaparsec      hiding (Token, token)
 import           Text.Megaparsec.Char
 
-data ParseTrivium = PTNewlines     Int
-                  | PTLineComment  Text
-                  | PTBlockComment [Text]
-                  deriving (Show)
+data ParseTrivium
+    = PTNewlines     Int
+    | PTLineComment  Text
+    | PTBlockComment [Text]
+    deriving (Show)
 
 preLexeme :: Parser a -> Parser a
 preLexeme p = p <* manyP (\x -> isSpace x && x /= '\n' && x /= '\r')
@@ -57,8 +58,9 @@ isTrailing (PTBlockComment [_]) = True
 isTrailing _                    = False
 
 convertTrivia :: [ParseTrivium] -> (Maybe Text, Trivia)
-convertTrivia pts = let (trailing, leading) = span isTrailing pts
-                    in (convertTrailing trailing, convertLeading leading)
+convertTrivia pts =
+    let (trailing, leading) = span isTrailing pts
+    in (convertTrailing trailing, convertLeading leading)
 
 trivia :: Parser [ParseTrivium]
 trivia = many $ hidden $ lineComment <|> blockComment <|> newlines

@@ -1,7 +1,5 @@
 module Nixfmt.Util
-    ( manyList
-    , someList
-    , manyP
+    ( manyP
     , someP
     , manyText
     , someText
@@ -28,12 +26,6 @@ someText p = Text.concat <$> some p
 
 manyText :: Parser Text -> Parser Text
 manyText p = Text.concat <$> many p
-
-someList :: Parser [a] -> Parser [a]
-someList p = Prelude.concat <$> some p
-
-manyList :: Parser [a] -> Parser [a]
-manyList p = Prelude.concat <$> many p
 
 commonPrefix :: Eq a => [a] -> [a] -> [a]
 commonPrefix (x : xs) (y : ys) | x == y = x : commonPrefix xs ys

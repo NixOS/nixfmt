@@ -7,9 +7,7 @@ import           Prelude                        hiding (String)
 import           Control.Monad
 import qualified Control.Monad.Combinators.Expr as MPExpr
 import           Data.Char
-import           Data.Foldable                  (toList)
 import           Data.Text                      as Text hiding (concat, map)
-import           Data.Void
 import           Text.Megaparsec                hiding (Token)
 import           Text.Megaparsec.Char           (char)
 import           Text.Megaparsec.Char.Lexer     (decimal)
@@ -142,16 +140,23 @@ selector parseDot = Selector <$> sequence parseDot <*>
     ((IDSelector <$> identifier) <|>
      (InterpolSelector <$> interpolation) <|>
      (StringSelector <$> simpleString)) <*>
-    optional (pair (symbol KOr) term)
+    optional (pair (reserved KOr) term)
 
 selectorPath :: Parser [Selector]
 selectorPath = (pure <$> selector Nothing) <>
     many (selector $ Just $ symbol TDot)
 
+simpleTerm :: Parser Term
+simpleTerm = (String <$> string) <|>
+    (Token <$> (path <|> envPath <|> integer <|> identifier)) <|>
+    parens <|> set <|> list
+
 term :: Parser Term
-term = (String <$> string) <|>
-    (Token <$> (integer <|> identifier)) <|>
-    parens
+term = label "term" $ do
+    t <- simpleTerm
+    s <- many $ try $ selector $ Just $ symbol TDot
+    return $ case s of [] -> t
+                       _  -> Selection t s
 
 -- ABSTRACTIONS
 
