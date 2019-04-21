@@ -36,7 +36,7 @@ instance Pretty [Token] where
     pretty = hcat . map pretty
 
 thenLine :: Pretty a => a -> Doc
-thenLine node = pretty node <> space
+thenLine node = pretty node <> line
 
 hardspace :: Doc
 hardspace = text " "

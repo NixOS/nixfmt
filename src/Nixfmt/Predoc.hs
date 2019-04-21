@@ -12,24 +12,22 @@ module Nixfmt.Predoc
     , trivia
     , group
     , nest
-    , softbreak
-    , break
+    , softline'
+    , line'
     , softline
-    , space
+    , line
+    , hardspace
     , hardline
     , emptyline
     , Doc
     , Pretty
     , pretty
     , putDocW
-    , fixup
-    , flatten
     ) where
 
 import           Data.Text                      (Text, pack)
 import qualified Data.Text.Prettyprint.Doc      as PP
 import qualified Data.Text.Prettyprint.Doc.Util as PPU
-import           Prelude                        hiding (break)
 
 data Tree a
     = EmptyTree
@@ -37,14 +35,15 @@ data Tree a
     | Node (Tree a) (Tree a)
     deriving (Show, Functor)
 
--- | Sequential Lines are reduced to a single Line by taking the maximum. This
--- means that e.g. a Space followed by an Emptyline results in just an
+-- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
+-- This means that e.g. a Space followed by an Emptyline results in just an
 -- Emptyline.
-data Line
+data Spacing
     = Softbreak
     | Break
     | Softline
     | Space
+    | Hardspace
     | Hardline
     | Emptyline
     deriving (Show, Eq, Ord)
@@ -52,9 +51,9 @@ data Line
 data Predoc f
     = Trivia Text
     | Text Text
-    | Line Line
-    -- | Group predoc indicates either all or none of the spaces in predoc
-    -- and not in a subgroup should be converted to line breaks.
+    | Spacing Spacing
+    -- | Group predoc indicates either all or none of the Spaces and Breaks in
+    -- predoc should be converted to line breaks.
     | Group (f (Predoc f))
     -- | Nest n predoc indicates all line start in predoc should be indented by
     -- n more spaces than the surroundings.
@@ -75,10 +74,13 @@ instance Pretty Text where
 instance Pretty String where
     pretty = Leaf . Text . pack
 
+instance Pretty Doc where
+    pretty = id
+
 instance Semigroup (Tree a) where
     left <> right = Node left right
 
-instance Monoid (Tree (Predoc Tree)) where
+instance Monoid (Tree a) where
     mempty = EmptyTree
 
 text :: Text -> Doc
@@ -93,26 +95,30 @@ group = Leaf . Group
 nest :: Int -> Doc -> Doc
 nest level = Leaf . Nest level
 
-softbreak :: Doc
-softbreak = Leaf (Line Softbreak)
+softline' :: Doc
+softline' = Leaf (Spacing Softbreak)
 
-break :: Doc
-break = Leaf (Line Break)
+line' :: Doc
+line' = Leaf (Spacing Break)
 
 softline :: Doc
-softline = Leaf (Line Softline)
+softline = Leaf (Spacing Softline)
 
-space :: Doc
-space = Leaf (Line Space)
+line :: Doc
+line = Leaf (Spacing Space)
+
+hardspace :: Doc
+hardspace = Leaf (Spacing Hardspace)
 
 hardline :: Doc
-hardline = Leaf (Line Hardline)
+hardline = Leaf (Spacing Hardline)
 
 emptyline :: Doc
-emptyline = Leaf (Line Emptyline)
+emptyline = Leaf (Spacing Emptyline)
 
-hcat :: [Doc] -> Doc
-hcat = mconcat
+-- | Concatenate documents horizontally without spacing.
+hcat :: Pretty a => [a] -> Doc
+hcat = mconcat . map pretty
 
 flatten :: Doc -> DocList
 flatten = go []
@@ -120,20 +126,27 @@ flatten = go []
           go xs EmptyTree            = xs
           go xs (Leaf (Group tree))  = Group (go [] tree) : xs
           go xs (Leaf (Nest l tree)) = Nest l (go [] tree) : xs
-          go xs (Leaf (Line line))   = Line line : xs
+          go xs (Leaf (Spacing l))   = Spacing l : xs
           go xs (Leaf (Text t))      = Text t : xs
           go xs (Leaf (Trivia t))    = Trivia t : xs
 
 isLine :: Predoc f -> Bool
-isLine (Line _) = True
-isLine _        = False
+isLine (Spacing _) = True
+isLine _           = False
 
 spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
 spanEnd p = fmap reverse . span p . reverse
 
--- | Lines before a Nest should be moved inside, breaks at the end of a nest
--- should be moved outside. Lines at the start or end of a group should be
--- moved outside.
+-- | Fix up a DocList in multiple stages:
+-- - First, all spacings are moved out of Groups and Nests.
+-- - Now, any Groups and Lists that contained only spacings, now contain the
+--   empty list, so they can be removed.
+-- - Now, all consecutive Spacings are ensured to be in the same list, so each
+--   sequence of Spacings can be merged into a single one.
+-- - Finally, Spacings right before a Nest should be moved inside in order to
+--   get the right indentation.
+fixup :: DocList -> DocList
+fixup = moveLinesIn . mergeLines . dropEmpty . moveLinesOut
 
 moveLinesOut :: DocList -> DocList
 moveLinesOut [] = []
@@ -151,19 +164,35 @@ moveLinesOut (Nest level xs : ys) =
 
 moveLinesOut (x : xs) = x : moveLinesOut xs
 
+dropEmpty :: DocList -> DocList
+dropEmpty []               = []
+dropEmpty (Group xs : ys)
+    = case dropEmpty xs of
+           []  -> ys
+           xs' -> Group xs' : dropEmpty ys
+
+dropEmpty (Nest n xs : ys)
+    = case dropEmpty xs of
+           []  -> ys
+           xs' -> Nest n xs' : dropEmpty ys
+
+dropEmpty (x : xs)         = x : dropEmpty xs
+
 mergeLines :: DocList -> DocList
-mergeLines []                     = []
-mergeLines (Line a : Line b : xs) = Line (max a b) : mergeLines xs
-mergeLines (Group [] : xs)        = mergeLines xs
-mergeLines (Nest _ [] : xs)       = mergeLines xs
-mergeLines (Group xs : ys)        = Group (mergeLines xs) : mergeLines ys
-mergeLines (Nest n xs : ys)       = Nest n (mergeLines xs) : mergeLines ys
-mergeLines (x : xs)               = x : mergeLines xs
+mergeLines []                           = []
+mergeLines (Spacing Break : Spacing Softline : xs)
+    = Spacing Space : mergeLines xs
+mergeLines (Spacing Softline : Spacing Break : xs)
+    = Spacing Space : mergeLines xs
+mergeLines (Spacing a : Spacing b : xs) = Spacing (max a b) : mergeLines xs
+mergeLines (Group xs : ys)              = Group (mergeLines xs) : mergeLines ys
+mergeLines (Nest n xs : ys)             = Nest n (mergeLines xs) : mergeLines ys
+mergeLines (x : xs)                     = x : mergeLines xs
 
 moveLinesIn :: DocList -> DocList
 moveLinesIn [] = []
-moveLinesIn (Line l : Nest level xs : ys) =
-    Nest level (Line l : moveLinesIn xs) : moveLinesIn ys
+moveLinesIn (Spacing l : Nest level xs : ys) =
+    Nest level (Spacing l : moveLinesIn xs) : moveLinesIn ys
 
 moveLinesIn (Nest level xs : ys) =
     Nest level (moveLinesIn xs) : moveLinesIn ys
@@ -173,25 +202,22 @@ moveLinesIn (Group xs : ys) =
 
 moveLinesIn (x : xs) = x : moveLinesIn xs
 
-fixup :: DocList -> DocList
-fixup = moveLinesIn . mergeLines . moveLinesOut
-
-putDocW :: Int -> Doc -> IO ()
-putDocW n = PPU.putDocW n . PP.pretty
-
-instance PP.Pretty Doc where
-    pretty = PP.pretty . fixup . flatten
+putDocW :: Pretty a => Int -> a -> IO ()
+putDocW n = PPU.putDocW n . PP.pretty . fixup . flatten . pretty
 
 instance PP.Pretty (Predoc []) where
-    pretty (Trivia t)        = PP.pretty t
-    pretty (Text t)          = PP.pretty t
-    pretty (Line Softbreak)  = PP.softline'
-    pretty (Line Break)      = PP.line'
-    pretty (Line Softline)   = PP.softline
-    pretty (Line Space)      = PP.line
-    pretty (Line Hardline)   = PP.hardline
-    pretty (Line Emptyline)  = PP.hardline <> PP.hardline
-    pretty (Group docs)      = PP.group (PP.pretty docs)
-    pretty (Nest level docs) = PP.nest level (PP.pretty docs)
+    pretty (Trivia t)          = PP.pretty t
+    pretty (Text t)            = PP.pretty t
+
+    pretty (Spacing Softbreak) = PP.softline'
+    pretty (Spacing Break)     = PP.line'
+    pretty (Spacing Softline)  = PP.softline
+    pretty (Spacing Space)     = PP.line
+    pretty (Spacing Hardspace) = PP.pretty (pack " ")
+    pretty (Spacing Hardline)  = PP.hardline
+    pretty (Spacing Emptyline) = PP.hardline <> PP.hardline
+
+    pretty (Group docs)        = PP.group (PP.pretty docs)
+    pretty (Nest level docs)   = PP.nest level (PP.pretty docs)
 
     prettyList = PP.hcat . map PP.pretty
