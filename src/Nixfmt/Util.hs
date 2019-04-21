@@ -4,6 +4,7 @@ module Nixfmt.Util
     , manyText
     , someText
     , commonPrefix
+    , commonIndentation
     , dropCommonIndentation
     ) where
 
@@ -31,9 +32,10 @@ manyText p = Text.concat <$> many p
 
 -- | The longest common prefix of the arguments.
 commonPrefix :: Text -> Text -> Text
-commonPrefix a b | Text.head a == Text.head b
-    = cons (Text.head a) (commonPrefix (Text.tail a) (Text.tail b))
-commonPrefix _ _ = empty
+commonPrefix a b =
+    case commonPrefixes a b of
+         Nothing             -> empty
+         Just (prefix, _, _) -> prefix
 
 -- | The longest common prefix consisting of only whitespace.
 commonIndentation :: [Text] -> Text
@@ -46,5 +48,5 @@ commonIndentation (x:y:xs) = commonIndentation (commonPrefix x y : xs)
 dropCommonIndentation :: [Text] -> [Text]
 dropCommonIndentation unstrippedLines =
     let strippedLines = map stripEnd unstrippedLines
-        indentation = commonIndentation $ filter (==empty) strippedLines
+        indentation = commonIndentation $ filter (/=empty) strippedLines
     in map (fromMaybe empty . stripPrefix indentation) strippedLines
