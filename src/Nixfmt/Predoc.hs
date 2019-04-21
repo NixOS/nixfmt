@@ -41,7 +41,7 @@ data Tree a
 data Spacing
     = Softbreak
     | Break
-    | Softline
+    | Softspace
     | Space
     | Hardspace
     | Hardline
@@ -102,7 +102,7 @@ line' :: Doc
 line' = Leaf (Spacing Break)
 
 softline :: Doc
-softline = Leaf (Spacing Softline)
+softline = Leaf (Spacing Softspace)
 
 line :: Doc
 line = Leaf (Spacing Space)
@@ -180,9 +180,9 @@ dropEmpty (x : xs)         = x : dropEmpty xs
 
 mergeLines :: DocList -> DocList
 mergeLines []                           = []
-mergeLines (Spacing Break : Spacing Softline : xs)
+mergeLines (Spacing Break : Spacing Softspace : xs)
     = Spacing Space : mergeLines xs
-mergeLines (Spacing Softline : Spacing Break : xs)
+mergeLines (Spacing Softspace : Spacing Break : xs)
     = Spacing Space : mergeLines xs
 mergeLines (Spacing a : Spacing b : xs) = Spacing (max a b) : mergeLines xs
 mergeLines (Group xs : ys)              = Group (mergeLines xs) : mergeLines ys
@@ -211,7 +211,7 @@ instance PP.Pretty (Predoc []) where
 
     pretty (Spacing Softbreak) = PP.softline'
     pretty (Spacing Break)     = PP.line'
-    pretty (Spacing Softline)  = PP.softline
+    pretty (Spacing Softspace) = PP.softline
     pretty (Spacing Space)     = PP.line
     pretty (Spacing Hardspace) = PP.pretty (pack " ")
     pretty (Spacing Hardline)  = PP.hardline

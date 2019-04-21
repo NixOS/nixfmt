@@ -1,6 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Nixfmt.Parser where
+module Nixfmt.Parser
+    ( module Nixfmt.Parser
+    , errorBundlePretty
+    , parse
+    ) where
 
 import           Prelude                        hiding (String)
 
@@ -11,6 +15,7 @@ import           Data.Text                      as Text hiding (concat, map)
 import           Text.Megaparsec                hiding (Token)
 import           Text.Megaparsec.Char           (char)
 import           Text.Megaparsec.Char.Lexer     (decimal)
+import           Text.Megaparsec.Error          (errorBundlePretty)
 
 import           Nixfmt.Lexer
 import           Nixfmt.Types
@@ -26,7 +31,10 @@ pair p q = (,) <$> p <*> q
 
 -- | parses a token without parsing trivia after it
 rawSymbol :: Token -> Parser Token
-rawSymbol t = chunk (pack $ show t) *> return t
+rawSymbol t = chunk (tokenText t) *> return t
+
+symbol :: Token -> Parser (Ann Token)
+symbol = lexeme . rawSymbol
 
 reservedNames :: [Text]
 reservedNames =
@@ -55,9 +63,8 @@ uriChar :: Char -> Bool
 uriChar = charClass "~!@$%&*-=_+:',./?"
 
 reserved :: Token -> Parser (Ann Token)
-reserved t = try $ lexeme (chunk (pack $ show t)
-    *> lookAhead (satisfy (\x -> not $ identChar x || pathChar x))
-    *> return t)
+reserved t = try $ lexeme $ rawSymbol t
+    <* lookAhead (satisfy (\x -> not $ identChar x || pathChar x))
 
 -- VALUES
 

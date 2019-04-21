@@ -10,9 +10,7 @@ mkDerivation {
   libraryHaskellDepends = [
     base megaparsec parser-combinators prettyprinter text
   ];
-  executableHaskellDepends = [
-    base megaparsec parser-combinators prettyprinter text
-  ];
+  executableHaskellDepends = [ base text ];
   license = "unknown";
   hydraPlatforms = stdenv.lib.platforms.none;
 }

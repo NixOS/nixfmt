@@ -153,7 +153,7 @@ data Token
     | TUnequal
 
     | SOF
-    deriving (Eq)
+    deriving (Eq, Show)
 
 
 data Fixity
@@ -194,60 +194,60 @@ operators =
     , [ Op InfixL TImplies ]
     ]
 
-instance Show Token where
-    show (Identifier i)     = unpack i
-    show (Integer i)        = show i
-    show (Path p)           = show p
-    show (EnvPath p)        = show p
+tokenText :: Token -> Text
+tokenText (Identifier i)     = i
+tokenText (Integer i)        = pack (show i)
+tokenText (Path p)           = p
+tokenText (EnvPath p)        = "<" <> p <> ">"
 
-    show KAssert            = "assert"
-    show KElse              = "else"
-    show KIf                = "if"
-    show KIn                = "in"
-    show KInherit           = "inherit"
-    show KLet               = "let"
-    show KOr                = "or"
-    show KRec               = "rec"
-    show KThen              = "then"
-    show KWith              = "with"
+tokenText KAssert            = "assert"
+tokenText KElse              = "else"
+tokenText KIf                = "if"
+tokenText KIn                = "in"
+tokenText KInherit           = "inherit"
+tokenText KLet               = "let"
+tokenText KOr                = "or"
+tokenText KRec               = "rec"
+tokenText KThen              = "then"
+tokenText KWith              = "with"
 
-    show TBraceOpen         = "{"
-    show TBraceClose        = "}"
-    show TBrackOpen         = "["
-    show TBrackClose        = "]"
-    show TInterOpen         = "${"
-    show TInterClose        = "}"
-    show TParenOpen         = "("
-    show TParenClose        = ")"
+tokenText TBraceOpen         = "{"
+tokenText TBraceClose        = "}"
+tokenText TBrackOpen         = "["
+tokenText TBrackClose        = "]"
+tokenText TInterOpen         = "${"
+tokenText TInterClose        = "}"
+tokenText TParenOpen         = "("
+tokenText TParenClose        = ")"
 
-    show TAssign            = "="
-    show TAt                = "@"
-    show TColon             = ":"
-    show TComma             = ","
-    show TDot               = "."
-    show TDoubleQuote       = "\""
-    show TDoubleSingleQuote = "''"
-    show TEllipsis          = "..."
-    show TQuestion          = "?"
-    show TSemicolon         = ";"
+tokenText TAssign            = "="
+tokenText TAt                = "@"
+tokenText TColon             = ":"
+tokenText TComma             = ","
+tokenText TDot               = "."
+tokenText TDoubleQuote       = "\""
+tokenText TDoubleSingleQuote = "''"
+tokenText TEllipsis          = "..."
+tokenText TQuestion          = "?"
+tokenText TSemicolon         = ";"
 
-    show TPlus              = "+"
-    show TMinus             = "-"
-    show TMul               = "*"
-    show TDiv               = "/"
-    show TConcat            = "++"
-    show TNegate            = "-"
-    show TUpdate            = "//"
+tokenText TPlus              = "+"
+tokenText TMinus             = "-"
+tokenText TMul               = "*"
+tokenText TDiv               = "/"
+tokenText TConcat            = "++"
+tokenText TNegate            = "-"
+tokenText TUpdate            = "//"
 
-    show TAnd               = "&&"
-    show TOr                = "||"
-    show TEqual             = "=="
-    show TGreater           = ">"
-    show TGreaterEqual      = ">="
-    show TImplies           = "->"
-    show TLess              = "<"
-    show TLessEqual         = "<="
-    show TNot               = "!"
-    show TUnequal           = "!="
+tokenText TAnd               = "&&"
+tokenText TOr                = "||"
+tokenText TEqual             = "=="
+tokenText TGreater           = ">"
+tokenText TGreaterEqual      = ">="
+tokenText TImplies           = "->"
+tokenText TLess              = "<"
+tokenText TLessEqual         = "<="
+tokenText TNot               = "!"
+tokenText TUnequal           = "!="
 
-    show SOF                = ""
+tokenText SOF                = ""

@@ -4,10 +4,7 @@
 
 module Nixfmt.Pretty where
 
-import           Prelude       hiding (break)
-
-import           Data.List     hiding (break, group)
-import           Data.Text     (pack)
+import           Data.List     hiding (group)
 
 import           Nixfmt.Predoc
 import           Nixfmt.Types
@@ -25,12 +22,7 @@ instance Pretty [Trivium] where
     pretty ts = hardline <> hcat (map pretty ts)
 
 instance Pretty Token where
-    pretty (Identifier i) = text i
-    pretty (EnvPath p)    = text ("<" <> p <> ">")
-    pretty (Path p)       = text p
-    pretty (Integer i)    = text $ pack $ show i
-
-    pretty t              = pretty $ show t
+    pretty = text . tokenText
 
 instance Pretty [Token] where
     pretty = hcat . map pretty

@@ -3,16 +3,16 @@
 
 module Nixfmt.Lexer
     ( lexeme
-    , symbol
     ) where
 
 import           Data.Char
 import           Data.Text            as Text (Text, cons, intercalate, lines,
                                                pack, replace, strip)
-import           Nixfmt.Types         (Ann (..), Parser, Trivia, Trivium (..))
-import           Nixfmt.Util
 import           Text.Megaparsec      hiding (Token, token)
 import           Text.Megaparsec.Char
+
+import           Nixfmt.Types         (Ann (..), Parser, Trivia, Trivium (..))
+import           Nixfmt.Util
 
 data ParseTrivium
     = PTNewlines     Int
@@ -72,6 +72,3 @@ lexeme p = do
     token <- preLexeme p
     (trailing, leading) <- convertTrivia <$> trivia
     return $ Ann token trailing leading
-
-symbol :: Show a => a -> Parser (Ann a)
-symbol t = lexeme (chunk (pack $ show t) *> return t)
