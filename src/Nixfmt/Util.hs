@@ -9,36 +9,42 @@ module Nixfmt.Util
 
 import           Data.Char
 import           Data.Maybe
-import           Data.Text       as Text hiding (map, takeWhile)
+import           Data.Text       as Text hiding (filter, map)
 import           Data.Void
 import           Text.Megaparsec hiding (empty)
 
-type Parser = Parsec Void Text
-
-someP :: (Char -> Bool) -> Parser Text
+-- | Match one or more characters that match a predicate.
+someP :: (Stream s, Ord e) => (Token s -> Bool) -> ParsecT e s m (Tokens s)
 someP = takeWhile1P Nothing
 
-manyP :: (Char -> Bool) -> Parser Text
+-- | Match zero or more characters that match a predicate.
+manyP :: (Stream s, Ord e) => (Token s -> Bool) -> ParsecT e s m (Tokens s)
 manyP = takeWhileP Nothing
 
-someText :: Parser Text -> Parser Text
+-- | Match one or more texts and return the concatenation.
+someText :: (Stream s, Ord e) => ParsecT e s m Text -> ParsecT e s m Text
 someText p = Text.concat <$> some p
 
-manyText :: Parser Text -> Parser Text
+-- | Match zero or more texts and return the concatenation.
+manyText :: (Stream s, Ord e) => ParsecT e s m Text -> ParsecT e s m Text
 manyText p = Text.concat <$> many p
 
-commonPrefix :: Eq a => [a] -> [a] -> [a]
-commonPrefix (x : xs) (y : ys) | x == y = x : commonPrefix xs ys
-commonPrefix _ _               = []
+-- | The longest common prefix of the arguments.
+commonPrefix :: Text -> Text -> Text
+commonPrefix a b | Text.head a == Text.head b
+    = cons (Text.head a) (commonPrefix (Text.tail a) (Text.tail b))
+commonPrefix _ _ = empty
 
-commonIndentation :: [String] -> String
-commonIndentation []        = []
-commonIndentation [x]       = takeWhile isSpace x
-commonIndentation (x:"":xs) = commonIndentation (x:xs)
-commonIndentation (x:y:xs)  = commonIndentation (commonPrefix x y : xs)
+-- | The longest common prefix consisting of only whitespace.
+commonIndentation :: [Text] -> Text
+commonIndentation []       = empty
+commonIndentation [x]      = Text.takeWhile isSpace x
+commonIndentation (x:y:xs) = commonIndentation (commonPrefix x y : xs)
 
+-- | Strip the longest common indentation from a list of lines. Empty lines do
+-- not count towards the common indentation.
 dropCommonIndentation :: [Text] -> [Text]
 dropCommonIndentation unstrippedLines =
     let strippedLines = map stripEnd unstrippedLines
-        indentation = pack $ commonIndentation $ map unpack strippedLines
+        indentation = commonIndentation $ filter (==empty) strippedLines
     in map (fromMaybe empty . stripPrefix indentation) strippedLines
