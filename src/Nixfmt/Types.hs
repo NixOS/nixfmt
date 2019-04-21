@@ -37,7 +37,7 @@ data String
 
 data SimpleSelector
     = IDSelector Leaf
-    | InterpolSelector StringPart
+    | InterpolSelector (Ann StringPart)
     | StringSelector String
     deriving (Show)
 
@@ -86,7 +86,7 @@ data Expression
 
     | Application Expression Expression
     | Operation Expression Leaf Expression
-    | MemberCheck Expression Leaf Selector
+    | MemberCheck Expression Leaf [Selector]
     | Negation Leaf Expression
     | Inversion Leaf Expression
     deriving (Show)

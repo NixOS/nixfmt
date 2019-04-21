@@ -7,6 +7,7 @@ import           Prelude                        hiding (String)
 import           Control.Monad
 import qualified Control.Monad.Combinators.Expr as MPExpr
 import           Data.Char
+import           Data.Foldable                  (toList)
 import           Data.Text                      as Text hiding (concat, map)
 import           Text.Megaparsec                hiding (Token)
 import           Text.Megaparsec.Char           (char)
@@ -37,7 +38,6 @@ reservedNames =
     , "if", "then", "else"
     , "assert"
     , "with"
-    , "or"
     , "rec"
     , "inherit"
     ]
@@ -95,9 +95,9 @@ interpolation = Interpolation <$>
 
 simpleStringPart :: Parser StringPart
 simpleStringPart = TextPart <$> someText (
-    chunk "\\n" *> "\n" <|>
-    chunk "\\r" *> "\r" <|>
-    chunk "\\t" *> "\t" <|>
+    chunk "\\n" *> pure "\n" <|>
+    chunk "\\r" *> pure "\r" <|>
+    chunk "\\t" *> pure "\t" <|>
     chunk "\\" *> (Text.singleton <$> anySingle) <|>
     chunk "$$" <> manyP (=='$') <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
@@ -105,12 +105,12 @@ simpleStringPart = TextPart <$> someText (
 
 indentedStringPart :: Parser StringPart
 indentedStringPart = TextPart <$> someText (
-    chunk "''\\n" *> "\n" <|>
-    chunk "''\\r" *> "\r" <|>
-    chunk "''\\t" *> "\t" <|>
+    chunk "''\\n" *> pure "\n" <|>
+    chunk "''\\r" *> pure "\r" <|>
+    chunk "''\\t" *> pure "\t" <|>
     chunk "''\\" *> (Text.singleton <$> anySingle) <|>
-    chunk "''$" *> "$" <|>
-    chunk "'''" *> "''" <|>
+    chunk "''$" *> pure "$" <|>
+    chunk "'''" *> pure "''" <|>
     chunk "$$" <> manyP (=='$') <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     try (chunk "'" <* notFollowedBy (char '\'')) <|>
@@ -138,7 +138,7 @@ parens = Parenthesized <$>
 selector :: Maybe (Parser Leaf) -> Parser Selector
 selector parseDot = Selector <$> sequence parseDot <*>
     ((IDSelector <$> identifier) <|>
-     (InterpolSelector <$> interpolation) <|>
+     (InterpolSelector <$> lexeme interpolation) <|>
      (StringSelector <$> simpleString)) <*>
     optional (pair (reserved KOr) term)
 
@@ -169,12 +169,13 @@ idParameter :: Parser Parameter
 idParameter = IDParameter <$> identifier
 
 setParameter :: Parser Parameter
-setParameter = SetParameter <$> symbol TBraceOpen <*>
-    (concat <$> optional
-     (many (try $ attrParameter $ Just $ symbol TComma) <>
-      (pure <$> (attrParameter Nothing <|>
-                 (ParamEllipsis <$> symbol TEllipsis))))) <*>
-    symbol TBraceClose
+setParameter = SetParameter <$> bopen <*> attrs <*> bclose
+    where bopen      = symbol TBraceOpen
+          bclose     = symbol TBraceClose
+          commaAttrs = many $ try $ attrParameter $ Just $ symbol TComma
+          ellipsis   = ParamEllipsis <$> symbol TEllipsis
+          lastAttr   = attrParameter Nothing <|> ellipsis
+          attrs      = commaAttrs <> (toList <$> optional (lastAttr))
 
 contextParameter :: Parser Parameter
 contextParameter =
@@ -210,10 +211,11 @@ list = List <$> symbol TBrackOpen <*>
 -- OPERATORS
 
 opChars :: [Char]
-opChars = "<>=+-*/"
+opChars = "<>=+*/."
 
 operator :: Token -> Parser Leaf
-operator t = try (symbol t <* notFollowedBy (oneOf opChars)) <?> "operator"
+operator t = label "operator" $ try $ lexeme $
+    rawSymbol t <* notFollowedBy (oneOf opChars)
 
 opCombiner :: Operator -> MPExpr.Operator Parser Expression
 opCombiner Apply = MPExpr.InfixL $ return Application
@@ -224,7 +226,7 @@ opCombiner (Op Prefix _)      = undefined
 
 opCombiner (Op Postfix TQuestion) = MPExpr.Postfix $
     (\question sel expr -> MemberCheck expr question sel) <$>
-    operator TQuestion <*> selector Nothing
+    operator TQuestion <*> selectorPath
 
 opCombiner (Op Postfix _) = undefined
 

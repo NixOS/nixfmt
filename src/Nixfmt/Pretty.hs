@@ -97,12 +97,12 @@ instance Pretty Term where
 
 instance Pretty ParamAttr where
     pretty (ParamAttr name Nothing comma)
-        = pretty name <> pretty (fmap ((softline<>) . pretty) comma)
+        = pretty name <> pretty (fmap ((<>hardspace) . (softline'<>) . pretty) comma)
 
     pretty (ParamAttr name (Just (qmark, def)) comma)
         = pretty name <> softline
           <> pretty qmark <> hardspace
-          <> pretty def <> pretty (fmap ((softline<>) . pretty) comma)
+          <> pretty def <> pretty (fmap ((<>hardspace) . (softline'<>) . pretty) comma)
 
     pretty (ParamEllipsis ellipsis)
         = pretty ellipsis
@@ -110,9 +110,9 @@ instance Pretty ParamAttr where
 instance Pretty Parameter where
     pretty (IDParameter i) = pretty i
     pretty (SetParameter bopen attrs bclose)
-        = pretty bopen <> hardspace
-          <> sepBy softline attrs <> softline
-          <> pretty bclose
+        = group $ pretty bopen <> hardspace
+                  <> hcat attrs <> softline
+                  <> pretty bclose
 
     pretty (ContextParameter param1 at param2)
         = pretty param1 <> pretty at <> pretty param2
@@ -152,7 +152,7 @@ instance Pretty Expression where
 
     pretty (MemberCheck expr qmark sel)
         = pretty expr <> softline
-          <> pretty qmark <> hardspace <> pretty sel
+          <> pretty qmark <> hardspace <> hcat sel
 
     pretty (Negation minus expr)
         = pretty minus <> pretty expr
@@ -161,7 +161,7 @@ instance Pretty Expression where
         = pretty bang <> pretty expr
 
 instance Pretty File where
-    pretty (File start expr) = pretty start <> pretty expr
+    pretty (File start expr) = group $ pretty start <> pretty expr <> pretty hardline
 
 instance Pretty Token where
     pretty = text . tokenText
