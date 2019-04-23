@@ -14,7 +14,7 @@ Run `nix-build` in the root of the project. The binary can then be called with
 `result/bin/nixfmt`. It reads nix code from stdin and writes a formatted version
 to stdout. Currently, many parts of the syntax are still unsupported.
 
-## For Contributers
+## For Contributors
 
 We welcome issues and pull requests on Github.
 
