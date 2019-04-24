@@ -8,7 +8,6 @@ import Data.Either
 import qualified Data.Text.IO as TextIO
 import GHC.Conc (numCapabilities)
 import System.Console.CmdArgs
-import System.Directory
 import System.Exit
 import System.IO
 import System.Posix.Process (exitImmediately)
@@ -25,8 +24,8 @@ data Options = Options
 
 options :: Options
 options = Options
-    { files = def &= args &= typ "FILES/DIRS"
-    , width = def &= opt (80 :: Int) &= help "Maximum width of the formatted file"
+    { files = [] &= args &= typ "FILES/DIRS"
+    , width = 80 &= help "Maximum width of the formatted file"
     } &= help "Format Nix source code"
 
 formatStdio :: Int -> IO Result
@@ -41,9 +40,6 @@ formatFile w path = do
 
 doParallel :: [IO a] -> IO [a]
 doParallel = withPool numCapabilities . flip parallelInterleaved
-
-findRecursive :: FilePath -> IO [FilePath]
-findRecursive = listDirectory
 
 errorWriter :: Chan (Maybe String) -> IO ()
 errorWriter chan = do
