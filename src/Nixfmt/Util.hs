@@ -8,10 +8,10 @@ module Nixfmt.Util
     , dropCommonIndentation
     ) where
 
-import           Data.Char
-import           Data.Maybe
-import           Data.Text       as Text hiding (filter, map)
-import           Text.Megaparsec hiding (empty)
+import Data.Char
+import Data.Maybe
+import Data.Text as Text hiding (filter, map)
+import Text.Megaparsec hiding (empty)
 
 -- | Match one or more characters that match a predicate.
 someP :: (Stream s, Ord e) => (Token s -> Bool) -> ParsecT e s m (Tokens s)

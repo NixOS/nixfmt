@@ -2,20 +2,20 @@
 
 module Nixfmt.Parser where
 
-import           Prelude                        hiding (String)
+import Prelude hiding (String)
 
-import           Control.Monad
+import Control.Monad
 import qualified Control.Monad.Combinators.Expr as MPExpr
-import           Data.Char
-import           Data.Foldable                  (toList)
-import           Data.Text                      as Text hiding (concat, map)
-import           Text.Megaparsec                hiding (Token)
-import           Text.Megaparsec.Char           (char)
-import           Text.Megaparsec.Char.Lexer     (decimal)
+import Data.Char
+import Data.Foldable (toList)
+import Data.Text as Text hiding (concat, map)
+import Text.Megaparsec hiding (Token)
+import Text.Megaparsec.Char (char)
+import Text.Megaparsec.Char.Lexer (decimal)
 
-import           Nixfmt.Lexer
-import           Nixfmt.Types
-import           Nixfmt.Util
+import Nixfmt.Lexer
+import Nixfmt.Types
+import Nixfmt.Util
 
 -- HELPER FUNCTIONS
 

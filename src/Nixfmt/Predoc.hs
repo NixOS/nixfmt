@@ -1,8 +1,5 @@
-{-# LANGUAGE DeriveFoldable     #-}
-{-# LANGUAGE DeriveFunctor      #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveFoldable, DeriveFunctor, FlexibleInstances,
+             OverloadedStrings, StandaloneDeriving #-}
 
 -- | This module implements a layer around the prettyprinter package, making it
 -- easier to use.
@@ -27,9 +24,9 @@ module Nixfmt.Predoc
     , putDocW
     ) where
 
-import           Data.List                      hiding (group)
-import           Data.Text                      (Text, pack)
-import qualified Data.Text.Prettyprint.Doc      as PP
+import Data.List hiding (group)
+import Data.Text (Text, pack)
+import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Util as PPU
 
 data Tree a

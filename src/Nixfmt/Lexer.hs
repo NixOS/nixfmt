@@ -1,18 +1,16 @@
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 
 module Nixfmt.Lexer
     ( lexeme
     ) where
 
-import           Data.Char
-import           Data.Text            as Text (Text, cons, intercalate, lines,
-                                               pack, replace, strip)
-import           Text.Megaparsec      hiding (Token, token)
-import           Text.Megaparsec.Char
+import Data.Char
+import Data.Text as Text (Text, cons, intercalate, lines, pack, replace, strip)
+import Text.Megaparsec hiding (Token, token)
+import Text.Megaparsec.Char
 
-import           Nixfmt.Types         (Ann (..), Parser, Trivia, Trivium (..))
-import           Nixfmt.Util
+import Nixfmt.Types (Ann(..), Parser, Trivia, Trivium(..))
+import Nixfmt.Util
 
 data ParseTrivium
     = PTNewlines     Int

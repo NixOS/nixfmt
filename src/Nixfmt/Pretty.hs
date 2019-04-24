@@ -1,15 +1,13 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances, LambdaCase, OverloadedStrings #-}
 
 module Nixfmt.Pretty where
 
-import           Prelude       hiding (String)
+import Prelude hiding (String)
 
-import           Data.List     hiding (group)
+import Data.List hiding (group)
 
-import           Nixfmt.Predoc
-import           Nixfmt.Types
+import Nixfmt.Predoc
+import Nixfmt.Types
 
 instance Pretty Trivium where
     pretty EmptyLine        = emptyline
@@ -83,8 +81,8 @@ instance Pretty Term where
                   <> nest 2 (vsep items) <> line
                   <> pretty parclose
 
-    pretty (Set rec paropen bindings parclose)
-        = group $ pretty (fmap ((<>hardspace) . pretty) rec)
+    pretty (Set krec paropen bindings parclose)
+        = group $ pretty (fmap ((<>hardspace) . pretty) krec)
                   <> pretty paropen <> line
                   <> nest 2 (vsep bindings) <> line
                   <> pretty parclose

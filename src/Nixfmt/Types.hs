@@ -2,11 +2,11 @@
 
 module Nixfmt.Types where
 
-import           Prelude         hiding (String)
+import Prelude hiding (String)
 
-import           Data.Text       hiding (concat, map)
-import           Data.Void
-import           Text.Megaparsec (Parsec)
+import Data.Text hiding (concat, map)
+import Data.Void
+import Text.Megaparsec (Parsec)
 
 type Parser = Parsec Void Text
 
