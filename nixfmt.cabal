@@ -10,8 +10,10 @@ executable nixfmt
   build-depends:
       base >=4.12 && <4.13
     , parallel-io
+    , directory
     , cmdargs
     , nixfmt
+    , unix
     , text
   default-language:    Haskell2010
   ghc-options:
@@ -20,6 +22,7 @@ executable nixfmt
     -Wincomplete-record-updates
     -Wincomplete-uni-patterns
     -Wredundant-constraints
+    -threaded
 
 library
   exposed-modules:
