@@ -6,9 +6,10 @@ import Prelude hiding (String)
 
 import Data.Text hiding (concat, map)
 import Data.Void
-import Text.Megaparsec (Parsec)
+import qualified Text.Megaparsec as MP
 
-type Parser = Parsec Void Text
+type Parser = MP.Parsec Void Text
+type ParseErrorBundle = MP.ParseErrorBundle Text Void
 
 data Trivium
     = EmptyLine

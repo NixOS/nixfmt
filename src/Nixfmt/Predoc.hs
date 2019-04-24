@@ -21,6 +21,7 @@ module Nixfmt.Predoc
     , Doc
     , Pretty
     , pretty
+    , pretty'
     , putDocW
     ) where
 
@@ -213,8 +214,11 @@ moveLinesIn (Group xs : ys) =
 
 moveLinesIn (x : xs) = x : moveLinesIn xs
 
+pretty' :: Pretty a => a -> PP.Doc ann
+pretty' = PP.pretty . fixup . flatten . pretty
+
 putDocW :: Pretty a => Int -> a -> IO ()
-putDocW n = PPU.putDocW n . PP.pretty . fixup . flatten . pretty
+putDocW n = PPU.putDocW n . pretty'
 
 instance PP.Pretty (Predoc []) where
     pretty (Trivia t)          = PP.pretty t

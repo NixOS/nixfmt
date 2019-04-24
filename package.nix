@@ -1,5 +1,5 @@
-{ mkDerivation, base, megaparsec, parser-combinators, prettyprinter
-, stdenv, text
+{ mkDerivation, base, cmdargs, megaparsec, parallel-io
+, parser-combinators, prettyprinter, stdenv, text
 }:
 mkDerivation {
   pname = "nixfmt";
@@ -10,7 +10,7 @@ mkDerivation {
   libraryHaskellDepends = [
     base megaparsec parser-combinators prettyprinter text
   ];
-  executableHaskellDepends = [ base text ];
+  executableHaskellDepends = [ base cmdargs parallel-io text ];
   license = "unknown";
   hydraPlatforms = stdenv.lib.platforms.none;
 }
