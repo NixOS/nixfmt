@@ -29,8 +29,8 @@ instance Pretty a => Pretty (Ann a) where
 instance Pretty StringPart where
     pretty (TextPart t) = pretty t
     pretty (Interpolation paropen expr parclose)
-        = group $ pretty paropen <> line
-                  <> pretty expr <> line
+        = group $ pretty paropen <> line'
+                  <> pretty expr <> line'
                   <> pretty parclose
 
 instance Pretty String where
@@ -58,7 +58,7 @@ instance Pretty Selector where
 instance Pretty Binder where
     pretty (Inherit inherit source ids semicolon)
         = group $ pretty inherit <> hardspace
-                  <> pretty source <> hardspace
+                  <> pretty source <> line
                   <> nest 2 (sepBy softline ids) <> pretty semicolon
 
     pretty (Assignment selectors assign expr semicolon)
@@ -125,7 +125,7 @@ instance Pretty Expression where
 
     pretty (Let let_ binders in_ expr)
         = group (pretty let_ <> line
-                 <> sepBy hardline binders) <> emptyline
+                 <> nest 2 (sepBy hardline binders)) <> emptyline
           <> pretty in_ <> hardspace <> pretty expr
 
     pretty (Assert assert cond semicolon expr)
@@ -137,6 +137,9 @@ instance Pretty Expression where
         = group (pretty if_ <> hardspace <> pretty cond <> line
                  <> pretty then_ <> hardspace <> pretty expr0 <> line
                  <> pretty else_ <> hardspace <> pretty expr1)
+
+    pretty (Abstraction (IDParameter param) colon body@(Term (Set _ _ _ _)))
+        = pretty param <> pretty colon <> hardspace <> pretty body
 
     pretty (Abstraction param colon body)
         = pretty param <> pretty colon <> line <> pretty body
