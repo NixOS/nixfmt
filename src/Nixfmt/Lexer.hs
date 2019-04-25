@@ -5,7 +5,7 @@ module Nixfmt.Lexer
     ) where
 
 import Data.Char
-import Data.Text as Text (Text, cons, intercalate, lines, pack, replace, strip)
+import Data.Text as Text (Text, intercalate, lines, pack, replace, strip)
 import Text.Megaparsec hiding (Token, token)
 import Text.Megaparsec.Char
 
@@ -42,18 +42,20 @@ convertTrailing = toMaybe . join . map toText
           toText _                    = ""
           join = intercalate " " . filter (/="")
           toMaybe "" = Nothing
-          toMaybe c  = Just (cons ' ' c)
-
+          toMaybe c  = Just c
 
 convertLeading :: [ParseTrivium] -> Trivia
 convertLeading = concatMap (\case
-    (PTNewlines 1) -> []
-    (PTNewlines _) -> [EmptyLine]
-    (PTLineComment lc) -> [LineComment lc]
-    (PTBlockComment bc) -> [BlockComment $ dropCommonIndentation bc])
+    PTNewlines 1          -> []
+    PTNewlines _          -> [EmptyLine]
+    PTLineComment c       -> [LineComment c]
+    PTBlockComment []     -> []
+    PTBlockComment [c]    -> [LineComment c]
+    PTBlockComment (c:cs) -> [BlockComment $ c : dropCommonIndentation cs])
 
 isTrailing :: ParseTrivium -> Bool
 isTrailing (PTLineComment _)    = True
+isTrailing (PTBlockComment [])  = True
 isTrailing (PTBlockComment [_]) = True
 isTrailing _                    = False
 

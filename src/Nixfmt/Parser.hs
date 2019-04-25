@@ -11,7 +11,7 @@ import Data.Foldable (toList)
 import Data.Text as Text hiding (concat, map)
 import Text.Megaparsec hiding (Token)
 import Text.Megaparsec.Char (char)
-import Text.Megaparsec.Char.Lexer (decimal)
+import qualified Text.Megaparsec.Char.Lexer as L
 
 import Nixfmt.Lexer
 import Nixfmt.Types
@@ -64,7 +64,10 @@ reserved t = try $ lexeme $ rawSymbol t
 -- VALUES
 
 integer :: Parser (Ann Token)
-integer = ann Integer decimal
+integer = ann Integer L.decimal
+
+float :: Parser (Ann Token)
+float = ann Float L.float
 
 identifier :: Parser (Ann Token)
 identifier = ann Identifier $ do

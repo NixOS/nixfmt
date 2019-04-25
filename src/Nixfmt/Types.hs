@@ -98,6 +98,7 @@ data File
 
 data Token
     = Integer    Int
+    | Float      Double
     | Identifier Text
     | Path       Text
     | EnvPath    Text
@@ -198,6 +199,7 @@ operators =
 tokenText :: Token -> Text
 tokenText (Identifier i)     = i
 tokenText (Integer i)        = pack (show i)
+tokenText (Float f)          = pack (show f)
 tokenText (Path p)           = p
 tokenText (EnvPath p)        = "<" <> p <> ">"
 
