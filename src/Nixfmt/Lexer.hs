@@ -1,8 +1,6 @@
 {-# LANGUAGE LambdaCase, OverloadedStrings #-}
 
-module Nixfmt.Lexer
-    ( lexeme
-    ) where
+module Nixfmt.Lexer (lexeme) where
 
 import Data.Char
 import Data.Text as Text (Text, intercalate, lines, pack, replace, strip)
@@ -50,7 +48,7 @@ convertLeading = concatMap (\case
     PTNewlines _          -> [EmptyLine]
     PTLineComment c       -> [LineComment c]
     PTBlockComment []     -> []
-    PTBlockComment [c]    -> [LineComment c]
+    PTBlockComment [c]    -> [LineComment $ strip c]
     PTBlockComment (c:cs) -> [BlockComment $ c : dropCommonIndentation cs])
 
 isTrailing :: ParseTrivium -> Bool

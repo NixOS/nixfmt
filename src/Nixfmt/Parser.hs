@@ -10,7 +10,7 @@ import Data.Char
 import Data.Foldable (toList)
 import Data.Text as Text hiding (concat, map)
 import Text.Megaparsec hiding (Token)
-import Text.Megaparsec.Char (char)
+import Text.Megaparsec.Char (char, eol)
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import Nixfmt.Lexer
@@ -117,7 +117,7 @@ indentedStringPart = TextPart <$> someText (
     chunk "$$" <> manyP (=='$') <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     try (chunk "'" <* notFollowedBy (char '\'')) <|>
-    someP (\t -> t /= '\'' && t /= '$'))
+    someP (\t -> t /= '\'' && t /= '$' && t /= '\n'))
 
 simpleString :: Parser String
 simpleString = SimpleString <$> rawSymbol TDoubleQuote <*>
@@ -126,7 +126,7 @@ simpleString = SimpleString <$> rawSymbol TDoubleQuote <*>
 
 indentedString :: Parser String
 indentedString = IndentedString <$> rawSymbol TDoubleSingleQuote <*>
-    many (indentedStringPart <|> interpolation) <*>
+    sepBy (many (indentedStringPart <|> interpolation)) eol <*>
     symbol TDoubleSingleQuote
 
 string :: Parser String
@@ -151,7 +151,7 @@ selectorPath = (pure <$> selector Nothing) <>
 
 simpleTerm :: Parser Term
 simpleTerm = (String <$> string) <|>
-    (Token <$> (path <|> envPath <|> integer <|> identifier)) <|>
+    (Token <$> (path <|> envPath <|> float <|> integer <|> identifier)) <|>
     parens <|> set <|> list
 
 term :: Parser Term
@@ -266,4 +266,4 @@ expression = (Term . String <$> uri) <|> abstraction <|>
     operation <?> "expression"
 
 file :: Parser File
-file = File <$> try (lexeme (return SOF)) <*> expression <* eof
+file = File <$> lexeme (return SOF) <*> expression <* eof

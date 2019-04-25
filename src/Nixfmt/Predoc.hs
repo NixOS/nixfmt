@@ -140,9 +140,9 @@ flatten = go []
           go xs (Leaf (Text t))      = Text t : xs
           go xs (Leaf (Trivia t))    = Trivia t : xs
 
-isLine :: Predoc f -> Bool
-isLine (Spacing _) = True
-isLine _           = False
+isSpacing :: Predoc f -> Bool
+isSpacing (Spacing _) = True
+isSpacing _           = False
 
 spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
 spanEnd p = fmap reverse . span p . reverse
@@ -162,14 +162,14 @@ moveLinesOut :: DocList -> DocList
 moveLinesOut [] = []
 moveLinesOut (Group xs : ys) =
     let movedOut     = moveLinesOut xs
-        (pre, rest)  = span isLine movedOut
-        (post, body) = spanEnd isLine rest
+        (pre, rest)  = span isSpacing movedOut
+        (post, body) = spanEnd isSpacing rest
     in pre ++ (Group body : (post ++ moveLinesOut ys))
 
 moveLinesOut (Nest level xs : ys) =
     let movedOut     = moveLinesOut xs
-        (pre, rest)  = span isLine movedOut
-        (post, body) = spanEnd isLine rest
+        (pre, rest)  = span isSpacing movedOut
+        (post, body) = spanEnd isSpacing rest
     in pre ++ (Nest level body : (post ++ moveLinesOut ys))
 
 moveLinesOut (x : xs) = x : moveLinesOut xs

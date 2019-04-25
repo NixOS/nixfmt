@@ -31,12 +31,16 @@ options = Options
 formatStdio :: Int -> IO Result
 formatStdio w = do
     contents <- TextIO.getContents
-    formatIO w "<stdin>" contents stdout
+    case format w "<stdin>" contents of
+         Right stream -> renderIO stdout stream >> pure (Right ())
+         Left errs    -> pure (Left errs)
 
 formatFile :: Int -> FilePath -> IO Result
 formatFile w path = do
     contents <- TextIO.readFile path
-    withFile path WriteMode $ formatIO w path contents
+    case format w path contents of
+         Right stream -> withFile path WriteMode (flip renderIO stream) >> pure (Right ())
+         Left errs    -> pure (Left errs)
 
 doParallel :: [IO a] -> IO [a]
 doParallel = withPool numCapabilities . flip parallelInterleaved

@@ -4,7 +4,7 @@ module Nixfmt.Pretty where
 
 import Prelude hiding (String)
 
-import Data.List hiding (group)
+import qualified Data.Text as Text
 
 import Nixfmt.Predoc
 import Nixfmt.Types
@@ -30,15 +30,28 @@ instance Pretty StringPart where
     pretty (TextPart t) = pretty t
     pretty (Interpolation paropen expr parclose)
         = group $ pretty paropen <> line'
-                  <> pretty expr <> line'
+                  <> nest 2 (pretty expr) <> line'
                   <> pretty parclose
 
 instance Pretty String where
     pretty (SimpleString qopen parts qclose)
-        = pretty qopen <> hcat parts <> pretty qclose
+        = pretty qopen <> hcat (map escape parts) <> pretty qclose
+        where escape (TextPart t) = TextPart $
+                  Text.replace "$\\${" "$${" $
+                  Text.replace "${" "\\${" $
+                  Text.replace "\"" "\\\"" $
+                  Text.replace "\\" "\\\\" t
+              escape x            = x
 
     pretty (IndentedString qopen parts qclose)
-        = pretty qopen <> hcat parts <> pretty qclose
+        = pretty qopen
+          <> sepBy hardline (map (hcat . map escape) parts)
+          <> pretty qclose
+        where escape (TextPart t) = TextPart $
+                  Text.replace "$''${" "$${" $
+                  Text.replace "${" "''${" $
+                  Text.replace "''" "'''" t
+              escape x            = x
 
     pretty (URIString t) = pretty t
 
@@ -51,9 +64,9 @@ instance Pretty Selector where
     pretty (Selector dot sel Nothing)
         = pretty dot <> pretty sel
 
-    pretty (Selector dot sel (Just (or, def)))
+    pretty (Selector dot sel (Just (kw, def)))
         = pretty dot <> pretty sel
-          <> hardspace <> pretty or <> hardspace <> pretty def
+          <> hardspace <> pretty kw <> hardspace <> pretty def
 
 instance Pretty Binder where
     pretty (Inherit inherit source ids semicolon)
@@ -76,10 +89,17 @@ instance Pretty Term where
     pretty (Token x)  = pretty x
     pretty (String x) = pretty x
 
+    pretty (List paropen [] parclose)
+        = pretty paropen <> hardspace <> pretty parclose
+
     pretty (List paropen items parclose)
         = group $ pretty paropen <> line
                   <> nest 2 (vsep items) <> line
                   <> pretty parclose
+
+    pretty (Set krec paropen [] parclose)
+        = pretty (fmap ((<>hardspace) . pretty) krec)
+          <> pretty paropen <> hardspace <> pretty parclose
 
     pretty (Set krec paropen bindings parclose)
         = group $ pretty (fmap ((<>hardspace) . pretty) krec)
@@ -125,7 +145,7 @@ instance Pretty Expression where
 
     pretty (Let let_ binders in_ expr)
         = group (pretty let_ <> line
-                 <> nest 2 (sepBy hardline binders)) <> emptyline
+                 <> nest 2 (sepBy hardline binders)) <> hardline
           <> pretty in_ <> hardspace <> pretty expr
 
     pretty (Assert assert cond semicolon expr)
@@ -134,12 +154,17 @@ instance Pretty Expression where
           <> pretty expr
 
     pretty (If if_ cond then_ expr0 else_ expr1)
-        = group (pretty if_ <> hardspace <> pretty cond <> line
-                 <> pretty then_ <> hardspace <> pretty expr0 <> line
-                 <> pretty else_ <> hardspace <> pretty expr1)
+        = group (pretty if_ <> hardspace <> pretty cond <> hardspace
+                 <> pretty then_ <> line <> nest 2 (pretty expr0) <> line
+                 <> pretty else_ <> line <> nest 2 (pretty expr1))
 
-    pretty (Abstraction (IDParameter param) colon body@(Term (Set _ _ _ _)))
-        = pretty param <> pretty colon <> hardspace <> pretty body
+    pretty (Abstraction (IDParameter param) colon body)
+        = group $ pretty param <> pretty colon <> absorb body
+        where absorb (Abstraction (IDParameter param0) colon0 body0) =
+                  hardspace <> pretty param0 <> pretty colon0 <> absorb body0
+              absorb set@(Term (Set _ _ _ _)) = hardspace <> pretty set
+              absorb l@(Term (List _ _ _)) = hardspace <> pretty l
+              absorb x = line <> pretty x
 
     pretty (Abstraction param colon body)
         = pretty param <> pretty colon <> line <> pretty body
@@ -162,7 +187,12 @@ instance Pretty Expression where
         = pretty bang <> pretty expr
 
 instance Pretty File where
-    pretty (File start expr) = group $ pretty start <> pretty expr <> pretty hardline
+    pretty (File (Ann _ Nothing leading) expr)
+        = group $ hcat leading <> pretty expr <> hardline
+
+    pretty (File (Ann _ trailing leading) expr)
+        = group $ text "# " <> pretty trailing <> hardline
+                  <> hcat leading <> pretty expr <> hardline
 
 instance Pretty Token where
     pretty = text . tokenText

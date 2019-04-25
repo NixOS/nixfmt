@@ -1,27 +1,27 @@
 module Nixfmt
     ( errorBundlePretty
     , ParseErrorBundle
-    , formatIO
+    , format
+    , renderIO
     ) where
 
 import Data.Text as Text (Text, pack, replicate)
 import Data.Text.IO
 import Data.Text.Prettyprint.Doc hiding (Pretty, width)
-import qualified Data.Text.Prettyprint.Doc as PP
-import Data.Traversable
 import System.IO (Handle, IO, hPutChar)
 import Text.Megaparsec (parse)
 import Text.Megaparsec.Error (errorBundlePretty)
 
 import Nixfmt.Parser (file)
-import Nixfmt.Predoc (Pretty, pretty')
+import Nixfmt.Predoc (pretty')
 import Nixfmt.Pretty ()
 import Nixfmt.Types (ParseErrorBundle)
 
-renderIO :: Handle -> PP.SimpleDocStream ann -> IO ()
+-- | Render a SimpleDocStream to a file Handle, without indenting empty lines.
+renderIO :: Handle -> SimpleDocStream ann -> IO ()
 renderIO h = go
-    where go SFail                      = return ()
-          go SEmpty                     = return ()
+    where go SFail                      = error "unexpected SFail"
+          go SEmpty                     = pure ()
           go (SChar c rest)             = hPutChar h c    >> go rest
           go (SText _ t rest)           = hPutStr h t     >> go rest
           go (SAnnPush _ rest)          =                    go rest
@@ -35,9 +35,5 @@ renderIO h = go
 layout :: Int -> Doc ann -> SimpleDocStream ann
 layout w = layoutSmart (LayoutOptions{layoutPageWidth = AvailablePerLine w 1.0})
 
-hPutDocW :: Pretty a => Handle -> Int -> a -> IO ()
-hPutDocW output width = renderIO output . layout width . pretty'
-
-formatIO :: Int -> String -> Text -> Handle -> IO (Either ParseErrorBundle ())
-formatIO width filename input output =
-    for (parse file filename input) (hPutDocW output width)
+format :: Int -> FilePath -> Text -> Either ParseErrorBundle (SimpleDocStream ann)
+format width filename = fmap (layout width . pretty') . parse file filename

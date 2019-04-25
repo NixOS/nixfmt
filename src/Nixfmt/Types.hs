@@ -32,7 +32,7 @@ data StringPart
 
 data String
     = SimpleString Token [StringPart] Leaf
-    | IndentedString Token [StringPart] Leaf
+    | IndentedString Token [[StringPart]] Leaf
     | URIString (Ann Text)
     deriving (Show)
 
