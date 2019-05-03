@@ -19,8 +19,10 @@ data Trivium
 
 type Trivia = [Trivium]
 
+newtype TrailingComment = TrailingComment Text deriving (Show)
+
 data Ann a
-    = Ann a (Maybe Text) Trivia
+    = Ann a (Maybe TrailingComment) Trivia
     deriving (Show)
 
 type Leaf = Ann Token
@@ -30,11 +32,7 @@ data StringPart
     | Interpolation Leaf Expression Token
     deriving (Show)
 
-data String
-    = SimpleString Token [StringPart] Leaf
-    | IndentedString Token [[StringPart]] Leaf
-    | URIString (Ann Text)
-    deriving (Show)
+type String = Ann [[StringPart]]
 
 data SimpleSelector
     = IDSelector Leaf

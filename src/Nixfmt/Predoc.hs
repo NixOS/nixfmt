@@ -7,8 +7,6 @@ module Nixfmt.Predoc
     ( text
     , sepBy
     , hcat
-    , vsep
-    , trivia
     , group
     , nest
     , softline'
@@ -18,9 +16,12 @@ module Nixfmt.Predoc
     , hardspace
     , hardline
     , emptyline
+    , newline
     , Doc
     , Pretty
     , pretty
+    , flatten
+    , fixup
     , pretty'
     ) where
 
@@ -45,11 +46,11 @@ data Spacing
     | Hardspace
     | Hardline
     | Emptyline
+    | Newline
     deriving (Show, Eq, Ord)
 
 data Predoc f
-    = Trivia Text
-    | Text Text
+    = Text Text
     | Spacing Spacing
     -- | Group predoc indicates either all or none of the Spaces and Breaks in
     -- predoc should be converted to line breaks.
@@ -89,9 +90,6 @@ instance Monoid (Tree a) where
 text :: Text -> Doc
 text = Leaf . Text
 
-trivia :: Text -> Doc
-trivia = Leaf . Trivia
-
 group :: Doc -> Doc
 group = Leaf . Group
 
@@ -119,16 +117,15 @@ hardline = Leaf (Spacing Hardline)
 emptyline :: Doc
 emptyline = Leaf (Spacing Emptyline)
 
+newline :: Doc
+newline = Leaf (Spacing Newline)
+
 sepBy :: Pretty a => Doc -> [a] -> Doc
 sepBy separator = mconcat . intersperse separator . map pretty
 
 -- | Concatenate documents horizontally without spacing.
 hcat :: Pretty a => [a] -> Doc
 hcat = mconcat . map pretty
-
--- | Concatenate documents horizontally with spaces or vertically with newlines.
-vsep :: Pretty a => [a] -> Doc
-vsep = sepBy line
 
 flatten :: Doc -> DocList
 flatten = go []
@@ -137,8 +134,8 @@ flatten = go []
           go xs (Leaf (Group tree))  = Group (go [] tree) : xs
           go xs (Leaf (Nest l tree)) = Nest l (go [] tree) : xs
           go xs (Leaf (Spacing l))   = Spacing l : xs
+          go xs (Leaf (Text ""))     = xs
           go xs (Leaf (Text t))      = Text t : xs
-          go xs (Leaf (Trivia t))    = Trivia t : xs
 
 isSpacing :: Predoc f -> Bool
 isSpacing (Spacing _) = True
@@ -148,48 +145,39 @@ spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
 spanEnd p = fmap reverse . span p . reverse
 
 -- | Fix up a DocList in multiple stages:
--- - First, all spacings are moved out of Groups and Nests.
--- - Now, any Groups and Lists that contained only spacings, now contain the
---   empty list, so they can be removed.
+-- - First, all spacings are moved out of Groups and Nests and empty Groups and
+--   Nests are removed.
 -- - Now, all consecutive Spacings are ensured to be in the same list, so each
 --   sequence of Spacings can be merged into a single one.
 -- - Finally, Spacings right before a Nest should be moved inside in order to
 --   get the right indentation.
 fixup :: DocList -> DocList
-fixup = moveLinesIn . mergeLines . dropEmpty . moveLinesOut
+fixup = moveLinesIn . mergeLines . concatMap moveLinesOut
 
-moveLinesOut :: DocList -> DocList
-moveLinesOut [] = []
-moveLinesOut (Group xs : ys) =
-    let movedOut     = moveLinesOut xs
+moveLinesOut :: (Predoc []) -> DocList
+moveLinesOut (Group xs) =
+    let movedOut     = concatMap moveLinesOut xs
         (pre, rest)  = span isSpacing movedOut
         (post, body) = spanEnd isSpacing rest
-    in pre ++ (Group body : (post ++ moveLinesOut ys))
+    in case body of
+            [] -> pre ++ post
+            _  -> pre ++ (Group body : post)
 
-moveLinesOut (Nest level xs : ys) =
-    let movedOut     = moveLinesOut xs
+moveLinesOut (Nest level xs) =
+    let movedOut     = concatMap moveLinesOut xs
         (pre, rest)  = span isSpacing movedOut
         (post, body) = spanEnd isSpacing rest
-    in pre ++ (Nest level body : (post ++ moveLinesOut ys))
+    in case body of
+            [] -> pre ++ post
+            _  -> pre ++ (Nest level body : post)
 
-moveLinesOut (x : xs) = x : moveLinesOut xs
-
-dropEmpty :: DocList -> DocList
-dropEmpty []               = []
-dropEmpty (Group xs : ys)
-    = case dropEmpty xs of
-           []  -> ys
-           xs' -> Group xs' : dropEmpty ys
-
-dropEmpty (Nest n xs : ys)
-    = case dropEmpty xs of
-           []  -> ys
-           xs' -> Nest n xs' : dropEmpty ys
-
-dropEmpty (x : xs)         = x : dropEmpty xs
+moveLinesOut x = [x]
 
 mergeLines :: DocList -> DocList
 mergeLines []                           = []
+mergeLines (Spacing Newline : xs)       = Spacing Newline : mergeLines xs
+mergeLines (Spacing x : Spacing Newline : xs)
+    = Spacing x : Spacing Newline : mergeLines xs
 mergeLines (Spacing Break : Spacing Softspace : xs)
     = mergeLines $ Spacing Space : xs
 mergeLines (Spacing Softspace : Spacing Break : xs)
@@ -216,7 +204,6 @@ pretty' :: Pretty a => a -> PP.Doc ann
 pretty' = PP.pretty . fixup . flatten . pretty
 
 instance PP.Pretty (Predoc []) where
-    pretty (Trivia t)          = PP.pretty t
     pretty (Text t)            = PP.pretty t
 
     pretty (Spacing Softbreak) = PP.softline'
@@ -226,6 +213,7 @@ instance PP.Pretty (Predoc []) where
     pretty (Spacing Hardspace) = PP.pretty (pack " ")
     pretty (Spacing Hardline)  = PP.hardline
     pretty (Spacing Emptyline) = PP.hardline <> PP.hardline
+    pretty (Spacing Newline)   = PP.hardline
 
     pretty (Group docs)        = PP.group (PP.pretty docs)
     pretty (Nest level docs)   = PP.nest level (PP.pretty docs)

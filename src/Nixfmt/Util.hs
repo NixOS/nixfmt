@@ -6,12 +6,31 @@ module Nixfmt.Util
     , commonPrefix
     , commonIndentation
     , dropCommonIndentation
+    , identChar
+    , pathChar
+    , schemeChar
+    , uriChar
     ) where
 
 import Data.Char
 import Data.Maybe
 import Data.Text as Text hiding (filter, map)
 import Text.Megaparsec hiding (empty)
+
+charClass :: [Char] -> Char -> Bool
+charClass s c = isAlpha c || isDigit c || elem c s
+
+identChar :: Char -> Bool
+identChar = charClass "_'-"
+
+pathChar :: Char -> Bool
+pathChar = charClass "._-+~"
+
+schemeChar :: Char -> Bool
+schemeChar = charClass "-.+"
+
+uriChar :: Char -> Bool
+uriChar = charClass "~!@$%&*-=_+:',./?"
 
 -- | Match one or more characters that match a predicate.
 someP :: (Stream s, Ord e) => (Token s -> Bool) -> ParsecT e s m (Tokens s)
@@ -36,10 +55,11 @@ commonPrefix a b =
          Nothing             -> empty
          Just (prefix, _, _) -> prefix
 
--- | The longest common prefix consisting of only whitespace.
-commonIndentation :: [Text] -> Text
-commonIndentation []       = empty
-commonIndentation [x]      = Text.takeWhile isSpace x
+-- | The longest common prefix consisting of only whitespace. The longest common
+-- prefix of zero texts is infinite, represented as Nothing.
+commonIndentation :: [Text] -> Maybe Text
+commonIndentation []       = Nothing
+commonIndentation [x]      = Just $ Text.takeWhile isSpace x
 commonIndentation (x:y:xs) = commonIndentation (commonPrefix x y : xs)
 
 -- | Strip the longest common indentation from a list of lines. Empty lines do
@@ -47,5 +67,6 @@ commonIndentation (x:y:xs) = commonIndentation (commonPrefix x y : xs)
 dropCommonIndentation :: [Text] -> [Text]
 dropCommonIndentation unstrippedLines =
     let strippedLines = map stripEnd unstrippedLines
-        indentation = commonIndentation $ filter (/=empty) strippedLines
-    in map (fromMaybe empty . stripPrefix indentation) strippedLines
+    in case commonIndentation (filter (/=empty) strippedLines) of
+            Nothing          -> map (const empty) strippedLines
+            Just indentation -> map (fromMaybe empty . stripPrefix indentation) strippedLines

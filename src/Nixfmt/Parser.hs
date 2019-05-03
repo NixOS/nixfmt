@@ -8,9 +8,10 @@ import Control.Monad
 import qualified Control.Monad.Combinators.Expr as MPExpr
 import Data.Char
 import Data.Foldable (toList)
-import Data.Text as Text hiding (concat, map)
+import Data.Maybe
+import Data.Text as Text hiding (concat, concatMap, init, last, map)
 import Text.Megaparsec hiding (Token)
-import Text.Megaparsec.Char (char, eol)
+import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import Nixfmt.Lexer
@@ -21,9 +22,6 @@ import Nixfmt.Util
 
 ann :: (a -> b) -> Parser a -> Parser (Ann b)
 ann f p = try $ lexeme $ f <$> p
-
-pair :: Parser a -> Parser b -> Parser (a, b)
-pair p q = (,) <$> p <*> q
 
 -- | parses a token without parsing trivia after it
 rawSymbol :: Token -> Parser Token
@@ -41,21 +39,6 @@ reservedNames =
     , "rec"
     , "inherit"
     ]
-
-charClass :: [Char] -> Char -> Bool
-charClass s c = isAlpha c || isDigit c || elem c s
-
-identChar :: Char -> Bool
-identChar = charClass "_'-"
-
-pathChar :: Char -> Bool
-pathChar = charClass "._-+~"
-
-schemeChar :: Char -> Bool
-schemeChar = charClass "-.+"
-
-uriChar :: Char -> Bool
-uriChar = charClass "~!@$%&*-=_+:',./?"
 
 reserved :: Token -> Parser (Ann Token)
 reserved t = try $ lexeme $ rawSymbol t
@@ -87,8 +70,9 @@ envPath = ann EnvPath $ char '<' *>
 path :: Parser (Ann Token)
 path = ann Path $ manyP pathChar <> someText (slash <> someP pathChar)
 
-uri :: Parser String
-uri = URIString <$> ann id (someP schemeChar <> chunk ":" <> someP uriChar)
+uri :: Parser [[StringPart]]
+uri = fmap (pure . pure . TextPart) $ try $
+    someP schemeChar <> chunk ":" <> someP uriChar
 
 -- STRINGS
 
@@ -117,20 +101,65 @@ indentedStringPart = TextPart <$> someText (
     chunk "$$" <> manyP (=='$') <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     try (chunk "'" <* notFollowedBy (char '\'')) <|>
-    someP (\t -> t /= '\'' && t /= '$' && t /= '\n'))
+    someP (\t -> t /= '\'' && t /= '$'))
 
-simpleString :: Parser String
-simpleString = SimpleString <$> rawSymbol TDoubleQuote <*>
-    many (simpleStringPart <|> interpolation) <*>
-    symbol TDoubleQuote
+isEmptyLine :: [StringPart] -> Bool
+isEmptyLine []           = True
+isEmptyLine [TextPart t] = Text.strip t == Text.empty
+isEmptyLine _            = False
 
-indentedString :: Parser String
-indentedString = IndentedString <$> rawSymbol TDoubleSingleQuote <*>
-    sepBy (many (indentedStringPart <|> interpolation)) eol <*>
-    symbol TDoubleSingleQuote
+-- | Strip the first line of a string if it is empty.
+stripFirstLine :: [[StringPart]] -> [[StringPart]]
+stripFirstLine [] = []
+stripFirstLine (x : xs)
+    | isEmptyLine x = xs
+    | otherwise     = x : xs
+
+partsInit :: [StringPart] -> [Text]
+partsInit line@(TextPart t : _)
+    | isEmptyLine line = []
+    | otherwise        = [t]
+partsInit _            = []
+
+stripParts :: Text -> [StringPart] -> [StringPart]
+stripParts indentation (TextPart t : xs) =
+    TextPart (fromMaybe Text.empty $ Text.stripPrefix indentation t) : xs
+stripParts _ xs = xs
+
+-- | Split a list of StringParts on the newlines in their TextParts.
+-- Invariant: result is never empty.
+splitLines :: [StringPart] -> [[StringPart]]
+splitLines [] = [[]]
+splitLines (TextPart t : xs) =
+    let ts = map (pure . TextPart) $ Text.split (=='\n') t
+    in case splitLines xs of
+        (xs' : xss) -> init ts ++ ((last ts ++ xs') : xss)
+        _           -> error "unreachable"
+
+splitLines (x : xs) =
+    case splitLines xs of
+        (xs' : xss) -> ((x : xs') : xss)
+        _           -> error "unreachable"
+
+simpleString :: Parser [[StringPart]]
+simpleString = rawSymbol TDoubleQuote *>
+    fmap splitLines (many (simpleStringPart <|> interpolation)) <*
+    rawSymbol TDoubleQuote
+
+fixIndentedString :: [StringPart] -> [[StringPart]]
+fixIndentedString parts =
+    let parts' = stripFirstLine $ splitLines parts
+    in case commonIndentation (concatMap partsInit parts') of
+            Nothing          -> map (const []) parts'
+            Just indentation -> map (stripParts indentation) parts'
+
+indentedString :: Parser [[StringPart]]
+indentedString = rawSymbol TDoubleSingleQuote *>
+    fmap fixIndentedString (many (indentedStringPart <|> interpolation)) <*
+    rawSymbol TDoubleSingleQuote
 
 string :: Parser String
-string = simpleString <|> indentedString <|> uri
+string = lexeme $ simpleString <|> indentedString <|> uri
 
 -- TERMS
 
@@ -142,8 +171,8 @@ selector :: Maybe (Parser Leaf) -> Parser Selector
 selector parseDot = Selector <$> sequence parseDot <*>
     ((IDSelector <$> identifier) <|>
      (InterpolSelector <$> lexeme interpolation) <|>
-     (StringSelector <$> simpleString)) <*>
-    optional (pair (reserved KOr) term)
+     (StringSelector <$> lexeme simpleString)) <*>
+    optional (liftM2 (,) (reserved KOr) term)
 
 selectorPath :: Parser [Selector]
 selectorPath = (pure <$> selector Nothing) <>
@@ -165,7 +194,7 @@ term = label "term" $ do
 
 attrParameter :: Maybe (Parser Leaf) -> Parser ParamAttr
 attrParameter parseComma = ParamAttr <$>
-    identifier <*> optional (pair (symbol TQuestion) expression) <*>
+    identifier <*> optional (liftM2 (,) (symbol TQuestion) expression) <*>
     sequence parseComma
 
 idParameter :: Parser Parameter
@@ -238,8 +267,9 @@ opCombiner (Op InfixN tok) = MPExpr.InfixN $ flip Operation <$> operator tok
 opCombiner (Op InfixR tok) = MPExpr.InfixR $ flip Operation <$> operator tok
 
 operation :: Parser Expression
-operation = MPExpr.makeExprParser (Term <$> term) $
-    map (map opCombiner) operators
+operation = MPExpr.makeExprParser
+    (Term <$> term <* notFollowedBy (oneOf (":@" :: [Char])))
+    (map (map opCombiner) operators)
 
 -- EXPRESSIONS
 
@@ -261,9 +291,8 @@ assert = Assert <$> reserved KAssert <*> expression <*>
     symbol TSemicolon <*> expression
 
 expression :: Parser Expression
-expression = (Term . String <$> uri) <|> abstraction <|>
-    with <|> letIn <|> ifThenElse <|> assert <|>
-    operation <?> "expression"
+expression = label "expression" $ try operation <|> abstraction <|>
+    with <|> letIn <|> ifThenElse <|> assert
 
 file :: Parser File
 file = File <$> lexeme (return SOF) <*> expression <* eof
