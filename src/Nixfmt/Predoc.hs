@@ -45,12 +45,12 @@ data Spacing
     | Hardspace
     | Hardline
     | Emptyline
+    | Newlines Int
     deriving (Show, Eq, Ord)
 
 data Predoc f
     = Text Text
     | Spacing Spacing
-    | Newline
     -- | Group predoc indicates either all or none of the Spaces and Breaks in
     -- predoc should be converted to line breaks.
     | Group (f (Predoc f))
@@ -117,7 +117,7 @@ emptyline :: Doc
 emptyline = Leaf (Spacing Emptyline)
 
 newline :: Doc
-newline = Leaf Newline
+newline = Leaf (Spacing (Newlines 1))
 
 sepBy :: Pretty a => Doc -> [a] -> Doc
 sepBy separator = mconcat . intersperse separator . map pretty
@@ -133,7 +133,6 @@ flatten = go []
           go xs (Leaf (Group tree))  = Group (go [] tree) : xs
           go xs (Leaf (Nest l tree)) = Nest l (go [] tree) : xs
           go xs (Leaf (Spacing l))   = Spacing l : xs
-          go xs (Leaf Newline)       = Newline : xs
           go xs (Leaf (Text ""))     = xs
           go xs (Leaf (Text t))      = Text t : xs
 
@@ -173,13 +172,18 @@ moveLinesOut (Nest level xs) =
 
 moveLinesOut x = [x]
 
+mergeSpacings :: Spacing -> Spacing -> Spacing
+mergeSpacings x y | x > y               = mergeSpacings y x
+mergeSpacings Break Softspace           = Space
+mergeSpacings (Newlines x) (Newlines y) = Newlines (x + y)
+mergeSpacings Emptyline (Newlines x)    = Newlines (x + 2)
+mergeSpacings Hardspace (Newlines x)    = Newlines x
+mergeSpacings _ (Newlines x)            = Newlines (x + 1)
+mergeSpacings _ y                       = y
+
 mergeLines :: DocList -> DocList
 mergeLines []                           = []
-mergeLines (Spacing Break : Spacing Softspace : xs)
-    = mergeLines $ Spacing Space : xs
-mergeLines (Spacing Softspace : Spacing Break : xs)
-    = mergeLines $ Spacing Space : xs
-mergeLines (Spacing a : Spacing b : xs) = mergeLines $ Spacing (max a b) : xs
+mergeLines (Spacing a : Spacing b : xs) = mergeLines $ Spacing (mergeSpacings a b) : xs
 mergeLines (Text a : Text b : xs)       = mergeLines $ Text (a <> b) : xs
 mergeLines (Group xs : ys)              = Group (mergeLines xs) : mergeLines ys
 mergeLines (Nest n xs : ys)             = Nest n (mergeLines xs) : mergeLines ys
@@ -224,31 +228,30 @@ fits :: Int -> DocList -> Maybe Text
 fits c _ | c < 0 = Nothing
 fits _ [] = Just ""
 fits c (x:xs) = case x of
-    Text t            -> (t<>) <$> fits (c - textWidth t) xs
-    Spacing Softbreak -> fits c xs
-    Spacing Break     -> fits c xs
-    Spacing Softspace -> (" "<>) <$> fits (c - 1) xs
-    Spacing Space     -> (" "<>) <$> fits (c - 1) xs
-    Spacing Hardspace -> (" "<>) <$> fits (c - 1) xs
-    Spacing Hardline  -> Nothing
-    Spacing Emptyline -> Nothing
-    Newline           -> Nothing
-    Group ys          -> fits c $ ys ++ xs
-    Nest _ ys         -> fits c $ ys ++ xs
+    Text t               -> (t<>) <$> fits (c - textWidth t) xs
+    Spacing Softbreak    -> fits c xs
+    Spacing Break        -> fits c xs
+    Spacing Softspace    -> (" "<>) <$> fits (c - 1) xs
+    Spacing Space        -> (" "<>) <$> fits (c - 1) xs
+    Spacing Hardspace    -> (" "<>) <$> fits (c - 1) xs
+    Spacing Hardline     -> Nothing
+    Spacing Emptyline    -> Nothing
+    Spacing (Newlines _) -> Nothing
+    Group ys             -> fits c $ ys ++ xs
+    Nest _ ys            -> fits c $ ys ++ xs
 
 firstLineWidth :: DocList -> Int
 firstLineWidth []                       = 0
 firstLineWidth (Text t : xs)            = textWidth t + firstLineWidth xs
 firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
 firstLineWidth (Spacing _ : _)          = 0
-firstLineWidth (Newline : _)            = 0
 firstLineWidth (Nest _ xs : ys)         = firstLineWidth (xs ++ ys)
 firstLineWidth (Group xs : ys)          = firstLineWidth (xs ++ ys)
 
 data Chunk = Chunk Int (Predoc [])
 
-indent :: Int -> Text
-indent n = "\n" <> Text.replicate n " "
+indent :: Int -> Int -> Text
+indent n i = Text.replicate n "\n" <> Text.replicate i " "
 
 unChunk :: Chunk -> Predoc []
 unChunk (Chunk _ doc) = doc
@@ -257,23 +260,19 @@ layoutGreedy :: Int -> DocList -> Text
 layoutGreedy w doc = Text.concat $ go 0 [Chunk 0 $ Group doc]
     where go _ [] = []
           go c (Chunk i x : xs) = case x of
-            Text t            -> t   : go (c + textWidth t) xs
+            Text t               -> t   : go (c + textWidth t) xs
 
-            Spacing Softbreak -> indent i  : go i xs
-            Spacing Break     -> indent i  : go i xs
-            Spacing Softspace -> indent i  : go i xs
-            Spacing Space     -> indent i  : go i xs
-            Spacing Hardspace -> " "       : go (c + 1) xs
-            Spacing Hardline  -> indent i  : go i xs
-            Spacing Emptyline -> "\n" : indent i : go i xs
+            Spacing Softbreak    -> indent 1 i  : go i xs
+            Spacing Break        -> indent 1 i  : go i xs
+            Spacing Softspace    -> indent 1 i  : go i xs
+            Spacing Space        -> indent 1 i  : go i xs
+            Spacing Hardspace    -> " "       : go (c + 1) xs
+            Spacing Hardline     -> indent 1 i  : go i xs
+            Spacing Emptyline    -> indent 2 i : go i xs
+            Spacing (Newlines n) -> indent n i : go i xs
 
-            Newline           -> case xs of
-                []                    -> ["\n"]
-                (Chunk _ Newline : _) -> "\n" : go i xs
-                _                     -> indent i : go i xs
-
-            Nest l ys         -> go c $ map (Chunk (i + l)) ys ++ xs
-            Group ys          ->
+            Nest l ys            -> go c $ map (Chunk (i + l)) ys ++ xs
+            Group ys             ->
                 case fits (w - c - firstLineWidth (map unChunk xs)) ys of
-                     Nothing  -> go c $ map (Chunk i) ys ++ xs
-                     Just t   -> t : go (c + textWidth t) xs
+                     Nothing     -> go c $ map (Chunk i) ys ++ xs
+                     Just t      -> t : go (c + textWidth t) xs

@@ -77,7 +77,7 @@ instance Pretty Binder where
     pretty (Assignment selectors assign expr semicolon)
         = group $ hcat selectors <> hardspace
                   <> pretty assign <> softline
-                  <> group (pretty expr <> pretty semicolon)
+                  <> group (pretty expr) <> pretty semicolon
 
 
     pretty (BinderTrivia trivia) = pretty trivia
@@ -115,7 +115,7 @@ instance Pretty Term where
                               _  -> BinderTrivia leading : binders
 
     pretty (Selection term selectors)
-        = group $ pretty term <> line' <> sepBy line' selectors
+        = pretty term <> hcat selectors
 
     pretty (Parenthesized paropen expr parclose)
         = pretty paropen <> group (pretty expr) <> pretty parclose
@@ -152,29 +152,38 @@ instance Pretty Parameter where
     pretty (ContextParameter param1 at param2)
         = pretty param1 <> pretty at <> pretty param2
 
+isMultilineString :: Expression -> Bool
+isMultilineString (Term (String (Ann (_:_:_) _ _))) = True
+isMultilineString _                                 = False
+
 absorbSet :: Expression -> Doc
 absorbSet set@(Term (Set _ _ _ _)) = hardspace <> pretty set
 absorbSet l@(Term (List _ _ _)) = hardspace <> pretty l
 absorbSet s@(Term (String _)) = hardspace <> pretty s
-absorbSet x = line <> pretty x
+
+absorbSet x
+    | isMultilineString x           = hardspace <> pretty x
+    | otherwise                     = line <> pretty x
 
 absorbThen :: Expression -> Doc
 absorbThen set@(Term (Set _ _ _ _)) = hardspace <> pretty set <> hardspace
 absorbThen l@(Term (List _ _ _))    = hardspace <> pretty l <> hardspace
-absorbThen s@(Term (String _))      = hardspace <> pretty s <> hardspace
-absorbThen x                        = line <> nest 2 (pretty x) <> line
+absorbThen x
+    | isMultilineString x           = hardspace <> pretty x <> hardspace
+    | otherwise                     = line <> nest 2 (pretty x) <> line
 
 absorbElse :: Expression -> Doc
 absorbElse set@(Term (Set _ _ _ _)) = hardspace <> pretty set
 absorbElse l@(Term (List _ _ _))    = hardspace <> pretty l
-absorbElse s@(Term (String _))      = hardspace <> pretty s
 
 absorbElse (If if_ cond then_ expr0 else_ expr1)
     = hardspace <> pretty if_ <> hardspace <> pretty cond <> hardspace
       <> pretty then_ <> absorbThen expr0
       <> pretty else_ <> absorbElse expr1
 
-absorbElse x                        = line <> nest 2 (pretty x)
+absorbElse x
+    | isMultilineString x           = hardspace <> pretty x
+    | otherwise                     = line <> nest 2 (pretty x)
 
 instance Pretty Expression where
     pretty (Term t) = pretty t
@@ -302,7 +311,6 @@ prettyString [parts]
 prettyString parts
     | all isEmptyLine parts = prettySimpleString parts
     | otherwise             = prettyIndentedString parts
-
 
 prettySimpleString :: [[StringPart]] -> Doc
 prettySimpleString parts = group $
