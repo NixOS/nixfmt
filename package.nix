@@ -1,5 +1,5 @@
 { mkDerivation, base, cmdargs, directory, megaparsec, parallel-io
-, parser-combinators, prettyprinter, stdenv, text, unix
+, parser-combinators, stdenv, text, unix
 }:
 mkDerivation {
   pname = "nixfmt";
@@ -8,7 +8,7 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    base megaparsec parser-combinators prettyprinter text
+    base megaparsec parser-combinators text
   ];
   executableHaskellDepends = [
     base cmdargs directory parallel-io text unix

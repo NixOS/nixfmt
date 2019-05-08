@@ -141,17 +141,24 @@ splitLines (x : xs) =
         (xs' : xss) -> ((x : xs') : xss)
         _           -> error "unreachable"
 
+stripIndentation :: [[StringPart]] -> [[StringPart]]
+stripIndentation parts = case commonIndentation (concatMap partsInit parts) of
+    Nothing -> map (const []) parts
+    Just indentation -> map (stripParts indentation) parts
+
+fixSimpleString :: [StringPart] -> [[StringPart]]
+fixSimpleString parts = case splitLines parts of
+    [] -> []
+    [line] -> [line]
+    parts' -> stripIndentation parts'
+
 simpleString :: Parser [[StringPart]]
 simpleString = rawSymbol TDoubleQuote *>
     fmap splitLines (many (simpleStringPart <|> interpolation)) <*
     rawSymbol TDoubleQuote
 
 fixIndentedString :: [StringPart] -> [[StringPart]]
-fixIndentedString parts =
-    let parts' = stripFirstLine $ splitLines parts
-    in case commonIndentation (concatMap partsInit parts') of
-            Nothing          -> map (const []) parts'
-            Just indentation -> map (stripParts indentation) parts'
+fixIndentedString = stripIndentation . stripFirstLine . splitLines
 
 indentedString :: Parser [[StringPart]]
 indentedString = rawSymbol TDoubleSingleQuote *>

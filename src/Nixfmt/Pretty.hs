@@ -21,15 +21,16 @@ toLineComment :: Text -> Trivium
 toLineComment c = LineComment $ fromMaybe c $ stripPrefix "*" c
 
 instance Pretty TrailingComment where
-    pretty (TrailingComment c) = text (" # " <> c) <> hardline
+    pretty (TrailingComment c)
+        = hardspace <> text "#" <> hardspace <> text c <> hardline
 
 instance Pretty Trivium where
     pretty EmptyLine        = emptyline
     pretty (LineComment c)  = text "#" <> pretty c <> hardline
     pretty (BlockComment c)
-        | all ("* " `isPrefixOf`) (tail c) = pretty (map toLineComment c)
+        | all ("*" `isPrefixOf`) (tail c) = pretty (map toLineComment c)
         | otherwise
-            = text "/* " <> (nest 3 $ hcat $ map prettyCommentLine c)
+            = text "/*" <> hardspace <> (nest 3 $ hcat $ map prettyCommentLine c)
               <> text "*/" <> hardline
 
 instance Pretty [Trivium] where
@@ -114,11 +115,7 @@ instance Pretty Term where
                               _  -> BinderTrivia leading : binders
 
     pretty (Selection term selectors)
-        = pretty term <> hcat selectors
-        -- Wadler Leijen and/or this implementation of it don't seem to respect
-        -- the invariant I expect: If a group fits on a single line, it should
-        -- not be split.
-        -- = group $ pretty term <> line' <> group (sepBy line' selectors)
+        = group $ pretty term <> line' <> sepBy line' selectors
 
     pretty (Parenthesized paropen expr parclose)
         = pretty paropen <> group (pretty expr) <> pretty parclose

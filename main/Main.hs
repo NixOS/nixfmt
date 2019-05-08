@@ -17,13 +17,13 @@ import Nixfmt
 
 type Result = Either ParseErrorBundle ()
 
-data Options = Options
+data Nixfmt = Nixfmt
     { files :: [FilePath]
     , width :: Int
     } deriving (Show, Data, Typeable)
 
-options :: Options
-options = Options
+options :: Nixfmt
+options = Nixfmt
     { files = [] &= args &= typ "FILES/DIRS"
     , width = 80 &= help "Maximum width of the formatted file"
     } &= help "Format Nix source code"
@@ -31,16 +31,12 @@ options = Options
 formatStdio :: Int -> IO Result
 formatStdio w = do
     contents <- TextIO.getContents
-    case format w "<stdin>" contents of
-         Right stream -> renderIO stdout stream >> pure (Right ())
-         Left errs    -> pure (Left errs)
+    mapM TextIO.putStr $ format w "<stdin>" contents
 
 formatFile :: Int -> FilePath -> IO Result
 formatFile w path = do
     contents <- TextIO.readFile path
-    case format w path contents of
-         Right stream -> withFile path WriteMode (flip renderIO stream) >> pure (Right ())
-         Left errs    -> pure (Left errs)
+    mapM (TextIO.writeFile path) $ format w path contents
 
 doParallel :: [IO a] -> IO [a]
 doParallel = withPool numCapabilities . flip parallelInterleaved

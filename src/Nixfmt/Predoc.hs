@@ -22,18 +22,17 @@ module Nixfmt.Predoc
     , pretty
     , flatten
     , fixup
-    , pretty'
+    , layout
     ) where
 
 import Data.List hiding (group)
-import Data.Text (Text, pack)
-import qualified Data.Text.Prettyprint.Doc as PP
+import Data.Text as Text (Text, concat, length, pack, replicate)
 
 data Tree a
     = EmptyTree
     | Leaf a
     | Node (Tree a) (Tree a)
-    deriving (Show, Functor)
+    deriving (Show, Functor, Foldable)
 
 -- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
 -- This means that e.g. a Space followed by an Emptyline results in just an
@@ -46,12 +45,12 @@ data Spacing
     | Hardspace
     | Hardline
     | Emptyline
-    | Newline
     deriving (Show, Eq, Ord)
 
 data Predoc f
     = Text Text
     | Spacing Spacing
+    | Newline
     -- | Group predoc indicates either all or none of the Spaces and Breaks in
     -- predoc should be converted to line breaks.
     | Group (f (Predoc f))
@@ -118,7 +117,7 @@ emptyline :: Doc
 emptyline = Leaf (Spacing Emptyline)
 
 newline :: Doc
-newline = Leaf (Spacing Newline)
+newline = Leaf Newline
 
 sepBy :: Pretty a => Doc -> [a] -> Doc
 sepBy separator = mconcat . intersperse separator . map pretty
@@ -134,6 +133,7 @@ flatten = go []
           go xs (Leaf (Group tree))  = Group (go [] tree) : xs
           go xs (Leaf (Nest l tree)) = Nest l (go [] tree) : xs
           go xs (Leaf (Spacing l))   = Spacing l : xs
+          go xs (Leaf Newline)       = Newline : xs
           go xs (Leaf (Text ""))     = xs
           go xs (Leaf (Text t))      = Text t : xs
 
@@ -152,7 +152,7 @@ spanEnd p = fmap reverse . span p . reverse
 -- - Finally, Spacings right before a Nest should be moved inside in order to
 --   get the right indentation.
 fixup :: DocList -> DocList
-fixup = moveLinesIn . mergeLines . concatMap moveLinesOut
+fixup = map convertSpacing . moveLinesIn . mergeLines . concatMap moveLinesOut
 
 moveLinesOut :: (Predoc []) -> DocList
 moveLinesOut (Group xs) =
@@ -175,14 +175,12 @@ moveLinesOut x = [x]
 
 mergeLines :: DocList -> DocList
 mergeLines []                           = []
-mergeLines (Spacing Newline : xs)       = Spacing Newline : mergeLines xs
-mergeLines (Spacing x : Spacing Newline : xs)
-    = Spacing x : Spacing Newline : mergeLines xs
 mergeLines (Spacing Break : Spacing Softspace : xs)
     = mergeLines $ Spacing Space : xs
 mergeLines (Spacing Softspace : Spacing Break : xs)
     = mergeLines $ Spacing Space : xs
 mergeLines (Spacing a : Spacing b : xs) = mergeLines $ Spacing (max a b) : xs
+mergeLines (Text a : Text b : xs)       = mergeLines $ Text (a <> b) : xs
 mergeLines (Group xs : ys)              = Group (mergeLines xs) : mergeLines ys
 mergeLines (Nest n xs : ys)             = Nest n (mergeLines xs) : mergeLines ys
 mergeLines (x : xs)                     = x : mergeLines xs
@@ -200,22 +198,82 @@ moveLinesIn (Group xs : ys) =
 
 moveLinesIn (x : xs) = x : moveLinesIn xs
 
-pretty' :: Pretty a => a -> PP.Doc ann
-pretty' = PP.pretty . fixup . flatten . pretty
+convertSpacing :: Predoc [] -> Predoc []
+convertSpacing (Group xs)          = Group (map convertSpacing xs)
+convertSpacing (Nest n xs)         = Nest n (map convertSpacing xs)
+convertSpacing (Spacing Softbreak) = Group [Spacing Break]
+convertSpacing (Spacing Softspace) = Group [Spacing Space]
+convertSpacing (Spacing Hardspace) = Text " "
+convertSpacing x                   = x
 
-instance PP.Pretty (Predoc []) where
-    pretty (Text t)            = PP.pretty t
+layout :: Pretty a => Int -> a -> Text
+layout w = layoutGreedy w . fixup . flatten . pretty
 
-    pretty (Spacing Softbreak) = PP.softline'
-    pretty (Spacing Break)     = PP.line'
-    pretty (Spacing Softspace) = PP.softline
-    pretty (Spacing Space)     = PP.line
-    pretty (Spacing Hardspace) = PP.pretty (pack " ")
-    pretty (Spacing Hardline)  = PP.hardline
-    pretty (Spacing Emptyline) = PP.hardline <> PP.hardline
-    pretty (Spacing Newline)   = PP.hardline
+-- 1. Flatten Docs to DocLists.
+-- 2. Move and merge Spacings.
+-- 3. Convert Softlines to Grouped Lines and Hardspaces to Texts.
+-- 4. For each Text or Group, try to fit as much as possible on a line
+-- 5. For each Group, if it fits on a single line, render it that way.
+-- 6. If not, convert lines to hardlines and unwrap the group
 
-    pretty (Group docs)        = PP.group (PP.pretty docs)
-    pretty (Nest level docs)   = PP.nest level (PP.pretty docs)
+-- | To support i18n, this function needs to be patched.
+textWidth :: Text -> Int
+textWidth = Text.length
 
-    prettyList = PP.hcat . map PP.pretty
+fits :: Int -> DocList -> Maybe Text
+fits c _ | c < 0 = Nothing
+fits _ [] = Just ""
+fits c (x:xs) = case x of
+    Text t            -> (t<>) <$> fits (c - textWidth t) xs
+    Spacing Softbreak -> fits c xs
+    Spacing Break     -> fits c xs
+    Spacing Softspace -> (" "<>) <$> fits (c - 1) xs
+    Spacing Space     -> (" "<>) <$> fits (c - 1) xs
+    Spacing Hardspace -> (" "<>) <$> fits (c - 1) xs
+    Spacing Hardline  -> Nothing
+    Spacing Emptyline -> Nothing
+    Newline           -> Nothing
+    Group ys          -> fits c $ ys ++ xs
+    Nest _ ys         -> fits c $ ys ++ xs
+
+firstLineWidth :: DocList -> Int
+firstLineWidth []                       = 0
+firstLineWidth (Text t : xs)            = textWidth t + firstLineWidth xs
+firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
+firstLineWidth (Spacing _ : _)          = 0
+firstLineWidth (Newline : _)            = 0
+firstLineWidth (Nest _ xs : ys)         = firstLineWidth (xs ++ ys)
+firstLineWidth (Group xs : ys)          = firstLineWidth (xs ++ ys)
+
+data Chunk = Chunk Int (Predoc [])
+
+indent :: Int -> Text
+indent n = "\n" <> Text.replicate n " "
+
+unChunk :: Chunk -> Predoc []
+unChunk (Chunk _ doc) = doc
+
+layoutGreedy :: Int -> DocList -> Text
+layoutGreedy w doc = Text.concat $ go 0 [Chunk 0 $ Group doc]
+    where go _ [] = []
+          go c (Chunk i x : xs) = case x of
+            Text t            -> t   : go (c + textWidth t) xs
+
+            Spacing Softbreak -> indent i  : go i xs
+            Spacing Break     -> indent i  : go i xs
+            Spacing Softspace -> indent i  : go i xs
+            Spacing Space     -> indent i  : go i xs
+            Spacing Hardspace -> " "       : go (c + 1) xs
+            Spacing Hardline  -> indent i  : go i xs
+            Spacing Emptyline -> "\n" : indent i : go i xs
+
+            Newline           -> case xs of
+                []                    -> ["\n"]
+                (Chunk _ Newline : _) -> "\n" : go i xs
+                _                     -> indent i : go i xs
+
+            Nest l ys         -> go c $ map (Chunk (i + l)) ys ++ xs
+            Group ys          ->
+                case fits (w - c - firstLineWidth (map unChunk xs)) ys of
+                     Nothing  -> go c $ map (Chunk i) ys ++ xs
+                     Just t   -> t : go (c + textWidth t) xs
