@@ -77,7 +77,7 @@ instance Pretty Binder where
     pretty (Assignment selectors assign expr semicolon)
         = group $ hcat selectors <> hardspace
                   <> pretty assign <> softline
-                  <> group (pretty expr) <> pretty semicolon
+                  <> pretty expr <> pretty semicolon
 
 
     pretty (BinderTrivia trivia) = pretty trivia
@@ -147,9 +147,9 @@ instance Pretty ParamAttr where
         = pretty name <> prettyComma comma
 
     pretty (ParamAttr name (Just (qmark, def)) comma)
-        = pretty name <> softline
-          <> nest 2 (pretty qmark <> hardspace <> pretty def)
-          <> prettyComma comma
+        = group (pretty name <> hardspace <> pretty qmark
+            <> absorb softline mempty 2 def)
+            <> prettyComma comma
 
     pretty (ParamEllipsis ellipsis)
         = pretty ellipsis
@@ -171,13 +171,15 @@ isAbsorbable (List (Ann _ Nothing []) [ListItem item] _) = isAbsorbable item
 isAbsorbable (List _ (_:_:_) _)                          = True
 isAbsorbable _                                           = False
 
+absorb :: Doc -> Doc -> Int -> Expression -> Doc
+absorb _ _ _ (Term t) | isAbsorbable t = hardspace <> pretty t <> hardspace
+absorb left right level x              = left <> nest level (pretty x) <> right
+
 absorbSet :: Expression -> Doc
-absorbSet (Term t) | isAbsorbable t = hardspace <> pretty t
-absorbSet x                         = line <> pretty x
+absorbSet = absorb line mempty 0
 
 absorbThen :: Expression -> Doc
-absorbThen (Term t) | isAbsorbable t = hardspace <> prettyTerm t <> hardspace
-absorbThen x                         = line <> nest 2 (pretty x) <> line
+absorbThen = absorb line line 2
 
 absorbElse :: Expression -> Doc
 absorbElse (If if_ cond then_ expr0 else_ expr1)
@@ -217,10 +219,10 @@ instance Pretty Expression where
                   <> pretty else_ <> absorbElse expr1
 
     pretty (Abstraction (IDParameter param) colon body)
-        = group $ pretty param <> pretty colon <> absorb body
-        where absorb (Abstraction (IDParameter param0) colon0 body0) =
-                  hardspace <> pretty param0 <> pretty colon0 <> absorb body0
-              absorb x = absorbSet x
+        = group $ pretty param <> pretty colon <> absorbAbs body
+        where absorbAbs (Abstraction (IDParameter param0) colon0 body0) =
+                  hardspace <> pretty param0 <> pretty colon0 <> absorbAbs body0
+              absorbAbs x = absorbSet x
 
     pretty (Abstraction param colon body)
         = pretty param <> pretty colon <> absorbSet body

@@ -151,7 +151,7 @@ spanEnd p = fmap reverse . span p . reverse
 -- - Finally, Spacings right before a Nest should be moved inside in order to
 --   get the right indentation.
 fixup :: DocList -> DocList
-fixup = map convertSpacing . moveLinesIn . mergeLines . concatMap moveLinesOut
+fixup = moveLinesIn . mergeLines . concatMap moveLinesOut
 
 moveLinesOut :: (Predoc []) -> DocList
 moveLinesOut (Group xs) =
@@ -205,14 +205,6 @@ moveLinesIn (Group xs : ys) =
 
 moveLinesIn (x : xs) = x : moveLinesIn xs
 
-convertSpacing :: Predoc [] -> Predoc []
-convertSpacing (Group xs)          = Group (map convertSpacing xs)
-convertSpacing (Nest n xs)         = Nest n (map convertSpacing xs)
-convertSpacing (Spacing Softbreak) = Group [Spacing Break]
-convertSpacing (Spacing Softspace) = Group [Spacing Space]
-convertSpacing (Spacing Hardspace) = Text " "
-convertSpacing x                   = x
-
 layout :: Pretty a => Int -> a -> Text
 layout w = layoutGreedy w . fixup . flatten . pretty
 
@@ -227,6 +219,7 @@ layout w = layoutGreedy w . fixup . flatten . pretty
 textWidth :: Text -> Int
 textWidth = Text.length
 
+-- | Attempt to fit a list of documents in a single line of a specific width.
 fits :: Int -> DocList -> Maybe Text
 fits c _ | c < 0 = Nothing
 fits _ [] = Just ""
@@ -243,6 +236,8 @@ fits c (x:xs) = case x of
     Group ys             -> fits c $ ys ++ xs
     Nest _ ys            -> fits c $ ys ++ xs
 
+-- | Find the width of the first line in a list of documents, using target
+-- width 0, which always forces line breaks when possible.
 firstLineWidth :: DocList -> Int
 firstLineWidth []                       = 0
 firstLineWidth (Text t : xs)            = textWidth t + firstLineWidth xs
@@ -250,6 +245,21 @@ firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
 firstLineWidth (Spacing _ : _)          = 0
 firstLineWidth (Nest _ xs : ys)         = firstLineWidth (xs ++ ys)
 firstLineWidth (Group xs : ys)          = firstLineWidth (xs ++ ys)
+
+-- | Check if the first line in a list of documents fits a target width t given
+-- a maximum width w.
+firstLineFits :: Int -> Int -> DocList -> Bool
+firstLineFits targetWidth w docs = go w docs
+    where go c _ | c < 0 = False
+          go c [] = w - c <= targetWidth
+          go c (Text t : xs) = go (c - textWidth t) xs
+          go c (Spacing Hardspace : xs) = go (c - 1) xs
+          go c (Spacing _ : _) = w - c <= targetWidth
+          go c (Nest _ ys : xs) = go c (ys ++ xs)
+          go c (Group ys : xs) =
+              case fits (c - firstLineWidth xs) ys of
+                   Nothing -> go c (ys ++ xs)
+                   Just t  -> go (c - textWidth t) xs
 
 data Chunk = Chunk Int (Predoc [])
 
@@ -265,14 +275,24 @@ layoutGreedy w doc = Text.concat $ go 0 [Chunk 0 $ Group doc]
           go c (Chunk i x : xs) = case x of
             Text t               -> t   : go (c + textWidth t) xs
 
-            Spacing Softbreak    -> indent 1 i : go i xs
             Spacing Break        -> indent 1 i : go i xs
-            Spacing Softspace    -> indent 1 i : go i xs
             Spacing Space        -> indent 1 i : go i xs
             Spacing Hardspace    -> " "        : go (c + 1) xs
             Spacing Hardline     -> indent 1 i : go i xs
             Spacing Emptyline    -> indent 2 i : go i xs
             Spacing (Newlines n) -> indent n i : go i xs
+
+            -- | Attempt to fit a list of documents in a single line of a specific width,
+            -- without breaking up groups.
+            Spacing Softbreak
+              | firstLineFits (w - c) (w - i) (map unChunk xs)
+                                 -> go c xs
+              | otherwise        -> indent 1 i : go i xs
+
+            Spacing Softspace
+              | firstLineFits (w - c - 1) (w - i) (map unChunk xs)
+                                 -> " " : go (c + 1) xs
+              | otherwise        -> indent 1 i : go i xs
 
             Nest l ys            -> go c $ map (Chunk (i + l)) ys ++ xs
             Group ys             ->
