@@ -40,9 +40,9 @@ data Tree a
 data Spacing
     = Softbreak
     | Break
+    | Hardspace
     | Softspace
     | Space
-    | Hardspace
     | Hardline
     | Emptyline
     | Newlines Int
@@ -174,12 +174,14 @@ moveLinesOut x = [x]
 
 mergeSpacings :: Spacing -> Spacing -> Spacing
 mergeSpacings x y | x > y               = mergeSpacings y x
-mergeSpacings Break Softspace           = Space
+mergeSpacings Break        Softspace    = Space
+mergeSpacings Break        Hardspace    = Space
+mergeSpacings Softbreak    Hardspace    = Softspace
 mergeSpacings (Newlines x) (Newlines y) = Newlines (x + y)
-mergeSpacings Emptyline (Newlines x)    = Newlines (x + 2)
-mergeSpacings Hardspace (Newlines x)    = Newlines x
-mergeSpacings _ (Newlines x)            = Newlines (x + 1)
-mergeSpacings _ y                       = y
+mergeSpacings Emptyline    (Newlines x) = Newlines (x + 2)
+mergeSpacings Hardspace    (Newlines x) = Newlines x
+mergeSpacings _            (Newlines x) = Newlines (x + 1)
+mergeSpacings _            y            = y
 
 mergeLines :: DocList -> DocList
 mergeLines []                           = []

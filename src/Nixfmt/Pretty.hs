@@ -18,7 +18,7 @@ prettyCommentLine l
     | otherwise   = text l <> hardline
 
 toLineComment :: Text -> Trivium
-toLineComment c = LineComment $ fromMaybe c $ stripPrefix "*" c
+toLineComment c = LineComment $ fromMaybe (" " <> c) $ stripPrefix "*" c
 
 instance Pretty TrailingComment where
     pretty (TrailingComment c)
@@ -86,33 +86,45 @@ instance Pretty ListPart where
     pretty (ListItem term)     = pretty term
     pretty (ListTrivia trivia) = pretty trivia
 
+-- | Pretty print a term without wrapping it in a group.
+prettyTerm :: Term -> Doc
+prettyTerm (List (Ann paropen Nothing []) [] parclose)
+    = pretty paropen <> pretty parclose
+
+prettyTerm (List (Ann paropen Nothing []) [item] parclose)
+    = pretty paropen <> pretty item <> pretty parclose
+
+prettyTerm (List (Ann paropen trailing leading) items parclose)
+    = pretty paropen <> pretty trailing <> line
+        <> nest 2 (sepBy line items') <> line
+        <> pretty parclose
+    where items' = case leading of
+                        [] -> items
+                        _  -> ListTrivia leading : items
+
+prettyTerm (Set Nothing (Ann paropen Nothing []) [] parclose)
+    = pretty paropen <> hardspace <> pretty parclose
+
+prettyTerm (Set Nothing (Ann paropen Nothing []) [item] parclose)
+    = pretty paropen <> line <> nest 2 (pretty item) <> line <> pretty parclose
+
+prettyTerm (Set krec (Ann paropen trailing leading) binders parclose)
+    = pretty (fmap ((<>hardspace) . pretty) krec)
+        <> pretty paropen <> pretty trailing <> line
+        <> nest 2 (sepBy hardline binders') <> line
+        <> pretty parclose
+    where binders' = case leading of
+                          [] -> binders
+                          _  -> BinderTrivia leading : binders
+
+prettyTerm x = pretty x
+
 instance Pretty Term where
     pretty (Token x)  = pretty x
     pretty (String x) = pretty x
 
-    pretty (List (Ann paropen Nothing []) [] parclose)
-        = pretty paropen <> hardspace <> pretty parclose
-
-    pretty (List (Ann paropen trailing leading) items parclose)
-        = group $ pretty paropen <> pretty trailing <> line
-                  <> nest 2 (sepBy line items') <> line
-                  <> pretty parclose
-        where items' = case leading of
-                            [] -> items
-                            _  -> ListTrivia leading : items
-
-    pretty (Set krec (Ann paropen Nothing []) [] parclose)
-        = pretty (fmap ((<>hardspace) . pretty) krec)
-          <> pretty paropen <> hardspace <> pretty parclose
-
-    pretty (Set krec (Ann paropen trailing leading) binders parclose)
-        = group $ pretty (fmap ((<>hardspace) . pretty) krec)
-                  <> pretty paropen <> pretty trailing <> line
-                  <> nest 2 (sepBy hardline binders') <> line
-                  <> pretty parclose
-        where binders' = case leading of
-                              [] -> binders
-                              _  -> BinderTrivia leading : binders
+    pretty l@(List _ _ _)    = group $ prettyTerm l
+    pretty set@(Set _ _ _ _) = group $ prettyTerm set
 
     pretty (Selection term selectors)
         = pretty term <> hcat selectors
@@ -122,7 +134,7 @@ instance Pretty Term where
 
 toLeading :: Maybe TrailingComment -> Trivia
 toLeading Nothing = []
-toLeading (Just (TrailingComment c)) = [LineComment c]
+toLeading (Just (TrailingComment c)) = [LineComment (" " <> c)]
 
 prettyComma :: Maybe Leaf -> Doc
 prettyComma Nothing = mempty
@@ -152,38 +164,29 @@ instance Pretty Parameter where
     pretty (ContextParameter param1 at param2)
         = pretty param1 <> pretty at <> pretty param2
 
-isMultilineString :: Expression -> Bool
-isMultilineString (Term (String (Ann (_:_:_) _ _))) = True
-isMultilineString _                                 = False
+isAbsorbable :: Term -> Bool
+isAbsorbable (String (Ann (_:_:_) _ _))                  = True
+isAbsorbable (Set _ _ (_:_) _)                           = True
+isAbsorbable (List (Ann _ Nothing []) [ListItem item] _) = isAbsorbable item
+isAbsorbable (List _ (_:_:_) _)                          = True
+isAbsorbable _                                           = False
 
 absorbSet :: Expression -> Doc
-absorbSet set@(Term (Set _ _ _ _)) = hardspace <> pretty set
-absorbSet l@(Term (List _ _ _)) = hardspace <> pretty l
-absorbSet s@(Term (String _)) = hardspace <> pretty s
-
-absorbSet x
-    | isMultilineString x           = hardspace <> pretty x
-    | otherwise                     = line <> pretty x
+absorbSet (Term t) | isAbsorbable t = hardspace <> pretty t
+absorbSet x                         = line <> pretty x
 
 absorbThen :: Expression -> Doc
-absorbThen set@(Term (Set _ _ _ _)) = hardspace <> pretty set <> hardspace
-absorbThen l@(Term (List _ _ _))    = hardspace <> pretty l <> hardspace
-absorbThen x
-    | isMultilineString x           = hardspace <> pretty x <> hardspace
-    | otherwise                     = line <> nest 2 (pretty x) <> line
+absorbThen (Term t) | isAbsorbable t = hardspace <> prettyTerm t <> hardspace
+absorbThen x                         = line <> nest 2 (pretty x) <> line
 
 absorbElse :: Expression -> Doc
-absorbElse set@(Term (Set _ _ _ _)) = hardspace <> pretty set
-absorbElse l@(Term (List _ _ _))    = hardspace <> pretty l
-
 absorbElse (If if_ cond then_ expr0 else_ expr1)
     = hardspace <> pretty if_ <> hardspace <> pretty cond <> hardspace
       <> pretty then_ <> absorbThen expr0
       <> pretty else_ <> absorbElse expr1
 
-absorbElse x
-    | isMultilineString x           = hardspace <> pretty x
-    | otherwise                     = line <> nest 2 (pretty x)
+absorbElse (Term t) | isAbsorbable t = hardspace <> prettyTerm t
+absorbElse x                         = line <> nest 2 (pretty x)
 
 instance Pretty Expression where
     pretty (Term t) = pretty t
@@ -195,10 +198,10 @@ instance Pretty Expression where
 
     pretty (Let (Ann let_ letTrailing letLeading) binders
                 (Ann in_ inTrailing inLeading) expr)
-        = group (pretty let_ <> pretty letTrailing <> line
-                 <> nest 2 (sepBy hardline binders')) <> hardline
+        = group $ group (pretty let_ <> pretty letTrailing <> line
+                         <> nest 2 (sepBy hardline binders')) <> line
           <> pretty inTrailing <> pretty inLeading
-          <> pretty in_ <> hardspace <> pretty expr
+          <> pretty in_ <> hardspace <> group (pretty expr)
         where binders' = case letLeading of
                               [] -> binders
                               _  -> BinderTrivia letLeading : binders
@@ -312,10 +315,16 @@ prettyString parts
     | all isEmptyLine parts = prettySimpleString parts
     | otherwise             = prettyIndentedString parts
 
+prettyLine :: [StringPart] -> Doc
+prettyLine [Interpolation paropen expr parclose] = group $
+    pretty paropen <> nest 2 (pretty expr) <> pretty parclose
+
+prettyLine parts = hcat parts
+
 prettySimpleString :: [[StringPart]] -> Doc
 prettySimpleString parts = group $
     text "\""
-    <> (sepBy (text "\\n") (map (hcat . map escape) parts))
+    <> (sepBy (text "\\n") (map (prettyLine . map escape) parts))
     <> text "\""
     where escape (TextPart t) = TextPart
               $ Text.replace "$\\${" "$${"
@@ -327,7 +336,7 @@ prettySimpleString parts = group $
 prettyIndentedString :: [[StringPart]] -> Doc
 prettyIndentedString parts = group $
     text "''" <> line'
-    <> nest 2 (sepBy newline (map (hcat . map escape) parts))
+    <> nest 2 (sepBy newline (map (prettyLine . map escape) parts))
     <> text "''"
     where escape (TextPart t) = TextPart
               $ Text.replace "$''${" "$${"
