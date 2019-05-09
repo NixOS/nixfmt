@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 
 module Nixfmt.Parser where
 
@@ -9,7 +9,7 @@ import qualified Control.Monad.Combinators.Expr as MPExpr
 import Data.Char
 import Data.Foldable (toList)
 import Data.Maybe
-import Data.Text as Text hiding (concat, concatMap, init, last, map)
+import Data.Text as Text hiding (concat, concatMap, filter, init, last, map)
 import Text.Megaparsec hiding (Token)
 import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -105,7 +105,7 @@ indentedStringPart = TextPart <$> someText (
 
 isEmptyLine :: [StringPart] -> Bool
 isEmptyLine []           = True
-isEmptyLine [TextPart t] = Text.strip t == Text.empty
+isEmptyLine [TextPart t] = Text.null (Text.strip t)
 isEmptyLine _            = False
 
 -- | Strip the first line of a string if it is empty.
@@ -117,9 +117,10 @@ stripFirstLine (x : xs)
 
 partsInit :: [StringPart] -> [Text]
 partsInit line@(TextPart t : _)
-    | isEmptyLine line = []
-    | otherwise        = [t]
-partsInit _            = []
+    | isEmptyLine line              = []
+    | otherwise                     = [t]
+partsInit (Interpolation _ _ _ : _) = [""]
+partsInit []                        = []
 
 stripParts :: Text -> [StringPart] -> [StringPart]
 stripParts indentation (TextPart t : xs) =
@@ -146,11 +147,16 @@ stripIndentation parts = case commonIndentation (concatMap partsInit parts) of
     Nothing -> map (const []) parts
     Just indentation -> map (stripParts indentation) parts
 
+dropEmptyParts :: [[StringPart]] -> [[StringPart]]
+dropEmptyParts = map $ filter (\case
+    TextPart t | Text.null t -> False
+    _                        -> True)
+
 fixSimpleString :: [StringPart] -> [[StringPart]]
 fixSimpleString parts = case splitLines parts of
     [] -> []
     [line] -> [line]
-    parts' -> stripIndentation parts'
+    parts' -> dropEmptyParts (stripIndentation parts')
 
 simpleString :: Parser [[StringPart]]
 simpleString = rawSymbol TDoubleQuote *>
@@ -158,7 +164,7 @@ simpleString = rawSymbol TDoubleQuote *>
     rawSymbol TDoubleQuote
 
 fixIndentedString :: [StringPart] -> [[StringPart]]
-fixIndentedString = stripIndentation . stripFirstLine . splitLines
+fixIndentedString = dropEmptyParts . stripIndentation . stripFirstLine . splitLines
 
 indentedString :: Parser [[StringPart]]
 indentedString = rawSymbol TDoubleSingleQuote *>

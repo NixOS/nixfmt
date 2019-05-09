@@ -187,6 +187,7 @@ mergeLines :: DocList -> DocList
 mergeLines []                           = []
 mergeLines (Spacing a : Spacing b : xs) = mergeLines $ Spacing (mergeSpacings a b) : xs
 mergeLines (Text a : Text b : xs)       = mergeLines $ Text (a <> b) : xs
+mergeLines (Text "" : xs)               = mergeLines xs
 mergeLines (Group xs : ys)              = Group (mergeLines xs) : mergeLines ys
 mergeLines (Nest n xs : ys)             = Nest n (mergeLines xs) : mergeLines ys
 mergeLines (x : xs)                     = x : mergeLines xs
@@ -264,12 +265,12 @@ layoutGreedy w doc = Text.concat $ go 0 [Chunk 0 $ Group doc]
           go c (Chunk i x : xs) = case x of
             Text t               -> t   : go (c + textWidth t) xs
 
-            Spacing Softbreak    -> indent 1 i  : go i xs
-            Spacing Break        -> indent 1 i  : go i xs
-            Spacing Softspace    -> indent 1 i  : go i xs
-            Spacing Space        -> indent 1 i  : go i xs
-            Spacing Hardspace    -> " "       : go (c + 1) xs
-            Spacing Hardline     -> indent 1 i  : go i xs
+            Spacing Softbreak    -> indent 1 i : go i xs
+            Spacing Break        -> indent 1 i : go i xs
+            Spacing Softspace    -> indent 1 i : go i xs
+            Spacing Space        -> indent 1 i : go i xs
+            Spacing Hardspace    -> " "        : go (c + 1) xs
+            Spacing Hardline     -> indent 1 i : go i xs
             Spacing Emptyline    -> indent 2 i : go i xs
             Spacing (Newlines n) -> indent n i : go i xs
 

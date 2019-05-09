@@ -24,7 +24,7 @@ data Nixfmt = Nixfmt
 
 options :: Nixfmt
 options = Nixfmt
-    { files = [] &= args &= typ "FILES/DIRS"
+    { files = [] &= args &= typ "FILES"
     , width = 80 &= help "Maximum width of the formatted file"
     } &= help "Format Nix source code"
 

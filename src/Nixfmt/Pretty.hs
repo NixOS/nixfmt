@@ -296,10 +296,14 @@ isEmptyLine _            = False
 
 instance Pretty StringPart where
     pretty (TextPart t) = pretty t
-    pretty (Interpolation paropen expr parclose) = group $
-        pretty paropen <> line'
-        <> nest 2 (pretty expr) <> line'
-        <> pretty parclose
+    pretty (Interpolation paropen (Term t) parclose)
+        | isAbsorbable t
+            = group $ pretty paropen <> prettyTerm t <> pretty parclose
+
+    pretty (Interpolation paropen expr parclose)
+        = group $ pretty paropen <> line'
+            <> nest 2 (pretty expr) <> line'
+            <> pretty parclose
 
 instance Pretty [[StringPart]] where
     pretty s = prettyString s
@@ -316,8 +320,11 @@ prettyString parts
     | otherwise             = prettyIndentedString parts
 
 prettyLine :: [StringPart] -> Doc
-prettyLine [Interpolation paropen expr parclose] = group $
-    pretty paropen <> nest 2 (pretty expr) <> pretty parclose
+prettyLine [Interpolation paropen expr parclose]
+    = group $ pretty paropen <> pretty expr <> pretty parclose
+
+prettyLine (TextPart t : parts)
+    | Text.null (Text.strip t) = text t <> prettyLine parts
 
 prettyLine parts = hcat parts
 
