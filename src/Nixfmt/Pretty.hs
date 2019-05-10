@@ -65,20 +65,18 @@ instance Pretty Binder where
                  <> nest 2 (sepBy softline ids)) <> pretty semicolon
 
     pretty (Assignment selectors assign
-            (Term (String s@(Ann [[TextPart t]] trailing leading))) semicolon)
-        | validURI t            = group $
-            hcat selectors <> hardspace <> pretty assign
-            <> line <> nest 2 (pretty t) <> pretty semicolon
-            <> pretty trailing <> pretty leading
-        | otherwise             = group $
-            hcat selectors <> hardspace <> pretty assign
-            <> line <> nest 2 (pretty s) <> pretty semicolon
+            (Term (String s@(Ann [[TextPart t]] Nothing []))) semicolon)
+        | validURI t = group (hcat selectors <> hardspace
+            <> pretty assign <> line
+            <> nest 2 (pretty t)) <> pretty semicolon
+        | otherwise = group (hcat selectors <> hardspace
+            <> pretty assign <> line
+            <> nest 2 (pretty s)) <> pretty semicolon
 
     pretty (Assignment selectors assign expr semicolon)
-        = group $ hcat selectors <> hardspace
-                  <> pretty assign <> softline
-                  <> pretty expr <> pretty semicolon
-
+        = group (hcat selectors <> hardspace
+            <> pretty assign <> softline
+            <> pretty expr) <> pretty semicolon
 
     pretty (BinderTrivia trivia) = pretty trivia
 
@@ -117,20 +115,22 @@ prettyTerm (Set krec (Ann paropen trailing leading) binders parclose)
                           [] -> binders
                           _  -> BinderTrivia leading : binders
 
-prettyTerm x = pretty x
+prettyTerm (String x) = pretty x
+
+prettyTerm _ = undefined
 
 instance Pretty Term where
     pretty (Token x)  = pretty x
     pretty (String x) = pretty x
 
     pretty l@(List _ _ _)    = group $ prettyTerm l
-    pretty set@(Set _ _ _ _) = group $ prettyTerm set
+    pretty set@(Set _ _ _ _) = prettyTerm set
 
     pretty (Selection term selectors)
         = pretty term <> hcat selectors
 
     pretty (Parenthesized paropen expr parclose)
-        = pretty paropen <> group (pretty expr) <> pretty parclose
+        = pretty paropen <> group expr <> pretty parclose
 
 toLeading :: Maybe TrailingComment -> Trivia
 toLeading Nothing = []
@@ -172,23 +172,30 @@ isAbsorbable (List _ (_:_:_) _)                          = True
 isAbsorbable _                                           = False
 
 absorb :: Doc -> Doc -> Int -> Expression -> Doc
-absorb _ _ _ (Term t) | isAbsorbable t = hardspace <> pretty t <> hardspace
-absorb left right level x              = left <> nest level (pretty x) <> right
+absorb left right _ (Term t)
+    | isAbsorbable t = toHardspace left <> prettyTerm t <> toHardspace right
+    where toHardspace x | x == mempty    = mempty
+                        | x == softline' = mempty
+                        | x == line'     = mempty
+                        | otherwise      = hardspace
+
+absorb left right level x = left <> nest level (pretty x) <> right
 
 absorbSet :: Expression -> Doc
 absorbSet = absorb line mempty 0
 
 absorbThen :: Expression -> Doc
-absorbThen = absorb line line 2
+absorbThen (Term t) | isAbsorbable t = hardspace <> prettyTerm t <> hardspace
+absorbThen x                         = line <> nest 2 (group x) <> line
 
 absorbElse :: Expression -> Doc
 absorbElse (If if_ cond then_ expr0 else_ expr1)
-    = hardspace <> pretty if_ <> hardspace <> pretty cond <> hardspace
+    = hardspace <> pretty if_ <> hardspace <> group cond <> hardspace
       <> pretty then_ <> absorbThen expr0
       <> pretty else_ <> absorbElse expr1
 
 absorbElse (Term t) | isAbsorbable t = hardspace <> prettyTerm t
-absorbElse x                         = line <> nest 2 (pretty x)
+absorbElse x                         = line <> nest 2 (group x)
 
 instance Pretty Expression where
     pretty (Term t) = pretty t
@@ -203,7 +210,7 @@ instance Pretty Expression where
         = group $ group (pretty let_ <> pretty letTrailing <> line
                          <> nest 2 (sepBy hardline binders')) <> line
           <> pretty inTrailing <> pretty inLeading
-          <> pretty in_ <> hardspace <> group (pretty expr)
+          <> pretty in_ <> hardspace <> group expr
         where binders' = case letLeading of
                               [] -> binders
                               _  -> BinderTrivia letLeading : binders
@@ -214,12 +221,12 @@ instance Pretty Expression where
           <> pretty expr
 
     pretty (If if_ cond then_ expr0 else_ expr1)
-        = group $ pretty if_ <> hardspace <> pretty cond <> hardspace
+        = group $ pretty if_ <> hardspace <> group cond <> hardspace
                   <> pretty then_ <> absorbThen expr0
                   <> pretty else_ <> absorbElse expr1
 
     pretty (Abstraction (IDParameter param) colon body)
-        = group $ pretty param <> pretty colon <> absorbAbs body
+        = pretty param <> pretty colon <> absorbAbs body
         where absorbAbs (Abstraction (IDParameter param0) colon0 body0) =
                   hardspace <> pretty param0 <> pretty colon0 <> absorbAbs body0
               absorbAbs x = absorbSet x
@@ -227,14 +234,9 @@ instance Pretty Expression where
     pretty (Abstraction param colon body)
         = pretty param <> pretty colon <> absorbSet body
 
-    pretty (Application f x@(Term (List _ _ _)))
-        = pretty f <> hardspace <> pretty x
-
-    pretty (Application f x@(Term (Set _ _ _ _)))
-        = pretty f <> hardspace <> pretty x
-
-    pretty (Application f x)
-        = pretty f <> softline <> pretty x
+    pretty (Application f (Term t))
+        | isAbsorbable t     = pretty f <> hardspace <> group (prettyTerm t)
+    pretty (Application f x) = pretty f <> softline <> pretty x
 
     pretty (Operation a op b)
         = pretty a <> softline
@@ -297,7 +299,7 @@ isEmptyLine [TextPart t] = Text.strip t == Text.empty
 isEmptyLine _            = False
 
 instance Pretty StringPart where
-    pretty (TextPart t) = pretty t
+    pretty (TextPart t) = text t
     pretty (Interpolation paropen (Term t) parclose)
         | isAbsorbable t
             = group $ pretty paropen <> prettyTerm t <> pretty parclose

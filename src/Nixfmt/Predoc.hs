@@ -32,7 +32,7 @@ data Tree a
     = EmptyTree
     | Leaf a
     | Node (Tree a) (Tree a)
-    deriving (Show, Functor, Foldable)
+    deriving (Show, Eq, Functor, Foldable)
 
 -- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
 -- This means that e.g. a Space followed by an Emptyline results in just an
@@ -58,6 +58,8 @@ data Predoc f
     -- n more spaces than the surroundings.
     | Nest Int (f (Predoc f))
 
+deriving instance Eq (Predoc Tree)
+deriving instance Eq (Predoc [])
 deriving instance Show (Predoc Tree)
 deriving instance Show (Predoc [])
 
@@ -89,8 +91,8 @@ instance Monoid (Tree a) where
 text :: Text -> Doc
 text = Leaf . Text
 
-group :: Doc -> Doc
-group = Leaf . Group
+group :: Pretty a => a -> Doc
+group = Leaf . Group . pretty
 
 nest :: Int -> Doc -> Doc
 nest level = Leaf . Nest level
@@ -246,17 +248,17 @@ firstLineWidth (Spacing _ : _)          = 0
 firstLineWidth (Nest _ xs : ys)         = firstLineWidth (xs ++ ys)
 firstLineWidth (Group xs : ys)          = firstLineWidth (xs ++ ys)
 
--- | Check if the first line in a list of documents fits a target width t given
--- a maximum width w.
+-- | Check if the first line in a list of documents fits a target width given
+-- a maximum width, without breaking up groups.
 firstLineFits :: Int -> Int -> DocList -> Bool
-firstLineFits targetWidth w docs = go w docs
-    where go c _ | c < 0 = False
-          go c [] = w - c <= targetWidth
-          go c (Text t : xs) = go (c - textWidth t) xs
+firstLineFits targetWidth maxWidth docs = go maxWidth docs
+    where go c _ | c < 0                = False
+          go c []                       = maxWidth - c <= targetWidth
+          go c (Text t : xs)            = go (c - textWidth t) xs
           go c (Spacing Hardspace : xs) = go (c - 1) xs
-          go c (Spacing _ : _) = w - c <= targetWidth
-          go c (Nest _ ys : xs) = go c (ys ++ xs)
-          go c (Group ys : xs) =
+          go c (Spacing _ : _)          = maxWidth - c <= targetWidth
+          go c (Nest _ ys : xs)         = go c (ys ++ xs)
+          go c (Group ys : xs)          =
               case fits (c - firstLineWidth xs) ys of
                    Nothing -> go c (ys ++ xs)
                    Just t  -> go (c - textWidth t) xs
@@ -282,8 +284,6 @@ layoutGreedy w doc = Text.concat $ go 0 [Chunk 0 $ Group doc]
             Spacing Emptyline    -> indent 2 i : go i xs
             Spacing (Newlines n) -> indent n i : go i xs
 
-            -- | Attempt to fit a list of documents in a single line of a specific width,
-            -- without breaking up groups.
             Spacing Softbreak
               | firstLineFits (w - c) (w - i) (map unChunk xs)
                                  -> go c xs
