@@ -1,7 +1,4 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> { } }:
 
-(pkgs.haskellPackages.callPackage ./package.nix {}).env.overrideAttrs (
-  oldAttrs: {
-    buildInputs = oldAttrs.buildInputs ++ [ pkgs.cabal-install ];
-  }
-)
+(import ./. { inherit pkgs; }).env.overrideAttrs
+  (oldAttrs: { buildInputs = oldAttrs.buildInputs ++ [pkgs.cabal-install]; })

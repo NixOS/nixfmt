@@ -1,3 +1,3 @@
 { pkgs ? import <nixpkgs> { } }:
 
-pkgs.haskellPackages.callPackage ./package.nix { }
+pkgs.haskellPackages.callCabal2nix "nixfmt" ./. { }
