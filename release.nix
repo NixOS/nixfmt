@@ -22,6 +22,7 @@ in rec {
     git worktree add gh-pages gh-pages
     cp ${web-demo}/* gh-pages
     cd gh-pages
+    git add .
     git commit -am "Update to $REV"
     cd ..
     git worktree remove --force gh-pages
