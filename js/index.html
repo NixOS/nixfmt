@@ -55,6 +55,11 @@ SPDX-License-Identifier: MPL-2.0
   button {
       word-wrap: break-word;
   }
+  #probe {
+      visibility: hidden; position: absolute;
+      width: auto; height: auto; margin: 0; padding: 0;
+      overflow: hidden;
+  }
   </style>
   </head>
   <body>
@@ -141,17 +146,35 @@ in
 [ sample-01 sample-02 sample-03 ]
   </textarea>
   <button id="fmt">Format!</button>
-  <pre><code class="hljs lang-nix" id="out"># nixfmt loading</code></pre>
+  <pre id="out-wrap"><code class="hljs lang-nix" id="out"># nixfmt loading</code></pre>
+  <pre id="probe">xxx</pre>
   <script>
     hljs.configure({ languages: ["nix"] })
     function format() {
-        const outText = nixfmt(document.getElementById('in').value).text
+        const outWrap = document.getElementById("out-wrap")
+        let width = 80;
+        if (outWrap.style.width) {
+            const fontwidth = (document.getElementById("probe").clientWidth + 1) / 3
+            width = parseFloat(outWrap.style.width) / fontwidth
+        }
+        const outText = nixfmt(document.getElementById('in').value, width).text
         const out = document.getElementById('out')
         out.textContent = outText
         hljs.highlightBlock(out)
     }
     document.getElementById('fmt').addEventListener('click', format)
     document.addEventListener('DOMContentLoaded', format)
+    let resizeTimer = false
+    const resizeObserver = new MutationObserver(entries => {
+        if (resizeTimer) {
+            clearTimeout(resizeTimer)
+            resizeTimer = false
+        }
+        resizeTimer = setTimeout(format, 500)
+    });
+    resizeObserver.observe(document.getElementById('out-wrap'), {
+        attributes: true, attributeFilter: ["style"]
+    });
     </script>
 <a href="https://github.com/serokell/nix-format" class="gh-ribbon"><img width="149" height="149" src="https://github.blog/wp-content/uploads/2008/12/forkme_right_darkblue_121621.png?resize=149%2C149" class="attachment-full size-full" alt="Fork me on GitHub" data-recalc-dims="1"></a>
   </body>
