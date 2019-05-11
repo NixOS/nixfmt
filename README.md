@@ -1,3 +1,7 @@
+<!-- Copyright Serokell OU <hi@serokell.io> -->
+<!-- Copyright Lars Jellema <lars.jellema@gmail.com> -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+
 # `nixfmt`
 
 `nixfmt` is a formatter for Nix code, intended to easily apply a uniform style.
