@@ -2,10 +2,22 @@ cabal-version:       >=1.10
 
 name:                nixfmt
 version:             0.1.0
+synopsis:            An opinionated formatter for Nix
+-- description:
+homepage:            https://github.com/serokell/nixfmt
+-- bug-reports:
+license:             MPL-2.0
+license-file:        LICENSE
+author:              Lars Jellema
+maintainer:          lars.jellema@gmail.com
+-- copyright:
+category:            Development
 build-type:          Simple
+extra-source-files:  README.md, CHANGELOG.md
 
 executable nixfmt
   main-is:             Main.hs
+  other-extensions:    DeriveDataTypeable
   hs-source-dirs:      main
   build-depends:
       base >=4.12 && <4.13
@@ -33,6 +45,7 @@ library
     Nixfmt.Pretty
     Nixfmt.Types
     Nixfmt.Util
+  other-extensions:    OverloadedStrings, LambdaCase, FlexibleInstances, DeriveFoldable, DeriveFunctor, StandaloneDeriving
   hs-source-dirs:      src
   build-depends:
       base >=4.12 && <4.13
