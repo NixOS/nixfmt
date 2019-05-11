@@ -64,3 +64,24 @@ library
     -Wincomplete-uni-patterns
     -Wredundant-constraints
     -Wno-orphans
+
+executable js-interface
+  main-is:           JSInterface.hs
+
+  if impl(ghcjs)
+    buildable: True
+    ghc-options:
+      -Wall
+      -Wcompat
+      -Wincomplete-record-updates
+      -Wincomplete-uni-patterns
+      -Wredundant-constraints
+      -Wno-orphans
+    default-language:  Haskell2010
+    build-depends:     base >=4.12 && <4.13,
+                       ghcjs-base,
+                       nixfmt
+    js-sources:        js/js-interface-wrapper.js
+    hs-source-dirs:    js/
+  else
+    buildable: False
