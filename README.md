@@ -7,7 +7,11 @@
 `nixfmt` is a formatter for Nix code, intended to easily apply a uniform style.
 This is a work in progress.
 
-## Build Instructions
+## Build & Installation
+
+This project can be built with nix. `nix-build https://github.com/serokell/nixfmt/archive/master.tar.gz`, `nix-env -iAf https://github.com/serokell/nixfmt/archive/master.tar.gz`.
+
+## Development
 
 First, enter `nix-shell`, then run `cabal v1-build` to build, `cabal v1-run` to
 run and `cabal v1-repl` for a REPL.
@@ -16,7 +20,8 @@ run and `cabal v1-repl` for a REPL.
 
 Run `nix-build` in the root of the project. The binary can then be called with
 `result/bin/nixfmt`. It reads nix code from stdin and writes a formatted version
-to stdout. Currently, many parts of the syntax are still unsupported.
+to stdout. Invoking the binary with an argument file will cause the file to be
+formatted in place.
 
 ## For Contributors
 
