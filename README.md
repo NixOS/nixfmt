@@ -7,25 +7,38 @@
 `nixfmt` is a formatter for Nix code, intended to easily apply a uniform style.
 This is a work in progress.
 
-## Build & Installation
 
-This project can be built with nix. `nix-build https://github.com/serokell/nixfmt/archive/master.tar.gz`, `nix-env -iAf https://github.com/serokell/nixfmt/archive/master.tar.gz`.
+## Installation
+
+* `nix-env -f https://github.com/serokell/nixfmt/archive/master.tar.gz -i`
+
 
 ## Development
 
-First, enter `nix-shell`, then run `cabal v1-build` to build, `cabal v1-run` to
-run and `cabal v1-repl` for a REPL.
+### With Nix
+
+Haskell dependencies will be built by Nix.
+
+* Enter `nix-shell`
+* Build with `cabal new-build`
+
+### Without Nix
+
+Haskell dependencies will be bulit by Cabal.
+
+* Build with `cabal new-build`
+
 
 ## Usage
 
-Run `nix-build` in the root of the project. The binary can then be called with
-`result/bin/nixfmt`. It reads nix code from stdin and writes a formatted version
-to stdout. Invoking the binary with an argument file will cause the file to be
-formatted in place.
+* `nixfmt < input.nix` – reads Nix code form `stdin`, formats it, and outputs to `stdout`.
+* `nixfmt file.nix` – format the file in place
+
 
 ## For Contributors
 
-We welcome issues and pull requests on Github.
+We welcome issues and pull requests on GitHub.
+
 
 ## About Serokell
 
