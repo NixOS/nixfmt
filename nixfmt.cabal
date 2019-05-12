@@ -67,7 +67,7 @@ library
     -Wno-orphans
 
 executable js-interface
-  main-is:           JSInterface.hs
+  main-is: JSInterface.hs
 
   if impl(ghcjs)
     buildable: True
@@ -78,7 +78,6 @@ executable js-interface
       -Wincomplete-uni-patterns
       -Wredundant-constraints
       -Wno-orphans
-    default-language:  Haskell2010
     build-depends:     base,
                        ghcjs-base,
                        nixfmt
@@ -86,3 +85,5 @@ executable js-interface
     hs-source-dirs:    js/
   else
     buildable: False
+
+  default-language: Haskell2010
