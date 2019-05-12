@@ -5,5 +5,5 @@
 
 { pkgs ? import <nixpkgs> { } }:
 
-(import ./. { inherit pkgs; }).env.overrideAttrs
+(import ./. { inherit pkgs; installOnly = false; }).env.overrideAttrs
   (oldAttrs: { buildInputs = oldAttrs.buildInputs ++ [pkgs.cabal-install]; })

@@ -3,6 +3,14 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 
-{ pkgs ? import <nixpkgs> { } }:
+{ pkgs ? import <nixpkgs> { }
+, installOnly ? true
+}:
 
-pkgs.haskellPackages.callCabal2nix "nixfmt" ./. { }
+let
+  nixfmt = pkgs.haskellPackages.callCabal2nix "nixfmt" ./. {};
+
+in
+  if installOnly
+  then pkgs.haskell.lib.justStaticExecutables nixfmt
+  else nixfmt
