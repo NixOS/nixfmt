@@ -1,7 +1,7 @@
-/*
-Copyright Serokell OU <hi@serokell.io>
-SPDX-License-Identifier: MPL-2.0
-*/
+/* © 2019 Serokell <hi@serokell.io>
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
 
 function nixfmt(text, width=80, filename="<stdin>") {
     const param = {width, filename}

@@ -1,5 +1,7 @@
--- Copyright Serokell OU <hi@serokell.io>
--- SPDX-License-Identifier: MPL-2.0
+{- © 2019 Serokell <hi@serokell.io>
+ -
+ - SPDX-License-Identifier: MPL-2.0
+ -}
 
 {-# LANGUAGE OverloadedStrings #-}
 import GHCJS.Marshal

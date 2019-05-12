@@ -1,8 +1,9 @@
--- Copyright Serokell OU <hi@serokell.io>
--- Copyright Lars Jellema <lars.jellema@gmail.com>
--- SPDX-License-Identifier: MPL-2.0
-
 cabal-version:       >=1.10
+
+-- © 2019 Serokell <hi@serokell.io>
+-- © 2019 Lars Jellema <lars.jellema@gmail.com>
+--
+-- SPDX-License-Identifier: MPL-2.0
 
 name:                nixfmt
 version:             0.1.0
@@ -14,7 +15,7 @@ license:             MPL-2.0
 license-file:        LICENSE
 author:              Lars Jellema
 maintainer:          lars.jellema@gmail.com
--- copyright:
+copyright:           2019 Serokell, 2019 Lars Jellema
 category:            Development
 build-type:          Simple
 extra-source-files:  README.md, CHANGELOG.md

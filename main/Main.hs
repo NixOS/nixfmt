@@ -1,6 +1,8 @@
--- Copyright Serokell OU <hi@serokell.io>
--- Copyright Lars Jellema <lars.jellema@gmail.com>
--- SPDX-License-Identifier: MPL-2.0
+{- © 2019 Serokell <hi@serokell.io>
+ - © 2019Lars Jellema <lars.jellema@gmail.com>
+ -
+ - SPDX-License-Identifier: MPL-2.0
+ -}
 
 {-# LANGUAGE DeriveDataTypeable #-}
 
