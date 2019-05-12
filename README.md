@@ -5,10 +5,14 @@
    -->
 
 
+_Warning: This is a work in progress, and we do not recommend using this
+tool on important and/or code that was not properly backed-up as the
+in place mode can result in data loss._
+
+
 # `nixfmt`
 
 `nixfmt` is a formatter for Nix code, intended to easily apply a uniform style.
-This is a work in progress.
 
 
 ## Installation
@@ -34,7 +38,7 @@ Haskell dependencies will be bulit by Cabal.
 
 ## Usage
 
-* `nixfmt < input.nix` – reads Nix code form `stdin`, formats it, and outputs to `stdout`.
+* `nixfmt < input.nix` – reads Nix code form `stdin`, formats it, and outputs to `stdout`
 * `nixfmt file.nix` – format the file in place
 
 
