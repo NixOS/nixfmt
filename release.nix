@@ -14,7 +14,7 @@ let
   });
   regexes = [ ".*.cabal$" "^src.*" "^main.*" "^Setup.hs$" "^js.*" "LICENSE" ];
   src = builtins.path {
-    path = ./.
+    path = ./.;
     name = "nixfmt-src";
     filter = path: type:
       let relPath = lib.removePrefix (toString ./. + "/") (toString path);
