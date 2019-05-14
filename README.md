@@ -14,6 +14,7 @@ in place mode can result in data loss._
 
 `nixfmt` is a formatter for Nix code, intended to easily apply a uniform style.
 
+[![Build Status](https://badge.buildkite.com/b37f73adea391439e63288e8fd3b47f4b98fb9640bb864ccfa.svg)](https://buildkite.com/serokell/nixfmt)
 
 ## Installation
 
