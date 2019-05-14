@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 
-{ pkgs ? import <nixpkgs> { }, installOnly ? true }:
+{ pkgs ? import ./nixpkgs.nix, installOnly ? true }:
 
 let
   inherit (pkgs) lib;
