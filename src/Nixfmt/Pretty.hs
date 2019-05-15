@@ -92,6 +92,10 @@ instance Pretty ListPart where
 
 -- | Pretty print a term without wrapping it in a group.
 prettyTerm :: Term -> Doc
+prettyTerm (Token t) = pretty t
+prettyTerm (String s) = pretty s
+prettyTerm (Selection term selectors) = pretty term <> hcat selectors
+
 prettyTerm (List (Ann paropen Nothing []) [] parclose)
     = pretty paropen <> pretty parclose
 
@@ -121,22 +125,12 @@ prettyTerm (Set krec (Ann paropen trailing leading) binders parclose)
                           [] -> binders
                           _  -> BinderTrivia leading : binders
 
-prettyTerm (String x) = pretty x
-
-prettyTerm _ = undefined
+prettyTerm (Parenthesized paropen expr parclose)
+    = pretty paropen <> group expr <> pretty parclose
 
 instance Pretty Term where
-    pretty (Token x)  = pretty x
-    pretty (String x) = pretty x
-
     pretty l@(List _ _ _)    = group $ prettyTerm l
-    pretty set@(Set _ _ _ _) = prettyTerm set
-
-    pretty (Selection term selectors)
-        = pretty term <> hcat selectors
-
-    pretty (Parenthesized paropen expr parclose)
-        = pretty paropen <> group expr <> pretty parclose
+    pretty x                 = prettyTerm x
 
 toLeading :: Maybe TrailingComment -> Trivia
 toLeading Nothing = []

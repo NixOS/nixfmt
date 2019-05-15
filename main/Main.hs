@@ -65,7 +65,7 @@ formatParallel :: [IO Result] -> IO [Result]
 formatParallel jobs = do
     errChan <- newChan
     _ <- forkIO $ errorWriter errChan
-    results <- doParallel $ map (>>=(writeErrorBundle errChan)) jobs
+    results <- doParallel $ map (>>= writeErrorBundle errChan) jobs
     writeChan errChan Nothing
     return results
 
@@ -75,7 +75,7 @@ main = do
             (Catch (exitImmediately $ ExitFailure 2)) Nothing
     opts <- cmdArgs options
     results <- formatParallel $ case files opts of
-                   [] -> pure $ formatStdio (width opts)
+                   [] -> [formatStdio (width opts)]
                    _  -> map (formatFile (width opts)) (files opts)
 
     case lefts results of

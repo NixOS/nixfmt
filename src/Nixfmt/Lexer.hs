@@ -18,7 +18,7 @@ import Text.Megaparsec hiding (Token, token)
 import Text.Megaparsec.Char
 
 import Nixfmt.Types (Ann(..), Parser, TrailingComment(..), Trivia, Trivium(..))
-import Nixfmt.Util hiding (commonIndentation)
+import Nixfmt.Util
 
 data ParseTrivium
     = PTNewlines     Int
@@ -39,13 +39,13 @@ splitLines = dropWhile Text.null . dropWhileEnd Text.null
 stripIndentation :: Int -> Text -> Text
 stripIndentation n t = fromMaybe (stripStart t) $ stripPrefix (Text.replicate n " ") t
 
-commonIndentation :: Int -> [Text] -> Int
-commonIndentation def = foldr min def . map (Text.length . Text.takeWhile (==' '))
+commonIndentationLength :: Int -> [Text] -> Int
+commonIndentationLength def = foldr min def . map (Text.length . Text.takeWhile (==' '))
 
 fixLines :: Int -> [Text] -> [Text]
 fixLines _ []      = []
 fixLines n (h : t) = strip h
-    : map (stripIndentation $ commonIndentation n $ filter (/="") t) t
+    : map (stripIndentation $ commonIndentationLength n $ filter (/="") t) t
 
 lineComment :: Parser ParseTrivium
 lineComment = preLexeme $ chunk "#" *>

@@ -121,12 +121,12 @@ stripFirstLine (x : xs)
     | isEmptyLine x = xs
     | otherwise     = x : xs
 
-partsInit :: [StringPart] -> [Text]
-partsInit line@(TextPart t : _)
+textHeads :: [StringPart] -> [Text]
+textHeads line@(TextPart t : _)
     | isEmptyLine line              = []
     | otherwise                     = [t]
-partsInit (Interpolation _ _ _ : _) = [""]
-partsInit []                        = []
+textHeads (Interpolation _ _ _ : _) = [""]
+textHeads []                        = []
 
 stripParts :: Text -> [StringPart] -> [StringPart]
 stripParts indentation (TextPart t : xs) =
@@ -149,7 +149,7 @@ splitLines (x : xs) =
         _           -> error "unreachable"
 
 stripIndentation :: [[StringPart]] -> [[StringPart]]
-stripIndentation parts = case commonIndentation (concatMap partsInit parts) of
+stripIndentation parts = case commonIndentation (concatMap textHeads parts) of
     Nothing -> map (const []) parts
     Just indentation -> map (stripParts indentation) parts
 
