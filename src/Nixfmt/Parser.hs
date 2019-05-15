@@ -10,19 +10,29 @@ module Nixfmt.Parser where
 
 import Prelude hiding (String)
 
-import Control.Monad
+import Control.Monad (guard, liftM2)
 import qualified Control.Monad.Combinators.Expr as MPExpr
-import Data.Char
+  (Operator(..), makeExprParser)
+import Data.Char (isAlpha)
 import Data.Foldable (toList)
-import Data.Maybe
-import Data.Text as Text hiding (concat, concatMap, filter, init, last, map)
-import Text.Megaparsec hiding (Token)
+import Data.Maybe (fromMaybe)
+import Data.Text as Text
+  (Text, cons, empty, null, singleton, split, strip, stripPrefix)
+import Text.Megaparsec
+  (anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf,
+  optional, satisfy, try, (<|>))
 import Text.Megaparsec.Char (char)
-import qualified Text.Megaparsec.Char.Lexer as L
+import qualified Text.Megaparsec.Char.Lexer as L (decimal, float)
 
-import Nixfmt.Lexer
+import Nixfmt.Lexer (lexeme)
 import Nixfmt.Types
+  (Ann, Binder(..), Expression(..), File(..), Fixity(..), Leaf, ListPart(..),
+  Operator(..), ParamAttr(..), Parameter(..), Parser, Selector(..),
+  SimpleSelector(..), String, StringPart(..), Term(..), Token(..), operators,
+  tokenText)
 import Nixfmt.Util
+  (commonIndentation, identChar, manyP, manyText, pathChar, schemeChar, someP,
+  someText, uriChar)
 
 -- HELPER FUNCTIONS
 

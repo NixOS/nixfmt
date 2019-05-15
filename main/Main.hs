@@ -8,16 +8,17 @@
 
 module Main where
 
-import Control.Concurrent
-import Control.Concurrent.ParallelIO.Local
-import Data.Either
+import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
+import Control.Concurrent.ParallelIO.Local (parallelInterleaved, withPool)
+import Data.Either (lefts)
 import qualified Data.Text.IO as TextIO
+  (getContents, putStr, readFile, writeFile)
 import GHC.Conc (numCapabilities)
-import System.Console.CmdArgs
-import System.Exit
-import System.IO
+import System.Console.CmdArgs (Data, Typeable, args, cmdArgs, help, typ, (&=))
+import System.Exit (ExitCode(..), exitFailure, exitSuccess)
+import System.IO (hPutStr, stderr)
 import System.Posix.Process (exitImmediately)
-import System.Posix.Signals
+import System.Posix.Signals (Handler(..), installHandler, keyboardSignal)
 
 import Nixfmt
 

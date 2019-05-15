@@ -10,9 +10,9 @@ module Nixfmt.Types where
 
 import Prelude hiding (String)
 
-import Data.Text hiding (concat, map)
-import Data.Void
-import qualified Text.Megaparsec as MP
+import Data.Text (Text, pack)
+import Data.Void (Void)
+import qualified Text.Megaparsec as MP (ParseErrorBundle, Parsec)
 
 type Parser = MP.Parsec Void Text
 type ParseErrorBundle = MP.ParseErrorBundle Text Void

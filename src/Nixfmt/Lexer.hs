@@ -8,17 +8,19 @@
 
 module Nixfmt.Lexer (lexeme) where
 
-import Data.Char
+import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text
   (Text, intercalate, length, lines, null, pack, replace, replicate, strip,
   stripEnd, stripPrefix, stripStart, takeWhile)
-import Text.Megaparsec hiding (Token, token)
-import Text.Megaparsec.Char
+import Text.Megaparsec
+  (SourcePos(..), anySingle, chunk, getSourcePos, hidden, many, manyTill, some,
+  try, unPos, (<|>))
+import Text.Megaparsec.Char (eol)
 
 import Nixfmt.Types (Ann(..), Parser, TrailingComment(..), Trivia, Trivium(..))
-import Nixfmt.Util
+import Nixfmt.Util (manyP)
 
 data ParseTrivium
     = PTNewlines     Int

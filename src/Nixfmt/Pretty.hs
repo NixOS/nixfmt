@@ -13,10 +13,17 @@ import Prelude hiding (String)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, isPrefixOf, stripPrefix)
 import qualified Data.Text as Text
+  (all, empty, isInfixOf, last, null, replace, splitOn, strip)
 
 import Nixfmt.Predoc
+  (Doc, Pretty, emptyline, group, hardline, hardspace, hcat, line, line', nest,
+  newline, pretty, sepBy, softline, softline', text)
 import Nixfmt.Types
-import Nixfmt.Util
+  (Ann(..), Binder(..), Expression(..), File(..), Leaf, ListPart(..),
+  ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
+  StringPart(..), Term(..), Token(..), TrailingComment(..), Trivia,
+  Trivium(..), tokenText)
+import Nixfmt.Util (schemeChar, uriChar)
 
 prettyCommentLine :: Text -> Doc
 prettyCommentLine l

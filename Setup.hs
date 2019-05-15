@@ -4,5 +4,5 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-import Distribution.Simple
+import Distribution.Simple (defaultMain)
 main = defaultMain

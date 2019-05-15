@@ -31,7 +31,7 @@ module Nixfmt.Predoc
     , layout
     ) where
 
-import Data.List hiding (group)
+import Data.List (intersperse)
 import Data.Text as Text (Text, concat, length, pack, replicate)
 
 data Tree a

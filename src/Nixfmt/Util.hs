@@ -18,10 +18,12 @@ module Nixfmt.Util
     , uriChar
     ) where
 
-import Data.Char
-import Data.Maybe
-import Data.Text as Text hiding (filter, map)
-import Text.Megaparsec hiding (empty)
+import Data.Char (isAlpha, isDigit, isSpace)
+import Data.Maybe (fromMaybe)
+import Data.Text as Text
+  (Text, commonPrefixes, concat, empty, stripEnd, stripPrefix, takeWhile)
+import Text.Megaparsec
+  (ParsecT, Stream, Token, Tokens, many, some, takeWhile1P, takeWhileP)
 
 charClass :: [Char] -> Char -> Bool
 charClass s c = isAlpha c || isDigit c || elem c s
