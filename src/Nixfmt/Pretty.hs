@@ -23,7 +23,6 @@ import Nixfmt.Types
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
   StringPart(..), Term(..), Token(..), TrailingComment(..), Trivia,
   Trivium(..), tokenText)
-import Nixfmt.Util (schemeChar, uriChar)
 
 prettyCommentLine :: Text -> Doc
 prettyCommentLine l
@@ -76,15 +75,6 @@ instance Pretty Binder where
         = group (pretty inherit <> hardspace
                  <> pretty source <> line
                  <> nest 2 (sepBy softline ids)) <> pretty semicolon
-
-    pretty (Assignment selectors assign
-            (Term (String s@(Ann [[TextPart t]] Nothing []))) semicolon)
-        | validURI t = group (hcat selectors <> hardspace
-            <> pretty assign <> line
-            <> nest 2 (pretty t)) <> pretty semicolon
-        | otherwise = group (hcat selectors <> hardspace
-            <> pretty assign <> line
-            <> nest 2 (pretty s)) <> pretty semicolon
 
     pretty (Assignment selectors assign expr semicolon)
         = group (hcat selectors <> hardspace
@@ -274,14 +264,6 @@ instance Pretty [Token] where
     pretty = hcat
 
 -- STRINGS
-
-validURI :: Text -> Bool
-validURI t =
-    case Text.splitOn "://" t of
-         ["", _]       -> False
-         [_, ""]       -> False
-         [scheme, uri] -> Text.all schemeChar scheme && Text.all uriChar uri
-         _             -> False
 
 hasQuotes :: [StringPart] -> Bool
 hasQuotes []                = False
