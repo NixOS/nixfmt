@@ -330,6 +330,7 @@ prettySimpleString parts = group $
               $ Text.replace "$\\${" "$${"
               $ Text.replace "${" "\\${"
               $ Text.replace "\"" "\\\""
+              $ Text.replace "\r" "\\r"
               $ Text.replace "\\" "\\\\" t
           escape x            = x
 
