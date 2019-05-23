@@ -13,7 +13,7 @@ import Prelude hiding (String)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, isPrefixOf, stripPrefix)
 import qualified Data.Text as Text
-  (all, empty, isInfixOf, last, null, replace, splitOn, strip)
+  (empty, isInfixOf, last, null, replace, strip)
 
 import Nixfmt.Predoc
   (Doc, Pretty, emptyline, group, hardline, hardspace, hcat, line, line', nest,
