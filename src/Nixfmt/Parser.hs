@@ -11,6 +11,7 @@ module Nixfmt.Parser where
 import Prelude hiding (String)
 
 import Control.Monad (guard, liftM2)
+import Control.Monad.Combinators (sepBy)
 import qualified Control.Monad.Combinators.Expr as MPExpr
   (Operator(..), makeExprParser)
 import Data.Char (isAlpha)
@@ -117,7 +118,10 @@ indentedStringPart = TextPart <$> someText (
     chunk "$$" <> manyP (=='$') <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     try (chunk "'" <* notFollowedBy (char '\'')) <|>
-    someP (\t -> t /= '\'' && t /= '$'))
+    someP (\t -> t /= '\'' && t /= '$' && t /= '\n'))
+
+indentedLine :: Parser [StringPart]
+indentedLine = many (indentedStringPart <|> interpolation)
 
 isEmptyLine :: [StringPart] -> Bool
 isEmptyLine []           = True
@@ -179,12 +183,12 @@ simpleString = rawSymbol TDoubleQuote *>
     fmap splitLines (many (simpleStringPart <|> interpolation)) <*
     rawSymbol TDoubleQuote
 
-fixIndentedString :: [StringPart] -> [[StringPart]]
-fixIndentedString = dropEmptyParts . stripIndentation . stripFirstLine . splitLines
+fixIndentedString :: [[StringPart]] -> [[StringPart]]
+fixIndentedString = dropEmptyParts . concatMap splitLines . stripIndentation . stripFirstLine
 
 indentedString :: Parser [[StringPart]]
 indentedString = rawSymbol TDoubleSingleQuote *>
-    fmap fixIndentedString (many (indentedStringPart <|> interpolation)) <*
+    fmap fixIndentedString (sepBy indentedLine (chunk "\n")) <*
     rawSymbol TDoubleSingleQuote
 
 string :: Parser String
