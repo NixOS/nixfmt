@@ -9,11 +9,9 @@
 module Main where
 
 import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
-import Control.Concurrent.ParallelIO.Local (parallelInterleaved, withPool)
 import Data.Either (lefts)
 import qualified Data.Text.IO as TextIO
   (getContents, putStr, readFile, writeFile)
-import GHC.Conc (numCapabilities)
 import System.Console.CmdArgs (Data, Typeable, args, cmdArgs, help, typ, (&=))
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
 import System.IO (hPutStr, stderr)
@@ -45,8 +43,11 @@ formatFile w path = do
     contents <- TextIO.readFile path
     mapM (TextIO.writeFile path) $ format w path contents
 
+-- TODO: Efficient parallel implementation. This is just a sequential stub.
+-- This was originally implemented using parallel-io, but it gave a factor two
+-- overhead.
 doParallel :: [IO a] -> IO [a]
-doParallel = withPool numCapabilities . flip parallelInterleaved
+doParallel = sequence
 
 errorWriter :: Chan (Maybe String) -> IO ()
 errorWriter chan = do
