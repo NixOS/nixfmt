@@ -49,12 +49,13 @@ formatFile w path = do
 doParallel :: [IO a] -> IO [a]
 doParallel = sequence
 
-errorWriter :: Chan (Maybe String) -> IO ()
-errorWriter chan = do
+errorWriter :: Chan (Maybe String) -> Chan () -> IO ()
+errorWriter chan done = do
     item <- readChan chan
     case item of
          Nothing  -> return ()
-         Just msg -> hPutStr stderr msg >> errorWriter chan
+         Just msg -> hPutStr stderr msg >> errorWriter chan done
+    writeChan done ()
 
 writeErrorBundle :: Chan (Maybe String) -> Result -> IO Result
 writeErrorBundle chan result = do
@@ -66,9 +67,11 @@ writeErrorBundle chan result = do
 formatParallel :: [IO Result] -> IO [Result]
 formatParallel jobs = do
     errChan <- newChan
-    _ <- forkIO $ errorWriter errChan
+    doneChan <- newChan
+    _ <- forkIO $ errorWriter errChan doneChan
     results <- doParallel $ map (>>= writeErrorBundle errChan) jobs
     writeChan errChan Nothing
+    _ <- readChan doneChan
     return results
 
 main :: IO ()
