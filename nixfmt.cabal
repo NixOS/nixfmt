@@ -26,6 +26,7 @@ executable nixfmt
   hs-source-dirs:      main
   build-depends:
       base
+    , atomic-write
     , cmdargs
     , nixfmt
     , unix

@@ -10,8 +10,8 @@ module Main where
 
 import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
 import Data.Either (lefts)
-import qualified Data.Text.IO as TextIO
-  (getContents, putStr, readFile, writeFile)
+import qualified Data.Text.IO as TextIO (getContents, putStr, readFile)
+import System.AtomicWrite.Writer.Text (atomicWriteFile)
 import System.Console.CmdArgs (Data, Typeable, args, cmdArgs, help, typ, (&=))
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
 import System.IO (hPutStr, stderr)
@@ -41,7 +41,7 @@ formatStdio w = do
 formatFile :: Int -> FilePath -> IO Result
 formatFile w path = do
     contents <- TextIO.readFile path
-    mapM (TextIO.writeFile path) $ format w path contents
+    mapM (atomicWriteFile path) $ format w path contents
 
 -- TODO: Efficient parallel implementation. This is just a sequential stub.
 -- This was originally implemented using parallel-io, but it gave a factor two
