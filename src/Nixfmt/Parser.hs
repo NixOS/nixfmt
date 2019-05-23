@@ -262,7 +262,7 @@ binders :: Parser [Binder]
 binders = many (assignment <|> inherit)
 
 set :: Parser Term
-set = Set <$> optional (reserved KRec) <*>
+set = Set <$> optional (reserved KRec <|> reserved KLet) <*>
     symbol TBraceOpen <*> binders <*> symbol TBraceClose
 
 list :: Parser Term
