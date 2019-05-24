@@ -94,10 +94,11 @@ prettyTerm (String s) = pretty s
 prettyTerm (Selection term selectors) = pretty term <> hcat selectors
 
 prettyTerm (List (Ann paropen Nothing []) [] parclose)
-    = pretty paropen <> pretty parclose
+    = pretty paropen <> hardspace <> pretty parclose
 
-prettyTerm (List (Ann paropen Nothing []) [item] parclose)
-    = pretty paropen <> pretty item <> pretty parclose
+prettyTerm (List (Ann paropen Nothing []) [ListItem item] parclose)
+    | isAbsorbable item
+        = pretty paropen <> pretty item <> pretty parclose
 
 prettyTerm (List (Ann paropen trailing leading) items parclose)
     = pretty paropen <> pretty trailing <> line
@@ -162,11 +163,12 @@ instance Pretty Parameter where
         = pretty param1 <> pretty at <> pretty param2
 
 isAbsorbable :: Term -> Bool
-isAbsorbable (String (Ann (_:_:_) _ _))                  = True
-isAbsorbable (Set _ _ (_:_) _)                           = True
-isAbsorbable (List (Ann _ Nothing []) [ListItem item] _) = isAbsorbable item
-isAbsorbable (List _ (_:_:_) _)                          = True
-isAbsorbable _                                           = False
+isAbsorbable (String (Ann (_:_:_) _ _))                    = True
+isAbsorbable (Set _ _ (_:_) _)                             = True
+isAbsorbable (List (Ann _ Nothing []) [ListItem item] _)   = isAbsorbable item
+isAbsorbable (Parenthesized (Ann _ Nothing []) (Term t) _) = isAbsorbable t
+isAbsorbable (List _ (_:_:_) _)                            = True
+isAbsorbable _                                             = False
 
 absorb :: Doc -> Doc -> Int -> Expression -> Doc
 absorb left right _ (Term t)
@@ -193,6 +195,11 @@ absorbElse (If if_ cond then_ expr0 else_ expr1)
 
 absorbElse (Term t) | isAbsorbable t = hardspace <> prettyTerm t
 absorbElse x                         = line <> nest 2 (group x)
+
+absorbApp :: Expression -> Doc
+absorbApp (Application f x) = softline <> pretty f <> absorbApp x
+absorbApp (Term t) | isAbsorbable t = hardspace <> group (prettyTerm t)
+absorbApp x = softline <> pretty x
 
 instance Pretty Expression where
     pretty (Term t) = pretty t
@@ -231,9 +238,7 @@ instance Pretty Expression where
     pretty (Abstraction param colon body)
         = pretty param <> pretty colon <> absorbSet body
 
-    pretty (Application f (Term t))
-        | isAbsorbable t     = pretty f <> hardspace <> group (prettyTerm t)
-    pretty (Application f x) = pretty f <> softline <> pretty x
+    pretty (Application f x) = group $ pretty f <> absorbApp x
 
     pretty (Operation a op b)
         = pretty a <> softline
