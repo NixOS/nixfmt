@@ -270,6 +270,16 @@ instance Pretty [Token] where
 
 -- STRINGS
 
+isSimpleSelector :: Selector -> Bool
+isSimpleSelector (Selector _ (IDSelector _) Nothing) = True
+isSimpleSelector _                                   = False
+
+isSimple :: Expression -> Bool
+isSimple (Term (Token (Ann (Identifier _) Nothing []))) = True
+isSimple (Term (Selection t selectors))
+    = isSimple (Term t) && all isSimpleSelector selectors
+isSimple _ = False
+
 hasQuotes :: [StringPart] -> Bool
 hasQuotes []                = False
 hasQuotes (TextPart x : xs) = Text.isInfixOf "\"" x || hasQuotes xs
@@ -299,9 +309,12 @@ instance Pretty StringPart where
             = group $ pretty paropen <> prettyTerm t <> pretty parclose
 
     pretty (Interpolation paropen expr parclose)
-        = group $ pretty paropen <> line'
-            <> nest 2 (pretty expr) <> line'
-            <> pretty parclose
+        | isSimple expr
+            = pretty paropen <> pretty expr <> pretty parclose
+        | otherwise
+            = group $ pretty paropen <> line'
+                <> nest 2 (pretty expr) <> line'
+                <> pretty parclose
 
 instance Pretty [[StringPart]] where
     pretty s = prettyString s
