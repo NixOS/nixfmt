@@ -23,6 +23,7 @@
 module System.IO.Utf8
   ( withUtf8Stds
 
+  , openFileUtf8
   , readFileUtf8
   ) where
 
@@ -73,10 +74,15 @@ withUtf8Stds action =
 
 
 
+-- | Like @openFile@, but sets the file encoding to UTF-8, regardless
+-- of the current locale.
+openFileUtf8 :: IO.FilePath -> IO.IOMode -> IO IO.Handle
+openFileUtf8 path mode = do
+  h <- IO.openFile path mode
+  IO.hSetEncoding h utf8
+  pure h
+
 -- | Like @readFile@, but assumes the file is encoded in UTF-8, regardless
 -- of the current locale.
 readFileUtf8 :: IO.FilePath -> IO Text
-readFileUtf8 path = do
-  h <- IO.openFile path IO.ReadMode
-  IO.hSetEncoding h utf8
-  T.hGetContents h
+readFileUtf8 path = openFileUtf8 path IO.ReadMode >>= T.hGetContents
