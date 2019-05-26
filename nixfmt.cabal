@@ -30,7 +30,6 @@ executable nixfmt
     buildable: True
   build-depends:
       base
-    , atomic-write
     , cmdargs
     , nixfmt
     , unix
@@ -54,6 +53,7 @@ library
     Nixfmt.Types
     Nixfmt.Util
 
+    System.IO.Atomic
     System.IO.Utf8
   other-extensions:    OverloadedStrings, LambdaCase, FlexibleInstances, DeriveFoldable, DeriveFunctor, StandaloneDeriving
   hs-source-dirs:      src
@@ -62,6 +62,11 @@ library
     , megaparsec >= 7
     , parser-combinators
     , text
+
+    -- for System.IO.Atomic
+    , directory
+    , filepath
+    , unix
   default-language:    Haskell2010
   ghc-options:
     -Wall

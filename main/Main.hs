@@ -10,16 +10,17 @@ module Main where
 
 import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
 import Data.Either (lefts)
-import System.AtomicWrite.Writer.Text (atomicWriteFile)
+import GHC.IO.Encoding (utf8)
 import System.Console.CmdArgs (Data, Typeable, args, cmdArgs, help, typ, (&=))
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
-import System.IO (hPutStr, stderr)
+import System.IO (hPutStr, hSetEncoding, stderr)
 import System.Posix.Process (exitImmediately)
 import System.Posix.Signals (Handler(..), installHandler, keyboardSignal)
 
-import qualified Data.Text.IO as TextIO (getContents, putStr)
+import qualified Data.Text.IO as TextIO (getContents, hPutStr, putStr)
 
 import Nixfmt
+import System.IO.Atomic (withOutputFile)
 import System.IO.Utf8 (readFileUtf8, withUtf8StdHandles)
 
 type Result = Either ParseErrorBundle ()
@@ -43,7 +44,11 @@ formatStdio w = do
 formatFile :: Int -> FilePath -> IO Result
 formatFile w path = do
     contents <- readFileUtf8 path
-    mapM (atomicWriteFile path) $ format w path contents
+    mapM atomicWriteFile $ format w path contents
+  where
+    atomicWriteFile t = withOutputFile path $ \h -> do
+      hSetEncoding h utf8
+      TextIO.hPutStr h t
 
 -- TODO: Efficient parallel implementation. This is just a sequential stub.
 -- This was originally implemented using parallel-io, but it gave a factor two
