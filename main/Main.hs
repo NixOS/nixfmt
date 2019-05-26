@@ -10,7 +10,6 @@ module Main where
 
 import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
 import Data.Either (lefts)
-import qualified Data.Text.IO as TextIO (getContents, putStr, readFile)
 import System.AtomicWrite.Writer.Text (atomicWriteFile)
 import System.Console.CmdArgs (Data, Typeable, args, cmdArgs, help, typ, (&=))
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
@@ -18,7 +17,10 @@ import System.IO (hPutStr, stderr)
 import System.Posix.Process (exitImmediately)
 import System.Posix.Signals (Handler(..), installHandler, keyboardSignal)
 
+import qualified Data.Text.IO as TextIO (getContents, putStr)
+
 import Nixfmt
+import System.IO.Utf8 (readFileUtf8, withUtf8Stds)
 
 type Result = Either ParseErrorBundle ()
 
@@ -40,7 +42,7 @@ formatStdio w = do
 
 formatFile :: Int -> FilePath -> IO Result
 formatFile w path = do
-    contents <- TextIO.readFile path
+    contents <- readFileUtf8 path
     mapM (atomicWriteFile path) $ format w path contents
 
 -- TODO: Efficient parallel implementation. This is just a sequential stub.
@@ -75,7 +77,7 @@ formatParallel jobs = do
     return results
 
 main :: IO ()
-main = do
+main = withUtf8Stds $ do
     _ <- installHandler keyboardSignal
             (Catch (exitImmediately $ ExitFailure 2)) Nothing
     opts <- cmdArgs options

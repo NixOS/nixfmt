@@ -53,6 +53,8 @@ library
     Nixfmt.Pretty
     Nixfmt.Types
     Nixfmt.Util
+
+    System.IO.Utf8
   other-extensions:    OverloadedStrings, LambdaCase, FlexibleInstances, DeriveFoldable, DeriveFunctor, StandaloneDeriving
   hs-source-dirs:      src
   build-depends:
