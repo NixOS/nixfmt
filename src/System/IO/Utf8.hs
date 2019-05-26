@@ -21,7 +21,7 @@
 --
 -- Functions in this module help deal with all these issues.
 module System.IO.Utf8
-  ( withUtf8Stds
+  ( withUtf8StdHandles
 
   , openFileUtf8
   , readFileUtf8
@@ -59,11 +59,11 @@ hSetBestUtf8Enc h = IO.hGetEncoding h >>= \case
       | '/' `notElem` name = mkTextEncoding (name ++ "//TRANSLIT")
       | otherwise = pure enc
 
--- | Configures the encodings of the three standard handles to work kwith UTF-8
--- and runs the specified IO action. After the action finishes, restores the
--- encodings.
-withUtf8Stds :: IO a -> IO a
-withUtf8Stds action =
+-- | Configures the encodings of the three standard handles (stdin, stdout, stderr)
+-- to work with UTF-8 encoded data and runs the specified IO action.
+-- After the action finishes, restores the original encodings.
+withUtf8StdHandles :: IO a -> IO a
+withUtf8StdHandles action =
     withConfiguredHandle stdin $
     withConfiguredHandle stdout $
     withConfiguredHandle stderr $

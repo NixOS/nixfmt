@@ -20,7 +20,7 @@ import System.Posix.Signals (Handler(..), installHandler, keyboardSignal)
 import qualified Data.Text.IO as TextIO (getContents, putStr)
 
 import Nixfmt
-import System.IO.Utf8 (readFileUtf8, withUtf8Stds)
+import System.IO.Utf8 (readFileUtf8, withUtf8StdHandles)
 
 type Result = Either ParseErrorBundle ()
 
@@ -77,7 +77,7 @@ formatParallel jobs = do
     return results
 
 main :: IO ()
-main = withUtf8Stds $ do
+main = withUtf8StdHandles $ do
     _ <- installHandler keyboardSignal
             (Catch (exitImmediately $ ExitFailure 2)) Nothing
     opts <- cmdArgs options
