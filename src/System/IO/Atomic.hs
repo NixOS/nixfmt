@@ -3,7 +3,10 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
--- | Helpers for atomic file IO.
+-- | Atomic file IO.
+--
+-- This modules allows one to replace the contents of a file atomically by
+-- leveraging the atomicity of the @rename@ operation.
 --
 -- This module is a crossover of the `atomic-write` and `safeio` libraries
 -- with the fs-related behaviour of the first and interface of the second.
@@ -19,6 +22,16 @@ import System.IO (Handle, hClose, openTempFileWithDefaultPermissions)
 import System.Posix.Files (fileMode, getFileStatus, setFileMode)
 
 
+-- | Like @withFile@ but replaces the contents atomically.
+--
+-- This function allocates a temporary file and provides its handle to the
+-- IO action. After the action finishes, it /atomically/ replaces the original
+-- target file with the temporary one. If the action fails with an exception,
+-- the temporary file is cleaned up.
+--
+-- Since the procedure involves creation of an entirely new file, preserving
+-- the attributes is a challenge. This function tries its best, but currently
+-- it is Unix-specific and there is definitely room for improvement even on Unix.
 withOutputFile ::
      FilePath  -- ^ Final file path
   -> (Handle -> IO a)  -- ^ IO action that writes to the file
@@ -35,7 +48,9 @@ withOutputFile path act = bracketOnError begin rollback $ \(tpath, th) -> do
     begin :: IO (FilePath, Handle)
     begin = openTempFileWithDefaultPermissions tmpDir tmpTemplate
 
-    -- This function is Unix-specific...
+    -- TODO: Support for non-unix platofrms.
+    -- TODO: Preserve ctime?
+    -- TODO: Preserve extended attributes (ACLs, ...)?
     copyAttributes :: (FilePath, Handle) -> IO ()
     copyAttributes (tpath, _th) = do
       exists <- doesFileExist path
