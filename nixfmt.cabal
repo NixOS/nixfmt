@@ -24,6 +24,10 @@ executable nixfmt
   main-is:             Main.hs
   other-extensions:    DeriveDataTypeable
   hs-source-dirs:      main
+  if impl(ghcjs)
+    buildable: False
+  else
+    buildable: True
   build-depends:
       base
     , atomic-write
