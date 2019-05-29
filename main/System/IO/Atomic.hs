@@ -14,7 +14,7 @@ module System.IO.Atomic
   ( withOutputFile
   ) where
 
-import Control.Exception (mask, onException)
+import Control.Exception.Safe (mask, onException)
 import Control.Monad (when)
 import System.Directory (doesFileExist, removeFile, renameFile)
 import System.FilePath (takeDirectory, takeFileName)

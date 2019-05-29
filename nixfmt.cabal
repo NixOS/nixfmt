@@ -41,6 +41,7 @@ executable nixfmt
     -- for System.IO.Atomic
     , directory
     , filepath
+    , safe-exceptions
     , unix
   default-language:    Haskell2010
   ghc-options:
