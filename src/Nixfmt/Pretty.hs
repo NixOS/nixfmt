@@ -10,14 +10,15 @@ module Nixfmt.Pretty where
 
 import Prelude hiding (String)
 
+import Data.Char (isSpace)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, isPrefixOf, stripPrefix)
 import qualified Data.Text as Text
-  (empty, isInfixOf, last, null, replace, strip)
+  (empty, isInfixOf, last, null, replace, strip, takeWhile)
 
 import Nixfmt.Predoc
   (Doc, Pretty, emptyline, group, hardline, hardspace, hcat, line, line', nest,
-  newline, pretty, sepBy, softline, softline', text)
+  newline, pretty, sepBy, softline, softline', text, textWidth)
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), File(..), Leaf, ListPart(..),
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
@@ -316,33 +317,31 @@ instance Pretty StringPart where
                 <> nest 2 (pretty expr) <> line'
                 <> pretty parclose
 
+instance Pretty [StringPart] where
+    pretty [Interpolation paropen expr parclose]
+        = group $ pretty paropen <> pretty expr <> pretty parclose
+
+    pretty (TextPart t : parts)
+        = text t <> nest indentation (hcat parts)
+        where indentation = textWidth $ Text.takeWhile isSpace t
+
+    pretty parts = hcat parts
+
 instance Pretty [[StringPart]] where
-    pretty s = prettyString s
+    pretty [parts]
+        | hasDualQuotes parts || endsInSingleQuote parts
+                          = prettySimpleString [parts]
+        | hasQuotes parts = prettyIndentedString [parts]
+        | otherwise       = prettySimpleString [parts]
 
-prettyString :: [[StringPart]] -> Doc
-prettyString [parts]
-    | hasDualQuotes parts || endsInSingleQuote parts
-                      = prettySimpleString [parts]
-    | hasQuotes parts = prettyIndentedString [parts]
-    | otherwise       = prettySimpleString [parts]
-
-prettyString parts
-    | all isEmptyLine parts = prettySimpleString parts
-    | otherwise             = prettyIndentedString parts
-
-prettyLine :: [StringPart] -> Doc
-prettyLine [Interpolation paropen expr parclose]
-    = group $ pretty paropen <> pretty expr <> pretty parclose
-
-prettyLine (TextPart t : parts)
-    | Text.null (Text.strip t) = text t <> prettyLine parts
-
-prettyLine parts = hcat parts
+    pretty parts
+        | all isEmptyLine parts = prettySimpleString parts
+        | otherwise             = prettyIndentedString parts
 
 prettySimpleString :: [[StringPart]] -> Doc
 prettySimpleString parts = group $
     text "\""
-    <> (sepBy (text "\\n") (map (prettyLine . map escape) parts))
+    <> (sepBy (text "\\n") (map (pretty . map escape) parts))
     <> text "\""
     where escape (TextPart t) = TextPart
               $ Text.replace "$\\${" "$${"
@@ -355,7 +354,7 @@ prettySimpleString parts = group $
 prettyIndentedString :: [[StringPart]] -> Doc
 prettyIndentedString parts = group $
     text "''" <> line'
-    <> nest 2 (sepBy newline (map (prettyLine . map escape) parts))
+    <> nest 2 (sepBy newline (map (pretty . map escape) parts))
     <> text "''"
     where escape (TextPart t) = TextPart
               $ Text.replace "$''${" "$${"
