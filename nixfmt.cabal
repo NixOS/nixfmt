@@ -22,6 +22,9 @@ extra-source-files:  README.md, CHANGELOG.md
 
 executable nixfmt
   main-is:             Main.hs
+  other-modules:
+    System.IO.Utf8
+    System.IO.Atomic
   other-extensions:    DeriveDataTypeable
   hs-source-dirs:      main
   if impl(ghcjs)
@@ -30,11 +33,16 @@ executable nixfmt
     buildable: True
   build-depends:
       base
-    , atomic-write
     , cmdargs
     , nixfmt
     , unix
     , text
+
+    -- for System.IO.Atomic
+    , directory
+    , filepath
+    , safe-exceptions
+    , unix
   default-language:    Haskell2010
   ghc-options:
     -Wall
