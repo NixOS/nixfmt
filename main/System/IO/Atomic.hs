@@ -69,7 +69,13 @@ withOutputFile path act = transact begin commit rollback $ \(tpath, th) -> do
 
 -- | A variant of @bracket@ with two different finalisation actions.
 --
+-- Semantically, the following is /almost/ true:
+--
 -- > bracket acquire release = transact acquire release release
+--
+-- except that @bracket@ always runs the cleanup action exactly once, while
+-- here, if the action completes but commit fails, we will still run rollback,
+-- so there exists an execution in which both finalisation actions are run.
 transact ::
      IO a         -- ^ computation to run first (\"begin transaction\")
   -> (a -> IO b)  -- ^ computation to run on success (\"commit transaction\")
@@ -80,5 +86,5 @@ transact begin commit rollback act =
   mask $ \restore -> do
     a <- begin
     res <- restore (act a) `onException` rollback a
-    _ <- commit a
+    _ <- commit a `onException` rollback a
     pure res
