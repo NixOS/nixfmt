@@ -104,7 +104,7 @@ prettyTerm (List (Ann paropen Nothing []) [ListItem item] parclose)
 
 prettyTerm (List (Ann paropen trailing leading) items parclose)
     = pretty paropen <> pretty trailing <> line
-        <> nest 2 (sepBy line items') <> line
+        <> nest 2 (sepBy line (map group items')) <> line
         <> pretty parclose
     where items' = case leading of
                         [] -> items
