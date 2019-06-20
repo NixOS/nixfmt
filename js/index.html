@@ -165,7 +165,7 @@ in
         hljs.highlightBlock(out)
     }
     document.getElementById('fmt').addEventListener('click', format)
-    document.addEventListener('DOMContentLoaded', format)
+    window.addEventListener('load', format)
     let resizeTimer = false
     const resizeObserver = new MutationObserver(entries => {
         if (resizeTimer) {
