@@ -165,7 +165,8 @@ instance Pretty Parameter where
         = pretty param1 <> pretty at <> pretty param2
 
 isAbsorbable :: Term -> Bool
-isAbsorbable (String (Ann (_:_:_) _ _))                    = True
+isAbsorbable (String (Ann parts@(_:_:_) _ _))
+    = not $ isSimpleString parts
 isAbsorbable (Set _ _ (_:_) _)                             = True
 isAbsorbable (List (Ann _ Nothing []) [ListItem item] _)   = isAbsorbable item
 isAbsorbable (Parenthesized (Ann _ Nothing []) (Term t) _) = isAbsorbable t
@@ -304,6 +305,16 @@ isEmptyLine []           = True
 isEmptyLine [TextPart t] = Text.strip t == Text.empty
 isEmptyLine _            = False
 
+isSimpleString :: [[StringPart]] -> Bool
+isSimpleString [parts]
+    | hasDualQuotes parts || endsInSingleQuote parts = True
+    | hasQuotes parts = False
+    | otherwise       = True
+
+isSimpleString parts
+    | all isEmptyLine parts = True
+    | otherwise             = False
+
 instance Pretty StringPart where
     pretty (TextPart t) = text t
     pretty (Interpolation paropen (Term t) parclose)
@@ -329,15 +340,9 @@ instance Pretty [StringPart] where
     pretty parts = hcat parts
 
 instance Pretty [[StringPart]] where
-    pretty [parts]
-        | hasDualQuotes parts || endsInSingleQuote parts
-                          = prettySimpleString [parts]
-        | hasQuotes parts = prettyIndentedString [parts]
-        | otherwise       = prettySimpleString [parts]
-
     pretty parts
-        | all isEmptyLine parts = prettySimpleString parts
-        | otherwise             = prettyIndentedString parts
+        | isSimpleString parts = prettySimpleString parts
+        | otherwise            = prettyIndentedString parts
 
 prettySimpleString :: [[StringPart]] -> Doc
 prettySimpleString parts = group $
