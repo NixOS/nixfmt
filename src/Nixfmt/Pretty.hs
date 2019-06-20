@@ -57,7 +57,8 @@ instance Pretty a => Pretty (Ann a) where
 instance Pretty SimpleSelector where
     pretty (IDSelector i)              = pretty i
     pretty (InterpolSelector interpol) = pretty interpol
-    pretty (StringSelector s)          = pretty s
+    pretty (StringSelector (Ann s trailing leading))
+        = prettySimpleString s <> pretty trailing <> pretty leading
 
 instance Pretty Selector where
     pretty (Selector dot sel Nothing)
