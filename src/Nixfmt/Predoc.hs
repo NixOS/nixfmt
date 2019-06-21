@@ -29,6 +29,7 @@ module Nixfmt.Predoc
     , flatten
     , fixup
     , layout
+    , textWidth
     ) where
 
 import Data.List (intersperse)
@@ -281,7 +282,7 @@ layoutGreedy :: Int -> DocList -> Text
 layoutGreedy w doc = Text.concat $ go 0 [Chunk 0 $ Group doc]
     where go _ [] = []
           go c (Chunk i x : xs) = case x of
-            Text t               -> t   : go (c + textWidth t) xs
+            Text t               -> t : go (c + textWidth t) xs
 
             Spacing Break        -> indent 1 i : go i xs
             Spacing Space        -> indent 1 i : go i xs

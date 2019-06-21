@@ -10,14 +10,15 @@ module Nixfmt.Pretty where
 
 import Prelude hiding (String)
 
+import Data.Char (isSpace)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, isPrefixOf, stripPrefix)
 import qualified Data.Text as Text
-  (empty, isInfixOf, last, null, replace, strip)
+  (empty, isInfixOf, last, null, replace, strip, takeWhile)
 
 import Nixfmt.Predoc
   (Doc, Pretty, emptyline, group, hardline, hardspace, hcat, line, line', nest,
-  newline, pretty, sepBy, softline, softline', text)
+  newline, pretty, sepBy, softline, softline', text, textWidth)
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), File(..), Leaf, ListPart(..),
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
@@ -56,7 +57,8 @@ instance Pretty a => Pretty (Ann a) where
 instance Pretty SimpleSelector where
     pretty (IDSelector i)              = pretty i
     pretty (InterpolSelector interpol) = pretty interpol
-    pretty (StringSelector s)          = pretty s
+    pretty (StringSelector (Ann s trailing leading))
+        = prettySimpleString s <> pretty trailing <> pretty leading
 
 instance Pretty Selector where
     pretty (Selector dot sel Nothing)
@@ -102,7 +104,7 @@ prettyTerm (List (Ann paropen Nothing []) [ListItem item] parclose)
 
 prettyTerm (List (Ann paropen trailing leading) items parclose)
     = pretty paropen <> pretty trailing <> line
-        <> nest 2 (sepBy line items') <> line
+        <> nest 2 (sepBy line (map group items')) <> line
         <> pretty parclose
     where items' = case leading of
                         [] -> items
@@ -163,7 +165,8 @@ instance Pretty Parameter where
         = pretty param1 <> pretty at <> pretty param2
 
 isAbsorbable :: Term -> Bool
-isAbsorbable (String (Ann (_:_:_) _ _))                    = True
+isAbsorbable (String (Ann parts@(_:_:_) _ _))
+    = not $ isSimpleString parts
 isAbsorbable (Set _ _ (_:_) _)                             = True
 isAbsorbable (List (Ann _ Nothing []) [ListItem item] _)   = isAbsorbable item
 isAbsorbable (Parenthesized (Ann _ Nothing []) (Term t) _) = isAbsorbable t
@@ -302,6 +305,16 @@ isEmptyLine []           = True
 isEmptyLine [TextPart t] = Text.strip t == Text.empty
 isEmptyLine _            = False
 
+isSimpleString :: [[StringPart]] -> Bool
+isSimpleString [parts]
+    | hasDualQuotes parts || endsInSingleQuote parts = True
+    | hasQuotes parts = False
+    | otherwise       = True
+
+isSimpleString parts
+    | all isEmptyLine parts = True
+    | otherwise             = False
+
 instance Pretty StringPart where
     pretty (TextPart t) = text t
     pretty (Interpolation paropen (Term t) parclose)
@@ -316,33 +329,25 @@ instance Pretty StringPart where
                 <> nest 2 (pretty expr) <> line'
                 <> pretty parclose
 
+instance Pretty [StringPart] where
+    pretty [Interpolation paropen expr parclose]
+        = group $ pretty paropen <> pretty expr <> pretty parclose
+
+    pretty (TextPart t : parts)
+        = text t <> nest indentation (hcat parts)
+        where indentation = textWidth $ Text.takeWhile isSpace t
+
+    pretty parts = hcat parts
+
 instance Pretty [[StringPart]] where
-    pretty s = prettyString s
-
-prettyString :: [[StringPart]] -> Doc
-prettyString [parts]
-    | hasDualQuotes parts || endsInSingleQuote parts
-                      = prettySimpleString [parts]
-    | hasQuotes parts = prettyIndentedString [parts]
-    | otherwise       = prettySimpleString [parts]
-
-prettyString parts
-    | all isEmptyLine parts = prettySimpleString parts
-    | otherwise             = prettyIndentedString parts
-
-prettyLine :: [StringPart] -> Doc
-prettyLine [Interpolation paropen expr parclose]
-    = group $ pretty paropen <> pretty expr <> pretty parclose
-
-prettyLine (TextPart t : parts)
-    | Text.null (Text.strip t) = text t <> prettyLine parts
-
-prettyLine parts = hcat parts
+    pretty parts
+        | isSimpleString parts = prettySimpleString parts
+        | otherwise            = prettyIndentedString parts
 
 prettySimpleString :: [[StringPart]] -> Doc
 prettySimpleString parts = group $
     text "\""
-    <> (sepBy (text "\\n") (map (prettyLine . map escape) parts))
+    <> (sepBy (text "\\n") (map (pretty . map escape) parts))
     <> text "\""
     where escape (TextPart t) = TextPart
               $ Text.replace "$\\${" "$${"
@@ -355,7 +360,7 @@ prettySimpleString parts = group $
 prettyIndentedString :: [[StringPart]] -> Doc
 prettyIndentedString parts = group $
     text "''" <> line'
-    <> nest 2 (sepBy newline (map (prettyLine . map escape) parts))
+    <> nest 2 (sepBy newline (map (pretty . map escape) parts))
     <> text "''"
     where escape (TextPart t) = TextPart
               $ Text.replace "$''${" "$${"
