@@ -278,31 +278,35 @@ indent n i = Text.replicate n "\n" <> Text.replicate i " "
 unChunk :: Chunk -> Predoc []
 unChunk (Chunk _ doc) = doc
 
+-- tw   Target Width
+-- cc   Current Column
+-- ci   Current Indentation
+-- ti   Target Indentation
 layoutGreedy :: Int -> DocList -> Text
-layoutGreedy w doc = Text.concat $ go 0 [Chunk 0 $ Group doc]
-    where go _ [] = []
-          go c (Chunk i x : xs) = case x of
-            Text t               -> t : go (c + textWidth t) xs
+layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Group doc]
+    where go _ _ [] = []
+          go cc ci (Chunk ti x : xs) = case x of
+            Text t               -> t : go (cc + textWidth t) ci xs
 
-            Spacing Break        -> indent 1 i : go i xs
-            Spacing Space        -> indent 1 i : go i xs
-            Spacing Hardspace    -> " "        : go (c + 1) xs
-            Spacing Hardline     -> indent 1 i : go i xs
-            Spacing Emptyline    -> indent 2 i : go i xs
-            Spacing (Newlines n) -> indent n i : go i xs
+            Spacing Break        -> indent 1 ti : go ti ti xs
+            Spacing Space        -> indent 1 ti : go ti ti xs
+            Spacing Hardspace    -> " "         : go (cc + 1) ci xs
+            Spacing Hardline     -> indent 1 ti : go ti ti xs
+            Spacing Emptyline    -> indent 2 ti : go ti ti xs
+            Spacing (Newlines n) -> indent n ti : go ti ti xs
 
             Spacing Softbreak
-              | firstLineFits (w - c) (w - i) (map unChunk xs)
-                                 -> go c xs
-              | otherwise        -> indent 1 i : go i xs
+              | firstLineFits (tw - cc) (tw - ti) (map unChunk xs)
+                                 -> go cc ci xs
+              | otherwise        -> indent 1 ti : go ti ti xs
 
             Spacing Softspace
-              | firstLineFits (w - c - 1) (w - i) (map unChunk xs)
-                                 -> " " : go (c + 1) xs
-              | otherwise        -> indent 1 i : go i xs
+              | firstLineFits (tw - cc - 1) (tw - ti) (map unChunk xs)
+                                 -> " " : go (cc + 1) ci xs
+              | otherwise        -> indent 1 ti : go ti ti xs
 
-            Nest l ys            -> go c $ map (Chunk (i + l)) ys ++ xs
+            Nest l ys            -> go cc ci $ map (Chunk (ti + l)) ys ++ xs
             Group ys             ->
-                case fits (w - c - firstLineWidth (map unChunk xs)) ys of
-                     Nothing     -> go c $ map (Chunk i) ys ++ xs
-                     Just t      -> t : go (c + textWidth t) xs
+                case fits (tw - cc - firstLineWidth (map unChunk xs)) ys of
+                     Nothing     -> go cc ci $ map (Chunk ti) ys ++ xs
+                     Just t      -> t : go (cc + textWidth t) ci xs
