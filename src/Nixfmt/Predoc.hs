@@ -35,12 +35,6 @@ module Nixfmt.Predoc
 import Data.List (intersperse)
 import Data.Text as Text (Text, concat, length, pack, replicate)
 
-data Tree a
-    = EmptyTree
-    | Leaf a
-    | Node (Tree a) (Tree a)
-    deriving (Show, Eq, Functor, Foldable)
-
 -- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
 -- This means that e.g. a Space followed by an Emptyline results in just an
 -- Emptyline.
@@ -55,32 +49,30 @@ data Spacing
     | Newlines Int
     deriving (Show, Eq, Ord)
 
-data Predoc f
+data DocAnn
+    = NoAnn
+    -- | Node Group docs indicates either all or none of the Spaces and Breaks
+    -- in docs should be converted to line breaks.
+    | Group
+    -- | Node (Nest n) docs indicates all line start in docs should be indented
+    -- by n more spaces than the surroundings.
+    | Nest Int
+    deriving (Show, Eq)
+
+data Doc
     = Text Text
     | Spacing Spacing
-    -- | Group predoc indicates either all or none of the Spaces and Breaks in
-    -- predoc should be converted to line breaks.
-    | Group (f (Predoc f))
-    -- | Nest n predoc indicates all line start in predoc should be indented by
-    -- n more spaces than the surroundings.
-    | Nest Int (f (Predoc f))
-
-deriving instance Eq (Predoc Tree)
-deriving instance Eq (Predoc [])
-deriving instance Show (Predoc Tree)
-deriving instance Show (Predoc [])
-
-type Doc = Tree (Predoc Tree)
-type DocList = [Predoc []]
+    | Node DocAnn [Doc]
+    deriving (Show, Eq)
 
 class Pretty a where
     pretty :: a -> Doc
 
 instance Pretty Text where
-    pretty = Leaf . Text
+    pretty = Text
 
 instance Pretty String where
-    pretty = Leaf . Text . pack
+    pretty = Text . pack
 
 instance Pretty Doc where
     pretty = id
@@ -89,44 +81,46 @@ instance Pretty a => Pretty (Maybe a) where
     pretty Nothing  = mempty
     pretty (Just x) = pretty x
 
-instance Semigroup (Tree a) where
-    left <> right = Node left right
+instance Semigroup Doc where
+    x <> (Node NoAnn xs) = Node NoAnn (x:xs)
+    left <> right = Node NoAnn [left, right]
 
-instance Monoid (Tree a) where
-    mempty = EmptyTree
+instance Monoid Doc where
+    mempty = Node NoAnn []
+    mconcat = Node NoAnn
 
 text :: Text -> Doc
-text = Leaf . Text
+text = Text
 
 group :: Pretty a => a -> Doc
-group = Leaf . Group . pretty
+group = Node Group . pure . pretty
 
 nest :: Int -> Doc -> Doc
-nest level = Leaf . Nest level
+nest level = Node (Nest level) . pure
 
 softline' :: Doc
-softline' = Leaf (Spacing Softbreak)
+softline' = Spacing Softbreak
 
 line' :: Doc
-line' = Leaf (Spacing Break)
+line' = Spacing Break
 
 softline :: Doc
-softline = Leaf (Spacing Softspace)
+softline = Spacing Softspace
 
 line :: Doc
-line = Leaf (Spacing Space)
+line = Spacing Space
 
 hardspace :: Doc
-hardspace = Leaf (Spacing Hardspace)
+hardspace = Spacing Hardspace
 
 hardline :: Doc
-hardline = Leaf (Spacing Hardline)
+hardline = Spacing Hardline
 
 emptyline :: Doc
-emptyline = Leaf (Spacing Emptyline)
+emptyline = Spacing Emptyline
 
 newline :: Doc
-newline = Leaf (Spacing (Newlines 1))
+newline = Spacing (Newlines 1)
 
 sepBy :: Pretty a => Doc -> [a] -> Doc
 sepBy separator = mconcat . intersperse separator . map pretty
@@ -135,49 +129,42 @@ sepBy separator = mconcat . intersperse separator . map pretty
 hcat :: Pretty a => [a] -> Doc
 hcat = mconcat . map pretty
 
-flatten :: Doc -> DocList
-flatten = go []
-    where go xs (Node x y)           = go (go xs y) x
-          go xs EmptyTree            = xs
-          go xs (Leaf (Group tree))  = Group (go [] tree) : xs
-          go xs (Leaf (Nest l tree)) = Nest l (go [] tree) : xs
-          go xs (Leaf (Spacing l))   = Spacing l : xs
-          go xs (Leaf (Text ""))     = xs
-          go xs (Leaf (Text t))      = Text t : xs
+-- | Eliminate NoAnn nodes to get a consistent structure.
+flatten :: Doc -> [Doc]
+flatten tree = go [] [tree]
+    where go done []         = done
+          go done (x : todo) =
+              case x of
+                   Node NoAnn ys  -> go done (ys ++ todo)
+                   Node ann   ys  -> go (Node ann (go [] ys) : done) todo
+                   Text ""        -> go done todo
+                   l              -> go (l : done) todo
 
-isSpacing :: Predoc f -> Bool
+isSpacing :: Doc -> Bool
 isSpacing (Spacing _) = True
-isSpacing _           = False
+isSpacing _                  = False
 
 spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
 spanEnd p = fmap reverse . span p . reverse
 
--- | Fix up a DocList in multiple stages:
+-- | Fix up a Doc in multiple stages:
 -- - First, all spacings are moved out of Groups and Nests and empty Groups and
 --   Nests are removed.
 -- - Now, all consecutive Spacings are ensured to be in the same list, so each
 --   sequence of Spacings can be merged into a single one.
 -- - Finally, Spacings right before a Nest should be moved inside in order to
 --   get the right indentation.
-fixup :: DocList -> DocList
+fixup :: [Doc] -> [Doc]
 fixup = moveLinesIn . mergeLines . concatMap moveLinesOut
 
-moveLinesOut :: (Predoc []) -> DocList
-moveLinesOut (Group xs) =
+moveLinesOut :: Doc -> [Doc]
+moveLinesOut (Node ann xs) =
     let movedOut     = concatMap moveLinesOut xs
         (pre, rest)  = span isSpacing movedOut
         (post, body) = spanEnd isSpacing rest
     in case body of
             [] -> pre ++ post
-            _  -> pre ++ (Group body : post)
-
-moveLinesOut (Nest level xs) =
-    let movedOut     = concatMap moveLinesOut xs
-        (pre, rest)  = span isSpacing movedOut
-        (post, body) = spanEnd isSpacing rest
-    in case body of
-            [] -> pre ++ post
-            _  -> pre ++ (Nest level body : post)
+            _  -> pre ++ (Node ann body : post)
 
 moveLinesOut x = [x]
 
@@ -192,32 +179,28 @@ mergeSpacings Hardspace    (Newlines x) = Newlines x
 mergeSpacings _            (Newlines x) = Newlines (x + 1)
 mergeSpacings _            y            = y
 
-mergeLines :: DocList -> DocList
+mergeLines :: [Doc] -> [Doc]
 mergeLines []                           = []
+mergeLines (Text "" : xs)               = mergeLines xs
 mergeLines (Spacing a : Spacing b : xs) = mergeLines $ Spacing (mergeSpacings a b) : xs
 mergeLines (Text a : Text b : xs)       = mergeLines $ Text (a <> b) : xs
-mergeLines (Text "" : xs)               = mergeLines xs
-mergeLines (Group xs : ys)              = Group (mergeLines xs) : mergeLines ys
-mergeLines (Nest n xs : ys)             = Nest n (mergeLines xs) : mergeLines ys
+mergeLines (Node ann xs : ys)           = Node ann (mergeLines xs) : mergeLines ys
 mergeLines (x : xs)                     = x : mergeLines xs
 
-moveLinesIn :: DocList -> DocList
+moveLinesIn :: [Doc] -> [Doc]
 moveLinesIn [] = []
-moveLinesIn (Spacing l : Nest level xs : ys) =
-    Nest level (Spacing l : moveLinesIn xs) : moveLinesIn ys
+moveLinesIn (Spacing l : Node (Nest level) xs : ys) =
+    Node (Nest level) (Spacing l : moveLinesIn xs) : moveLinesIn ys
 
-moveLinesIn (Nest level xs : ys) =
-    Nest level (moveLinesIn xs) : moveLinesIn ys
+moveLinesIn (Node ann xs : ys) =
+    Node ann (moveLinesIn xs) : moveLinesIn ys
 
-moveLinesIn (Group xs : ys) =
-    Group (moveLinesIn xs) : moveLinesIn ys
-
-moveLinesIn (x : xs) = x : moveLinesIn xs
+moveLinesIn (x : xs)                     = x : moveLinesIn xs
 
 layout :: Pretty a => Int -> a -> Text
 layout w = layoutGreedy w . fixup . flatten . pretty
 
--- 1. Flatten Docs to DocLists.
+-- 1. Flatten Docs to Doc.
 -- 2. Move and merge Spacings.
 -- 3. Convert Softlines to Grouped Lines and Hardspaces to Texts.
 -- 4. For each Text or Group, try to fit as much as possible on a line
@@ -229,7 +212,7 @@ textWidth :: Text -> Int
 textWidth = Text.length
 
 -- | Attempt to fit a list of documents in a single line of a specific width.
-fits :: Int -> DocList -> Maybe Text
+fits :: Int -> [Doc] -> Maybe Text
 fits c _ | c < 0 = Nothing
 fits _ [] = Just ""
 fits c (x:xs) = case x of
@@ -242,48 +225,51 @@ fits c (x:xs) = case x of
     Spacing Hardline     -> Nothing
     Spacing Emptyline    -> Nothing
     Spacing (Newlines _) -> Nothing
-    Group ys             -> fits c $ ys ++ xs
-    Nest _ ys            -> fits c $ ys ++ xs
+    Node Group ys        -> fits c $ ys ++ xs
+    Node (Nest _) ys     -> fits c $ ys ++ xs
+    Node NoAnn _         -> error "flatten should have eliminated NoAnn"
 
 -- | Find the width of the first line in a list of documents, using target
 -- width 0, which always forces line breaks when possible.
-firstLineWidth :: DocList -> Int
+firstLineWidth :: [Doc] -> Int
 firstLineWidth []                       = 0
 firstLineWidth (Text t : xs)            = textWidth t + firstLineWidth xs
 firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
 firstLineWidth (Spacing _ : _)          = 0
-firstLineWidth (Nest _ xs : ys)         = firstLineWidth (xs ++ ys)
-firstLineWidth (Group xs : ys)          = firstLineWidth (xs ++ ys)
+firstLineWidth (Node (Nest _) xs : ys)  = firstLineWidth (xs ++ ys)
+firstLineWidth (Node Group xs : ys)     = firstLineWidth (xs ++ ys)
+firstLineWidth (Node NoAnn _ : _)       = error "flatten should have eliminated NoAnn"
 
 -- | Check if the first line in a list of documents fits a target width given
 -- a maximum width, without breaking up groups.
-firstLineFits :: Int -> Int -> DocList -> Bool
+firstLineFits :: Int -> Int -> [Doc] -> Bool
 firstLineFits targetWidth maxWidth docs = go maxWidth docs
     where go c _ | c < 0                = False
           go c []                       = maxWidth - c <= targetWidth
           go c (Text t : xs)            = go (c - textWidth t) xs
           go c (Spacing Hardspace : xs) = go (c - 1) xs
           go c (Spacing _ : _)          = maxWidth - c <= targetWidth
-          go c (Nest _ ys : xs)         = go c (ys ++ xs)
-          go c (Group ys : xs)          =
+          go c (Node (Nest _) ys : xs)  = go c (ys ++ xs)
+          go _ (Node NoAnn _ : _)       = error "flatten should have eliminated NoAnn"
+          go c (Node Group ys : xs)     =
               case fits (c - firstLineWidth xs) ys of
                    Nothing -> go c (ys ++ xs)
                    Just t  -> go (c - textWidth t) xs
 
-data Chunk = Chunk Int (Predoc [])
+data Chunk = Chunk Int Doc
 
 indent :: Int -> Int -> Text
 indent n i = Text.replicate n "\n" <> Text.replicate i " "
 
-unChunk :: Chunk -> Predoc []
+unChunk :: Chunk -> Doc
 unChunk (Chunk _ doc) = doc
 
 -- tw   Target Width
 -- cc   Current Column
 -- ci   Current Indentation
 -- ti   Target Indentation
-layoutGreedy :: Int -> DocList -> Text
-layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Group doc]
+layoutGreedy :: Int -> [Doc] -> Text
+layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node Group doc]
     where go _ _ [] = []
           go cc ci (Chunk ti x : xs) = case x of
             Text t               -> t : go (cc + textWidth t) ci xs
@@ -305,8 +291,9 @@ layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Group doc]
                                  -> " " : go (cc + 1) ci xs
               | otherwise        -> indent 1 ti : go ti ti xs
 
-            Nest l ys            -> go cc ci $ map (Chunk (ti + l)) ys ++ xs
-            Group ys             ->
+            Node (Nest l) ys     -> go cc ci $ map (Chunk (ti + l)) ys ++ xs
+            Node NoAnn _         -> error "flatten should have eliminated NoAnn"
+            Node Group ys        ->
                 case fits (tw - cc - firstLineWidth (map unChunk xs)) ys of
                      Nothing     -> go cc ci $ map (Chunk ti) ys ++ xs
                      Just t      -> t : go (cc + textWidth t) ci xs
