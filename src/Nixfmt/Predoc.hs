@@ -269,7 +269,7 @@ layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node Group doc]
                                  -> " " : go (cc + 1) ci xs
               | otherwise        -> indent 1 ti : go ti ti xs
 
-            Node (Nest l) ys     -> go cc ci $ map (Chunk (ti + l)) ys ++ xs
+            Node (Nest l) ys     -> go cc ci $ map (Chunk (ci + l)) ys ++ xs
             Node Group ys        ->
                 case fits (tw - cc - firstLineWidth (map unChunk xs)) ys of
                      Nothing     -> go cc ci $ map (Chunk ti) ys ++ xs

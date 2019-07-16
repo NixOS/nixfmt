@@ -80,8 +80,8 @@ instance Pretty Binder where
 
     pretty (Assignment selectors assign expr semicolon)
         = group (hcat selectors <> hardspace
-            <> pretty assign <> softline
-            <> pretty expr) <> pretty semicolon
+                 <> nest 2 (pretty assign <> softline <> pretty expr))
+          <> pretty semicolon
 
     pretty (BinderTrivia trivia) = pretty trivia
 
@@ -103,7 +103,7 @@ prettyTerm (List (Ann paropen Nothing []) [ListItem item] parclose)
         = pretty paropen <> pretty item <> pretty parclose
 
 prettyTerm (List (Ann paropen trailing leading) items parclose)
-    = pretty paropen <> pretty trailing <> line
+    = nest 0 $ pretty paropen <> pretty trailing <> line
         <> nest 2 (sepBy line (map group items')) <> line
         <> pretty parclose
     where items' = case leading of
@@ -114,10 +114,12 @@ prettyTerm (Set Nothing (Ann paropen Nothing []) [] parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
 prettyTerm (Set Nothing (Ann paropen Nothing []) [item] parclose)
-    = pretty paropen <> line <> nest 2 (pretty item) <> line <> pretty parclose
+    = nest 0 $ pretty paropen <> line
+        <> nest 2 (pretty item) <> line
+        <> pretty parclose
 
 prettyTerm (Set krec (Ann paropen trailing leading) binders parclose)
-    = pretty (fmap ((<>hardspace) . pretty) krec)
+    = nest 0 $ pretty (fmap ((<>hardspace) . pretty) krec)
         <> pretty paropen <> pretty trailing <> line
         <> nest 2 (sepBy hardline binders') <> line
         <> pretty parclose
@@ -148,7 +150,7 @@ instance Pretty ParamAttr where
 
     pretty (ParamAttr name (Just (qmark, def)) comma)
         = group (pretty name <> hardspace <> pretty qmark
-            <> absorb softline mempty 2 def)
+            <> absorb softline mempty (Just 2) def)
             <> prettyComma comma
 
     pretty (ParamEllipsis ellipsis)
@@ -173,7 +175,7 @@ isAbsorbable (Parenthesized (Ann _ Nothing []) (Term t) _) = isAbsorbable t
 isAbsorbable (List _ (_:_:_) _)                            = True
 isAbsorbable _                                             = False
 
-absorb :: Doc -> Doc -> Int -> Expression -> Doc
+absorb :: Doc -> Doc -> Maybe Int -> Expression -> Doc
 absorb left right _ (Term t)
     | isAbsorbable t = toHardspace left <> prettyTerm t <> toHardspace right
     where toHardspace x | x == mempty    = mempty
@@ -181,10 +183,12 @@ absorb left right _ (Term t)
                         | x == line'     = mempty
                         | otherwise      = hardspace
 
-absorb left right level x = left <> nest level (pretty x) <> right
+absorb left right Nothing x = left <> pretty x <> right
+absorb left right (Just level) x
+    = left <> nest level (pretty x) <> right
 
 absorbSet :: Expression -> Doc
-absorbSet = absorb line mempty 0
+absorbSet = absorb line mempty Nothing
 
 absorbThen :: Expression -> Doc
 absorbThen (Term t) | isAbsorbable t = hardspace <> prettyTerm t <> hardspace
@@ -228,9 +232,10 @@ instance Pretty Expression where
           <> pretty expr
 
     pretty (If if_ cond then_ expr0 else_ expr1)
-        = group $ pretty if_ <> hardspace <> group cond <> hardspace
-                  <> pretty then_ <> absorbThen expr0
-                  <> pretty else_ <> absorbElse expr1
+        = group $ pretty if_ <> nest 0
+            (hardspace <> group cond <> hardspace
+            <> pretty then_ <> absorbThen expr0
+            <> pretty else_ <> absorbElse expr1)
 
     pretty (Abstraction (IDParameter param) colon body)
         = pretty param <> pretty colon <> absorbAbs body
@@ -358,7 +363,7 @@ prettySimpleString parts = group $
           escape x            = x
 
 prettyIndentedString :: [[StringPart]] -> Doc
-prettyIndentedString parts = group $
+prettyIndentedString parts = group $ nest 0 $
     text "''" <> line'
     <> nest 2 (sepBy newline (map (pretty . map escape) parts))
     <> text "''"
