@@ -51,7 +51,7 @@
   @media only screen and (max-width: 80em) {
       body { grid-template-rows: 1fr 2em 1fr; }
   }
-  @media only screen and not (max-width: 80em) {
+  @media only screen and (min-width: 80em) {
       body { grid-template-columns: 0.9fr 3em 1fr; }
   }
   button {
@@ -153,6 +153,9 @@ in
   <script>
     hljs.configure({ languages: ["nix"] })
     function format() {
+        if (!window.nixfmt_) {
+            return setTimeout(format, 100)
+        }
         const outWrap = document.getElementById("out-wrap")
         let width = 80;
         if (outWrap.style.width) {
@@ -165,7 +168,7 @@ in
         hljs.highlightBlock(out)
     }
     document.getElementById('fmt').addEventListener('click', format)
-    window.addEventListener('load', format)
+    window.unload = format
     let resizeTimer = false
     const resizeObserver = new MutationObserver(entries => {
         if (resizeTimer) {
