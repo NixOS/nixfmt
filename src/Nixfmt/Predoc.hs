@@ -57,6 +57,8 @@ data DocAnn
     | Nest Int
     deriving (Show, Eq)
 
+-- | Single document element. Documents are modeled as lists of these elements
+-- in order to make concatenation simple.
 data DocE
     = Text Text
     | Spacing Spacing
@@ -88,6 +90,17 @@ text t  = [Text t]
 group :: Pretty a => a -> Doc
 group = pure . Node Group . pretty
 
+-- | @nest n doc@ sets the indentation for lines in @doc@ to @n@ more than the
+-- indentation of the part before it. This is based on the actual indentation of
+-- the line, rather than the indentation it should have used: If multiple
+-- indentation levels start on the same line, only the last indentation level
+-- will be applied on the next line. This prevents unnecessary nesting.
+--
+-- This is abused a little in order to put closing brackets on the same
+-- indentation as their opening brackets: @nest 0 doc@ will override any
+-- scheduled indentation and set the indentation of the document, including the
+-- closing bracket, to 0 relative to the line with the start of the document.
+-- The body between the brackets can then be nested again as normal.
 nest :: Int -> Doc -> Doc
 nest level = pure . Node (Nest level)
 
@@ -124,12 +137,12 @@ hcat = mconcat . map pretty
 
 isSpacing :: DocE -> Bool
 isSpacing (Spacing _) = True
-isSpacing _                  = False
+isSpacing _           = False
 
 spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
 spanEnd p = fmap reverse . span p . reverse
 
--- | Fix up a DocE in multiple stages:
+-- | Fix up a Doc in multiple stages:
 -- - First, all spacings are moved out of Groups and Nests and empty Groups and
 --   Nests are removed.
 -- - Now, all consecutive Spacings are ensured to be in the same list, so each
@@ -163,7 +176,6 @@ mergeSpacings _            y            = y
 
 mergeLines :: Doc -> Doc
 mergeLines []                           = []
-mergeLines (Text "" : xs)               = mergeLines xs
 mergeLines (Spacing a : Spacing b : xs) = mergeLines $ Spacing (mergeSpacings a b) : xs
 mergeLines (Text a : Text b : xs)       = mergeLines $ Text (a <> b) : xs
 mergeLines (Node ann xs : ys)           = Node ann (mergeLines xs) : mergeLines ys
@@ -177,7 +189,7 @@ moveLinesIn (Spacing l : Node (Nest level) xs : ys) =
 moveLinesIn (Node ann xs : ys) =
     Node ann (moveLinesIn xs) : moveLinesIn ys
 
-moveLinesIn (x : xs)                     = x : moveLinesIn xs
+moveLinesIn (x : xs) = x : moveLinesIn xs
 
 layout :: Pretty a => Int -> a -> Text
 layout w = layoutGreedy w . fixup . pretty
