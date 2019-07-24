@@ -6,13 +6,15 @@
 
 
 _Warning: This is a work in progress, and we do not recommend using this
-tool on important and/or code that was not properly backed-up as the
+tool on important code that was not properly backed-up as the
 in place mode can result in data loss._
 
 
 # `nixfmt`
 
 `nixfmt` is a formatter for Nix code, intended to easily apply a uniform style.
+
+You are encouraged to test this out on your code and submit any undesirable formatting you find as an issue
 
 [![Build Status](https://badge.buildkite.com/b37f73adea391439e63288e8fd3b47f4b98fb9640bb864ccfa.svg)](https://buildkite.com/serokell/nixfmt)
 [![Cachix](https://img.shields.io/badge/cachix-nixfmt-blue.svg)](https://nixfmt.cachix.org)
