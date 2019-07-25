@@ -4,12 +4,6 @@
    - SPDX-License-Identifier: MPL-2.0
    -->
 
-
-_Warning: This is a work in progress, and we do not recommend using this
-tool on important code that was not properly backed-up as the
-in place mode can result in data loss._
-
-
 # `nixfmt`
 
 `nixfmt` is a formatter for Nix code, intended to easily apply a uniform style.
