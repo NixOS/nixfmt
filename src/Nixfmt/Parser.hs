@@ -27,10 +27,9 @@ import qualified Text.Megaparsec.Char.Lexer as L (decimal, float)
 
 import Nixfmt.Lexer (lexeme)
 import Nixfmt.Types
-  (Ann, Binder(..), Expression(..), File(..), Fixity(..), Leaf, ListPart(..),
-  Operator(..), ParamAttr(..), Parameter(..), Parser, Selector(..),
-  SimpleSelector(..), String, StringPart(..), Term(..), Token(..), operators,
-  tokenText)
+  (Ann, Binder(..), Expression(..), File(..), Fixity(..), Leaf, Operator(..),
+  ParamAttr(..), Parameter(..), Parser, Selector(..), SimpleSelector(..),
+  String, StringPart(..), Term(..), Token(..), operators, tokenText)
 import Nixfmt.Util
   (commonIndentation, identChar, manyP, manyText, pathChar, schemeChar, someP,
   someText, uriChar)
@@ -270,8 +269,7 @@ set = Set <$> optional (reserved KRec <|> reserved KLet) <*>
     symbol TBraceOpen <*> binders <*> symbol TBraceClose
 
 list :: Parser Term
-list = List <$> symbol TBrackOpen <*>
-    many (ListItem <$> term) <*> symbol TBrackClose
+list = List <$> symbol TBrackOpen <*> many term <*> symbol TBrackClose
 
 -- OPERATORS
 

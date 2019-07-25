@@ -53,18 +53,12 @@ data Selector
 data Binder
     = Inherit Leaf (Maybe Term) [Leaf] Leaf
     | Assignment [Selector] Leaf Expression Leaf
-    | BinderTrivia Trivia
-    deriving (Show)
-
-data ListPart
-    = ListItem Term
-    | ListTrivia Trivia
     deriving (Show)
 
 data Term
     = Token Leaf
     | String String
-    | List Leaf [ListPart] Leaf
+    | List Leaf [Term] Leaf
     | Set (Maybe Leaf) Leaf [Binder] Leaf
     | Selection Term [Selector]
     | Parenthesized Leaf Expression Leaf
