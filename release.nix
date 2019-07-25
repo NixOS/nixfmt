@@ -10,6 +10,7 @@ let
     overrides = (self: super: {
       QuickCheck = haskell.lib.dontCheck super.QuickCheck;
       tasty-quickcheck = haskell.lib.dontCheck super.tasty-quickcheck;
+      scientific = haskell.lib.dontCheck super.scientific;
     });
   });
   regexes = [ ".*.cabal$" "^src.*" "^main.*" "^Setup.hs$" "^js.*" "LICENSE" ];
