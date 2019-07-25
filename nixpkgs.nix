@@ -1,4 +1,14 @@
 import (fetchTarball {
-  url = "https://github.com/NixOS/nixpkgs/archive/bc94dcf500286495e3c478a9f9322debc94c4304.tar.gz";
-  sha256 = "1siqklf863181fqk19d0x5cd0xzxf1w0zh08lv0l0dmjc8xic64a";
-}) { config = {}; overlays = []; }
+  url = "https://github.com/NixOS/nixpkgs/archive/b5f5c97f7d67a99b67731a8cfd3926f163c11857.tar.gz";
+  sha256 = "1m9xb3z3jxh0xirdnik11z4hw95bzdz7a4p3ab7y392345jk1wgm";
+}) { config = {}; overlays = [
+       (self: super: {
+         haskell = super.haskell // {
+           packages = super.haskell.packages // {
+             ghc864 = super.haskell.packages.ghc864.extend (hself: hsuper: {
+               happy = super.haskell.lib.dontCheck (hsuper.callHackage "happy" "1.19.9" {});
+             });
+           };
+         };
+       })
+     ]; }
