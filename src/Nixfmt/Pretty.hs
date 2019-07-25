@@ -20,10 +20,10 @@ import Nixfmt.Predoc
   (Doc, Pretty, emptyline, group, hardline, hardspace, hcat, line, line', nest,
   newline, pretty, sepBy, softline, softline', text, textWidth)
 import Nixfmt.Types
-  (Ann(..), Binder(..), Expression(..), File(..), Leaf, ListPart(..),
-  ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
-  StringPart(..), Term(..), Token(..), TrailingComment(..), Trivia,
-  Trivium(..), tokenText)
+  (Ann(..), Binder(..), Expression(..), File(..), ParamAttr(..), Parameter(..),
+  Selector(..), SimpleSelector(..), StringPart(..), Term(..), Token(..),
+  TrailingComment(..), Trivia, Trivium(..), tokenText)
+import Nixfmt.Util (commonIndentation)
 
 prettyCommentLine :: Text -> Doc
 prettyCommentLine l
@@ -41,13 +41,13 @@ instance Pretty Trivium where
     pretty EmptyLine        = emptyline
     pretty (LineComment c)  = text "#" <> pretty c <> hardline
     pretty (BlockComment c)
-        | all ("*" `isPrefixOf`) (tail c) = pretty (map toLineComment c)
+        | all ("*" `isPrefixOf`) (tail c) = hcat (map toLineComment c)
         | otherwise
             = text "/*" <> hardspace <> (nest 3 $ hcat $ map prettyCommentLine c)
               <> text "*/" <> hardline
 
 instance Pretty [Trivium] where
-    pretty [] = mempty
+    pretty []     = mempty
     pretty trivia = hardline <> hcat trivia
 
 instance Pretty a => Pretty (Ann a) where
@@ -83,12 +83,6 @@ instance Pretty Binder where
                  <> nest 2 (pretty assign <> softline <> pretty expr))
           <> pretty semicolon
 
-    pretty (BinderTrivia trivia) = pretty trivia
-
-instance Pretty ListPart where
-    pretty (ListItem term)     = pretty term
-    pretty (ListTrivia trivia) = pretty trivia
-
 -- | Pretty print a term without wrapping it in a group.
 prettyTerm :: Term -> Doc
 prettyTerm (Token t) = pretty t
@@ -98,60 +92,43 @@ prettyTerm (Selection term selectors) = pretty term <> hcat selectors
 prettyTerm (List (Ann paropen Nothing []) [] parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
-prettyTerm (List (Ann paropen Nothing []) [ListItem item] parclose)
+prettyTerm (List (Ann paropen Nothing []) [item] parclose)
     | isAbsorbable item
         = pretty paropen <> pretty item <> pretty parclose
 
 prettyTerm (List (Ann paropen trailing leading) items parclose)
     = nest 0 $ pretty paropen <> pretty trailing <> line
-        <> nest 2 (sepBy line (map group items')) <> line
+        <> nest 2 (pretty leading <> sepBy line (map group items)) <> line
         <> pretty parclose
-    where items' = case leading of
-                        [] -> items
-                        _  -> ListTrivia leading : items
 
 prettyTerm (Set Nothing (Ann paropen Nothing []) [] parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
-prettyTerm (Set Nothing (Ann paropen Nothing []) [item] parclose)
-    = nest 0 $ pretty paropen <> line
-        <> nest 2 (pretty item) <> line
-        <> pretty parclose
-
 prettyTerm (Set krec (Ann paropen trailing leading) binders parclose)
     = nest 0 $ pretty (fmap ((<>hardspace) . pretty) krec)
         <> pretty paropen <> pretty trailing <> line
-        <> nest 2 (sepBy hardline binders') <> line
+        <> nest 2 (pretty leading <> sepBy hardline binders) <> line
         <> pretty parclose
-    where binders' = case leading of
-                          [] -> binders
-                          _  -> BinderTrivia leading : binders
 
 prettyTerm (Parenthesized paropen expr parclose)
     = pretty paropen <> group expr <> pretty parclose
 
 instance Pretty Term where
-    pretty l@(List _ _ _)    = group $ prettyTerm l
-    pretty x                 = prettyTerm x
+    pretty l@(List _ _ _) = group $ prettyTerm l
+    pretty x              = prettyTerm x
 
 toLeading :: Maybe TrailingComment -> Trivia
 toLeading Nothing = []
 toLeading (Just (TrailingComment c)) = [LineComment (" " <> c)]
 
-prettyComma :: Maybe Leaf -> Doc
-prettyComma Nothing = mempty
-prettyComma (Just (Ann c trailing leading))
-    = pretty (toLeading trailing ++ leading)
-      <> softline' <> pretty c <> hardspace
-
 instance Pretty ParamAttr where
     pretty (ParamAttr name Nothing comma)
-        = pretty name <> prettyComma comma
+        = pretty name <> fmap (<>hardspace) pretty comma
 
     pretty (ParamAttr name (Just (qmark, def)) comma)
         = group (pretty name <> hardspace <> pretty qmark
             <> absorb softline mempty (Just 2) def)
-            <> prettyComma comma
+            <> fmap (<>hardspace) pretty comma
 
     pretty (ParamEllipsis ellipsis)
         = pretty ellipsis
@@ -170,7 +147,7 @@ isAbsorbable :: Term -> Bool
 isAbsorbable (String (Ann parts@(_:_:_) _ _))
     = not $ isSimpleString parts
 isAbsorbable (Set _ _ (_:_) _)                             = True
-isAbsorbable (List (Ann _ Nothing []) [ListItem item] _)   = isAbsorbable item
+isAbsorbable (List (Ann _ Nothing []) [item] _)            = isAbsorbable item
 isAbsorbable (Parenthesized (Ann _ Nothing []) (Term t) _) = isAbsorbable t
 isAbsorbable (List _ (_:_:_) _)                            = True
 isAbsorbable _                                             = False
@@ -219,12 +196,11 @@ instance Pretty Expression where
     pretty (Let (Ann let_ letTrailing letLeading) binders
                 (Ann in_ inTrailing inLeading) expr)
         = group $ group (pretty let_ <> pretty letTrailing <> line
-                         <> nest 2 (sepBy hardline binders')) <> line
-          <> pretty inTrailing <> pretty inLeading
+                         <> nest 2 (pretty letLeading
+                                    <> sepBy hardline binders
+                                    <> pretty (toLeading inTrailing)
+                                    <> pretty inLeading)) <> line
           <> pretty in_ <> hardspace <> group expr
-        where binders' = case letLeading of
-                              [] -> binders
-                              _  -> BinderTrivia letLeading : binders
 
     pretty (Assert assert cond semicolon expr)
         = pretty assert <> hardspace
@@ -305,6 +281,18 @@ endsInSingleQuote xs =
          (TextPart x) -> x /= Text.empty && Text.last x == '\''
          _            -> False
 
+isIndented :: [[StringPart]] -> Bool
+isIndented parts =
+    case commonIndentation inits of
+         Just "" -> False
+         _       -> True
+    where textInit (TextPart t : xs) = t <> textInit xs
+          textInit _                 = ""
+          nonEmpty (TextPart "" : xs) = nonEmpty xs
+          nonEmpty []                 = False
+          nonEmpty _                  = True
+          inits = map textInit $ filter nonEmpty parts
+
 isEmptyLine :: [StringPart] -> Bool
 isEmptyLine []           = True
 isEmptyLine [TextPart t] = Text.strip t == Text.empty
@@ -312,12 +300,15 @@ isEmptyLine _            = False
 
 isSimpleString :: [[StringPart]] -> Bool
 isSimpleString [parts]
-    | hasDualQuotes parts || endsInSingleQuote parts = True
-    | hasQuotes parts = False
-    | otherwise       = True
+    | hasDualQuotes parts     = True
+    | endsInSingleQuote parts = True
+    | isIndented [parts]      = True
+    | hasQuotes parts         = False
+    | otherwise               = True
 
 isSimpleString parts
     | all isEmptyLine parts = True
+    | isIndented parts      = True
     | otherwise             = False
 
 instance Pretty StringPart where
