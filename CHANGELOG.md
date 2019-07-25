@@ -7,6 +7,15 @@
 
 # Revision history for nixfmt
 
+## 0.2.0 -- 2019-07-25
+
+* Fixed indentation of binders and some other expressions.
+* Use atomic writes to avoid data loss.
+* Made idempotent.
+* Pinned nixpkgs.
+* Simplified some code.
+* Many other formatting improvements.
+
 ## 0.1.0 -- 2019-05-11
 
 * The first released version of nixfmt. This project aims to provide a
