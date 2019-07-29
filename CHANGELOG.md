@@ -7,6 +7,10 @@
 
 # Revision history for nixfmt
 
+## 0.2.1 -- 2019-07-29
+
+* Fixed missing linebreaks in set abstractions.
+
 ## 0.2.0 -- 2019-07-25
 
 * Fixed indentation of binders and some other expressions.
