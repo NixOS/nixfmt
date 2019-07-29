@@ -20,9 +20,9 @@ import Nixfmt.Predoc
   (Doc, Pretty, emptyline, group, hardline, hardspace, hcat, line, line', nest,
   newline, pretty, sepBy, softline, softline', text, textWidth)
 import Nixfmt.Types
-  (Ann(..), Binder(..), Expression(..), File(..), ParamAttr(..), Parameter(..),
-  Selector(..), SimpleSelector(..), StringPart(..), Term(..), Token(..),
-  TrailingComment(..), Trivia, Trivium(..), tokenText)
+  (Ann(..), Binder(..), Expression(..), File(..), Leaf, ParamAttr(..),
+  Parameter(..), Selector(..), SimpleSelector(..), StringPart(..), Term(..),
+  Token(..), TrailingComment(..), Trivia, Trivium(..), tokenText)
 import Nixfmt.Util (commonIndentation)
 
 prettyCommentLine :: Text -> Doc
@@ -121,14 +121,18 @@ toLeading :: Maybe TrailingComment -> Trivia
 toLeading Nothing = []
 toLeading (Just (TrailingComment c)) = [LineComment (" " <> c)]
 
+prettyComma :: Maybe Leaf -> Doc
+prettyComma Nothing = mempty
+prettyComma (Just comma) = softline' <> pretty comma <> hardspace
+
 instance Pretty ParamAttr where
     pretty (ParamAttr name Nothing comma)
-        = pretty name <> fmap (<>hardspace) pretty comma
+        = pretty name <> prettyComma comma
 
     pretty (ParamAttr name (Just (qmark, def)) comma)
         = group (pretty name <> hardspace <> pretty qmark
             <> absorb softline mempty (Just 2) def)
-            <> fmap (<>hardspace) pretty comma
+            <> prettyComma comma
 
     pretty (ParamEllipsis ellipsis)
         = pretty ellipsis
