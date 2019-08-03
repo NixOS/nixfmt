@@ -17,8 +17,8 @@ import qualified Data.Text as Text
   (empty, isInfixOf, last, null, replace, strip, takeWhile)
 
 import Nixfmt.Predoc
-  (Doc, Pretty, emptyline, group, hardline, hardspace, hcat, line, line', nest,
-  newline, pretty, sepBy, softline, softline', text, textWidth)
+  (Doc, Pretty, base, emptyline, group, hardline, hardspace, hcat, line, line',
+  nest, newline, pretty, sepBy, softline, softline', text, textWidth)
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), File(..), Leaf, ParamAttr(..),
   Parameter(..), Selector(..), SimpleSelector(..), StringPart(..), Term(..),
@@ -43,7 +43,8 @@ instance Pretty Trivium where
     pretty (BlockComment c)
         | all ("*" `isPrefixOf`) (tail c) = hcat (map toLineComment c)
         | otherwise
-            = text "/*" <> hardspace <> (nest 3 $ hcat $ map prettyCommentLine c)
+            = base $ text "/*" <> hardspace
+              <> nest 3 (hcat (map prettyCommentLine c))
               <> text "*/" <> hardline
 
 instance Pretty [Trivium] where
@@ -70,16 +71,16 @@ instance Pretty Selector where
 
 instance Pretty Binder where
     pretty (Inherit inherit Nothing ids semicolon)
-        = group (pretty inherit <> softline
+        = base $ group (pretty inherit <> softline
                  <> nest 2 (sepBy softline ids)) <> pretty semicolon
 
     pretty (Inherit inherit source ids semicolon)
-        = group (pretty inherit <> hardspace
+        = base $ group (pretty inherit <> hardspace
                  <> pretty source <> line
                  <> nest 2 (sepBy softline ids)) <> pretty semicolon
 
     pretty (Assignment selectors assign expr semicolon)
-        = group (hcat selectors <> hardspace
+        = base $ group (hcat selectors <> hardspace
                  <> nest 2 (pretty assign <> softline <> pretty expr))
           <> pretty semicolon
 
@@ -97,7 +98,7 @@ prettyTerm (List (Ann paropen Nothing []) [item] parclose)
         = pretty paropen <> pretty item <> pretty parclose
 
 prettyTerm (List (Ann paropen trailing leading) items parclose)
-    = nest 0 $ pretty paropen <> pretty trailing <> line
+    = base $ pretty paropen <> pretty trailing <> line
         <> nest 2 (pretty leading <> sepBy line (map group items)) <> line
         <> pretty parclose
 
@@ -105,13 +106,13 @@ prettyTerm (Set Nothing (Ann paropen Nothing []) [] parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
 prettyTerm (Set krec (Ann paropen trailing leading) binders parclose)
-    = nest 0 $ pretty (fmap ((<>hardspace) . pretty) krec)
+    = base $ pretty (fmap ((<>hardspace) . pretty) krec)
         <> pretty paropen <> pretty trailing <> line
         <> nest 2 (pretty leading <> sepBy hardline binders) <> line
         <> pretty parclose
 
 prettyTerm (Parenthesized paropen expr parclose)
-    = pretty paropen <> nest 2 (group expr) <> pretty parclose
+    = base $ pretty paropen <> nest 2 (group expr) <> pretty parclose
 
 instance Pretty Term where
     pretty l@(List _ _ _) = group $ prettyTerm l
@@ -193,29 +194,31 @@ instance Pretty Expression where
     pretty (Term t) = pretty t
 
     pretty (With with expr0 semicolon expr1)
-        = pretty with <> hardspace
-          <> nest 2 (group expr0) <> pretty semicolon
+        = base (pretty with <> hardspace
+          <> nest 2 (group expr0) <> pretty semicolon)
           <> absorbSet expr1
 
     pretty (Let (Ann let_ letTrailing letLeading) binders
                 (Ann in_ inTrailing inLeading) expr)
-        = group $ group (pretty let_ <> pretty letTrailing <> line
-                         <> nest 2 (pretty letLeading
-                                    <> sepBy hardline binders
-                                    <> pretty (toLeading inTrailing)
-                                    <> pretty inLeading)) <> line
-          <> pretty in_ <> hardspace <> group expr
+        = base $ group letPart <> line <> group inPart
+        where letPart = pretty let_ <> pretty letTrailing <> line <> letBody
+              inPart = pretty in_ <> hardspace <> pretty expr
+              letBody = nest 2 $
+                  pretty letLeading
+                  <> sepBy hardline binders
+                  <> pretty (toLeading inTrailing)
+                  <> pretty inLeading
 
     pretty (Assert assert cond semicolon expr)
-        = pretty assert <> hardspace
-          <> nest 2 (group cond) <> pretty semicolon <> line
+        = base (pretty assert <> hardspace
+          <> nest 2 (group cond) <> pretty semicolon)
           <> absorbSet expr
 
     pretty (If if_ cond then_ expr0 else_ expr1)
-        = group $ pretty if_ <> nest 0
-            (hardspace <> group cond <> hardspace
+        = base $ group $
+            pretty if_ <> hardspace <> group cond <> hardspace
             <> pretty then_ <> absorbThen expr0
-            <> pretty else_ <> absorbElse expr1)
+            <> pretty else_ <> absorbElse expr1
 
     pretty (Abstraction (IDParameter param) colon body)
         = pretty param <> pretty colon <> absorbAbs body
@@ -358,7 +361,7 @@ prettySimpleString parts = group $
           escape x            = x
 
 prettyIndentedString :: [[StringPart]] -> Doc
-prettyIndentedString parts = group $ nest 0 $
+prettyIndentedString parts = group $ base $
     text "''" <> line'
     <> nest 2 (sepBy newline (map (pretty . map escape) parts))
     <> text "''"
