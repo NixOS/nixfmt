@@ -194,7 +194,7 @@ instance Pretty Expression where
 
     pretty (With with expr0 semicolon expr1)
         = pretty with <> hardspace
-          <> pretty expr0 <> pretty semicolon
+          <> nest 2 (group expr0) <> pretty semicolon
           <> absorbSet expr1
 
     pretty (Let (Ann let_ letTrailing letLeading) binders
@@ -208,8 +208,8 @@ instance Pretty Expression where
 
     pretty (Assert assert cond semicolon expr)
         = pretty assert <> hardspace
-          <> pretty cond <> pretty semicolon <> line
-          <> pretty expr
+          <> nest 2 (group cond) <> pretty semicolon <> line
+          <> absorbSet expr
 
     pretty (If if_ cond then_ expr0 else_ expr1)
         = group $ pretty if_ <> nest 0
