@@ -13,6 +13,7 @@ module Nixfmt.Predoc
     ( text
     , sepBy
     , hcat
+    , base
     , group
     , nest
     , softline'
@@ -52,9 +53,12 @@ data DocAnn
     -- | Node Group docs indicates either all or none of the Spaces and Breaks
     -- in docs should be converted to line breaks.
     = Group
-    -- | Node (Nest n) docs indicates all line start in docs should be indented
-    -- by n more spaces than the surroundings.
+    -- | Node (Nest n) doc indicates all line starts in doc should be indented
+    -- by n more spaces than the surrounding Base.
     | Nest Int
+    -- | Node Base doc sets the base indentation that Nests should be relative
+    -- to to the indentation of the line where the Base starts.
+    | Base
     deriving (Show, Eq)
 
 -- | Single document element. Documents are modeled as lists of these elements
@@ -95,14 +99,11 @@ group = pure . Node Group . pretty
 -- the line, rather than the indentation it should have used: If multiple
 -- indentation levels start on the same line, only the last indentation level
 -- will be applied on the next line. This prevents unnecessary nesting.
---
--- This is abused a little in order to put closing brackets on the same
--- indentation as their opening brackets: @nest 0 doc@ will override any
--- scheduled indentation and set the indentation of the document, including the
--- closing bracket, to 0 relative to the line with the start of the document.
--- The body between the brackets can then be nested again as normal.
 nest :: Int -> Doc -> Doc
 nest level = pure . Node (Nest level)
+
+base :: Doc -> Doc
+base = pure . Node Base
 
 softline' :: Doc
 softline' = [Spacing Softbreak]
@@ -218,8 +219,7 @@ fits c (x:xs) = case x of
     Spacing Hardline     -> Nothing
     Spacing Emptyline    -> Nothing
     Spacing (Newlines _) -> Nothing
-    Node Group ys        -> fits c $ ys ++ xs
-    Node (Nest _) ys     -> fits c $ ys ++ xs
+    Node _ ys            -> fits c $ ys ++ xs
 
 -- | Find the width of the first line in a list of documents, using target
 -- width 0, which always forces line breaks when possible.
@@ -228,8 +228,7 @@ firstLineWidth []                       = 0
 firstLineWidth (Text t : xs)            = textWidth t + firstLineWidth xs
 firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
 firstLineWidth (Spacing _ : _)          = 0
-firstLineWidth (Node (Nest _) xs : ys)  = firstLineWidth (xs ++ ys)
-firstLineWidth (Node Group xs : ys)     = firstLineWidth (xs ++ ys)
+firstLineWidth (Node _ xs : ys)         = firstLineWidth (xs ++ ys)
 
 -- | Check if the first line in a list of documents fits a target width given
 -- a maximum width, without breaking up groups.
@@ -240,12 +239,14 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
           go c (Text t : xs)            = go (c - textWidth t) xs
           go c (Spacing Hardspace : xs) = go (c - 1) xs
           go c (Spacing _ : _)          = maxWidth - c <= targetWidth
-          go c (Node (Nest _) ys : xs)  = go c (ys ++ xs)
           go c (Node Group ys : xs)     =
               case fits (c - firstLineWidth xs) ys of
                    Nothing -> go c (ys ++ xs)
                    Just t  -> go (c - textWidth t) xs
 
+          go c (Node _ ys : xs)         = go c (ys ++ xs)
+
+-- |
 data Chunk = Chunk Int DocE
 
 indent :: Int -> Int -> Text
@@ -281,7 +282,8 @@ layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node Group doc]
                                  -> " " : go (cc + 1) ci xs
               | otherwise        -> indent 1 ti : go ti ti xs
 
-            Node (Nest l) ys     -> go cc ci $ map (Chunk (ci + l)) ys ++ xs
+            Node (Nest l) ys     -> go cc ci $ map (Chunk (ti + l)) ys ++ xs
+            Node Base ys         -> go cc ci $ map (Chunk ci) ys ++ xs
             Node Group ys        ->
                 case fits (tw - cc - firstLineWidth (map unChunk xs)) ys of
                      Nothing     -> go cc ci $ map (Chunk ti) ys ++ xs
