@@ -1,0 +1,6 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: .github/ISSUE_TEMPLATE/formatting-suggestion.md
+Copyright: 2019 Serokell <hi@serokell.io>
+Copyright: 2019 Lars Jellema <lars.jellema@gmail.com>
+License: MPL-2.0

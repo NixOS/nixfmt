@@ -1,3 +1,9 @@
+<!-- © 2019 Serokell <hi@serokell.io>
+   - © 2019 Lars Jellema <lars.jellema@gmail.com>
+   -
+   - SPDX-License-Identifier: MPL-2.0
+   -->
+
 # Contribution Guidelines
 
 We welcome issues and pull requests at https://github.com/serokell/nixfmt.
