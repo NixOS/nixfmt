@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, NamedFieldPuns #-}
 
 module Main where
 
@@ -27,10 +27,11 @@ import System.IO.Atomic (withOutputFile)
 import System.IO.Utf8 (readFileUtf8, withUtf8StdHandles)
 
 type Result = Either String ()
+type Width = Int
 
 data Nixfmt = Nixfmt
     { files :: [FilePath]
-    , width :: Int
+    , width :: Width
     , check :: Bool
     , quiet :: Bool
     } deriving (Show, Data, Typeable)
@@ -43,25 +44,31 @@ options = Nixfmt
     , quiet = False &= help "Do not report errors"
     } &= summary "Format Nix source code"
 
-format' :: Int -> FilePath -> Text -> Either String Text
+format' :: Width -> FilePath -> Text -> Either String Text
 format' w path = first errorBundlePretty . format w path
 
-data Target = Target (IO Text) FilePath (Text -> IO ())
+data Target = Target
+    { tDoRead :: IO Text
+    , tPath :: FilePath
+    , tDoWrite :: Text -> IO ()
+    }
 
-formatTarget :: Int -> Target -> IO Result
-formatTarget w (Target doRead path doWrite)
-    = doRead >>= mapM doWrite . format' w path
+formatTarget :: Width -> Target -> IO Result
+formatTarget w Target{tDoRead, tPath, tDoWrite} = do
+    contents <- tDoRead
+    let formatted = format' w tPath contents
+    mapM tDoWrite formatted
 
 -- | Return an error if target could not be parsed or was not formatted
 -- correctly.
-checkTarget :: Int -> Target -> IO Result
-checkTarget w (Target doRead path _) = do
-    contents <- doRead
-    return $ case format' w path contents of
+checkTarget :: Width -> Target -> IO Result
+checkTarget w Target{tDoRead, tPath} = do
+    contents <- tDoRead
+    return $ case format' w tPath contents of
         Left err -> Left err
         Right formatted
             | formatted == contents -> Right ()
-            | otherwise             -> Left $ path ++ ":\nnot formatted"
+            | otherwise             -> Left $ tPath ++ ":\nnot formatted"
 
 stdioTarget :: Target
 stdioTarget = Target TextIO.getContents "<stdin>" TextIO.putStr
