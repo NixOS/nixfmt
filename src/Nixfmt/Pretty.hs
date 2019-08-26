@@ -12,9 +12,9 @@ import Prelude hiding (String)
 
 import Data.Char (isSpace)
 import Data.Maybe (fromMaybe)
-import Data.Text (Text, isPrefixOf, stripPrefix)
+import Data.Text (Text, isPrefixOf, isSuffixOf, stripPrefix)
 import qualified Data.Text as Text
-  (empty, isInfixOf, last, null, replace, strip, takeWhile)
+  (dropEnd, empty, init, isInfixOf, last, null, replace, strip, takeWhile)
 
 import Nixfmt.Predoc
   (Doc, Pretty, base, emptyline, group, hardline, hardspace, hcat, line, line',
@@ -302,7 +302,7 @@ isIndented parts =
 
 isEmptyLine :: [StringPart] -> Bool
 isEmptyLine []           = True
-isEmptyLine [TextPart t] = Text.strip t == Text.empty
+isEmptyLine [TextPart t] = Text.null $ Text.strip t
 isEmptyLine _            = False
 
 isSimpleString :: [[StringPart]] -> Bool
@@ -347,26 +347,58 @@ instance Pretty [[StringPart]] where
         | isSimpleString parts = prettySimpleString parts
         | otherwise            = prettyIndentedString parts
 
+type UnescapeInterpol = Text -> Text
+type EscapeText = Text -> Text
+
+prettyLine :: EscapeText -> UnescapeInterpol -> [StringPart] -> Doc
+prettyLine escapeText unescapeInterpol
+    = pretty . unescapeInterpols . map escape
+    where escape (TextPart t) = TextPart (escapeText t)
+          escape x            = x
+
+          unescapeInterpols [] = []
+          unescapeInterpols (TextPart t : TextPart u : xs)
+              = unescapeInterpols (TextPart (t <> u) : xs)
+          unescapeInterpols (TextPart t : xs@(Interpolation _ _ _ : _))
+              = TextPart (unescapeInterpol t) : unescapeInterpols xs
+          unescapeInterpols (x : xs) = x : unescapeInterpols xs
+
 prettySimpleString :: [[StringPart]] -> Doc
 prettySimpleString parts = group $
     text "\""
-    <> (sepBy (text "\\n") (map (pretty . map escape) parts))
+    <> (sepBy (text "\\n") (map (prettyLine escape unescapeInterpol) parts))
     <> text "\""
-    where escape (TextPart t) = TextPart
-              $ Text.replace "$\\${" "$${"
-              $ Text.replace "${" "\\${"
-              $ Text.replace "\"" "\\\""
-              $ Text.replace "\r" "\\r"
-              $ Text.replace "\\" "\\\\" t
-          escape x            = x
+    where escape
+              = Text.replace "$\\${" "$${"
+              . Text.replace "${" "\\${"
+              . Text.replace "\"" "\\\""
+              . Text.replace "\r" "\\r"
+              . Text.replace "\\" "\\\\"
+
+          unescapeInterpol t
+              | "$" `isSuffixOf` t = Text.init t <> "\\$"
+              | otherwise          = t
 
 prettyIndentedString :: [[StringPart]] -> Doc
 prettyIndentedString parts = group $ base $
     text "''" <> line'
-    <> nest 2 (sepBy newline (map (pretty . map escape) parts))
+    <> nest 2 (sepBy newline (map (prettyLine escape unescapeInterpol) parts))
     <> text "''"
-    where escape (TextPart t) = TextPart
-              $ Text.replace "$''${" "$${"
-              $ Text.replace "${" "''${"
-              $ Text.replace "''" "'''" t
-          escape x            = x
+    where escape
+              = Text.replace "$''${" "$${"
+              . Text.replace "${" "''${"
+              . Text.replace "''" "'''"
+
+          unescapeInterpol t
+              | Text.null t        = t
+              | Text.last t /= '$' = t
+              | trailingQuotes (Text.init t) `mod` 3 == 0
+                  = Text.init t <> "''$"
+              | trailingQuotes (Text.init t) `mod` 3 == 1
+                  = Text.dropEnd 2 t <> "''\\'''$"
+              | otherwise
+                  = error "should never happen after escape"
+
+          trailingQuotes t
+              | "'" `isSuffixOf` t = 1 + trailingQuotes (Text.init t)
+              | otherwise          = 0 :: Int
