@@ -200,7 +200,8 @@ parens = Parenthesized <$>
     symbol TParenOpen <*> expression <*> symbol TParenClose
 
 selector :: Maybe (Parser Leaf) -> Parser Selector
-selector parseDot = Selector <$> sequence parseDot <*>
+selector parseDot = Selector <$>
+    sequence parseDot <* notFollowedBy path <*>
     ((IDSelector <$> identifier) <|>
      (InterpolSelector <$> lexeme interpolation) <|>
      (StringSelector <$> lexeme simpleString)) <*>
