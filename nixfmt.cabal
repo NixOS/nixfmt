@@ -6,7 +6,7 @@ cabal-version:       2.0
 -- SPDX-License-Identifier: MPL-2.0
 
 name:                nixfmt
-version:             0.2.1
+version:             0.3.0
 synopsis:            An opinionated formatter for Nix
 description:
   A formatter for Nix that ensures consistent and clear formatting by forgetting

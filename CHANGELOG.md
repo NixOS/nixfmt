@@ -7,6 +7,13 @@
 
 # Revision history for nixfmt
 
+## 0.3.0 -- 2019-08-29
+
+* Added check flag for use in CI.
+* Added quiet flag to disable all output on stderr.
+* Further improved indentation.
+* Fixed bugs where Nix code with different semantics was emitted in some cases.
+
 ## 0.2.1 -- 2019-07-29
 
 * Fixed missing linebreaks in set abstractions.
