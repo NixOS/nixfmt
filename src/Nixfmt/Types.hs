@@ -14,7 +14,10 @@ import Data.Text (Text, pack)
 import Data.Void (Void)
 import qualified Text.Megaparsec as MP (ParseErrorBundle, Parsec)
 
+-- | A @megaparsec@ @ParsecT@ specified for use with @nixfmt@.
 type Parser = MP.Parsec Void Text
+
+-- | A @megaparsec@ @ParseErrorBundle@ specified for use with @nixfmt@.
 type ParseErrorBundle = MP.ParseErrorBundle Text Void
 
 data Trivium

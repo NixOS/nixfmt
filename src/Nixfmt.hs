@@ -19,5 +19,8 @@ import Nixfmt.Predoc (layout)
 import Nixfmt.Pretty ()
 import Nixfmt.Types (ParseErrorBundle)
 
+-- | @format w filename source@ returns either a parsing error specifying a
+-- failure in @filename@ or a formatted version of @source@ with a maximum width
+-- of @w@ columns where possible.
 format :: Int -> FilePath -> Text -> Either ParseErrorBundle Text
 format width filename = fmap (layout width) . parse file filename
