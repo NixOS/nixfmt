@@ -1,4 +1,4 @@
-cabal-version:       >=1.10
+cabal-version:       2.0
 
 -- © 2019 Serokell <hi@serokell.io>
 -- © 2019 Lars Jellema <lars.jellema@gmail.com>
@@ -8,9 +8,11 @@ cabal-version:       >=1.10
 name:                nixfmt
 version:             0.2.1
 synopsis:            An opinionated formatter for Nix
--- description:
+description:
+  A formatter for Nix that ensures consistent and clear formatting by forgetting
+  all existing formatting during parsing.
 homepage:            https://github.com/serokell/nixfmt
--- bug-reports:
+bug-reports:         https://github.com/serokell/nixfmt/issues
 license:             MPL-2.0
 license-file:        LICENSE
 author:              Lars Jellema
@@ -19,6 +21,10 @@ copyright:           2019 Serokell, 2019 Lars Jellema
 category:            Development
 build-type:          Simple
 extra-source-files:  README.md, CHANGELOG.md
+
+source-repository head
+  type:     git
+  location: git://github.com/serokell/nixfmt.git
 
 executable nixfmt
   main-is:             Main.hs
@@ -32,17 +38,16 @@ executable nixfmt
   else
     buildable: True
   build-depends:
-      base
-    , cmdargs
+      base             >= 4.12.0 && < 4.13
+    , cmdargs          >= 0.10.20 && < 0.11
     , nixfmt
-    , unix
-    , text
+    , unix             >= 2.7.2 && < 2.8
+    , text             >= 1.2.3 && < 1.3
 
     -- for System.IO.Atomic
-    , directory
-    , filepath
-    , safe-exceptions
-    , unix
+    , directory        >= 1.3.3 && < 1.4
+    , filepath         >= 1.4.2 && < 1.5
+    , safe-exceptions  >= 0.1.7 && < 0.2
   default-language:    Haskell2010
   ghc-options:
     -Wall
@@ -64,10 +69,10 @@ library
   other-extensions:    OverloadedStrings, LambdaCase, FlexibleInstances, DeriveFoldable, DeriveFunctor, StandaloneDeriving
   hs-source-dirs:      src
   build-depends:
-      base
-    , megaparsec >= 7
-    , parser-combinators
-    , text
+      base             >= 4.12.0 && < 4.13
+    , megaparsec       >= 7.0.5 && < 7.1
+    , parser-combinators >= 1.0.3 && < 1.3
+    , text             >= 1.2.3 && < 1.3
   default-language:    Haskell2010
   ghc-options:
     -Wall
@@ -89,9 +94,10 @@ executable js-interface
       -Wincomplete-uni-patterns
       -Wredundant-constraints
       -Wno-orphans
-    build-depends:     base,
-                       ghcjs-base,
-                       nixfmt
+    build-depends:
+        base           >= 4.12.0 && < 4.13
+      , ghcjs-base     >= 0.2.0 && < 0.3
+      , nixfmt
     js-sources:        js/js-interface-wrapper.js
     hs-source-dirs:    js/
   else
