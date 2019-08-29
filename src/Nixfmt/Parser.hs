@@ -102,7 +102,7 @@ simpleStringPart = TextPart <$> someText (
     chunk "\\r" *> pure "\r" <|>
     chunk "\\t" *> pure "\t" <|>
     chunk "\\" *> (Text.singleton <$> anySingle) <|>
-    chunk "$$" <> manyP (=='$') <|>
+    chunk "$$" <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     someP (\t -> t /= '"' && t /= '\\' && t /= '$'))
 
@@ -114,7 +114,7 @@ indentedStringPart = TextPart <$> someText (
     chunk "''\\" *> (Text.singleton <$> anySingle) <|>
     chunk "''$" *> pure "$" <|>
     chunk "'''" *> pure "''" <|>
-    chunk "$$" <> manyP (=='$') <|>
+    chunk "$$" <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     try (chunk "'" <* notFollowedBy (char '\'')) <|>
     someP (\t -> t /= '\'' && t /= '$' && t /= '\n'))
@@ -200,7 +200,8 @@ parens = Parenthesized <$>
     symbol TParenOpen <*> expression <*> symbol TParenClose
 
 selector :: Maybe (Parser Leaf) -> Parser Selector
-selector parseDot = Selector <$> sequence parseDot <*>
+selector parseDot = Selector <$>
+    sequence parseDot <* notFollowedBy path <*>
     ((IDSelector <$> identifier) <|>
      (InterpolSelector <$> lexeme interpolation) <|>
      (StringSelector <$> lexeme simpleString)) <*>
