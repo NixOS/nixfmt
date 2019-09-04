@@ -15,9 +15,15 @@ You are encouraged to test this out on your code and submit any undesirable form
 
 ## Installation
 
-* Optional: `cachix use nixfmt`
-* `nix-env -f https://github.com/serokell/nixfmt/archive/master.tar.gz -i`
+- `nixfmt` is in nixpkgs master as of 2019-09-04: 
 
+      nix-env -iA nixpkgs.nixfmt
+
+- To get the most recent version, install from master:
+
+      # Optional: use cachix to get cached builds even for master
+      cachix use nixfmt
+      nix-env -f https://github.com/serokell/nixfmt/archive/master.tar.gz -i
 
 ## Development
 
@@ -30,7 +36,7 @@ Haskell dependencies will be built by Nix.
 
 ### Without Nix
 
-Haskell dependencies will be bulit by Cabal.
+Haskell dependencies will be built by Cabal.
 
 * Build with `cabal new-build`
 
