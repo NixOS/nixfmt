@@ -12,7 +12,9 @@ import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
 import Data.Bifunctor (first)
 import Data.Either (lefts)
 import Data.Text (Text)
+import Data.Version (showVersion)
 import GHC.IO.Encoding (utf8)
+import Paths_nixfmt (version)
 import System.Console.CmdArgs
   (Data, Typeable, args, cmdArgs, help, summary, typ, (&=))
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
@@ -42,7 +44,7 @@ options = Nixfmt
     , width = 80 &= help "Maximum width in characters"
     , check = False &= help "Check whether files are formatted"
     , quiet = False &= help "Do not report errors"
-    } &= summary "Format Nix source code"
+    } &= summary ("Format Nix source code v" ++ showVersion version)
 
 format' :: Width -> FilePath -> Text -> Either String Text
 format' w path = first errorBundlePretty . format w path
