@@ -16,7 +16,7 @@ import GHC.IO.Encoding (utf8)
 import System.Console.CmdArgs
   (Data, Typeable, args, cmdArgs, help, summary, typ, (&=))
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
-import System.IO (hPutStr, hSetEncoding, stderr)
+import System.IO (hPutStrLn, hSetEncoding, stderr)
 import System.Posix.Process (exitImmediately)
 import System.Posix.Signals (Handler(..), installHandler, keyboardSignal)
 
@@ -68,7 +68,7 @@ checkTarget w Target{tDoRead, tPath} = do
         Left err -> Left err
         Right formatted
             | formatted == contents -> Right ()
-            | otherwise             -> Left $ tPath ++ ":\nnot formatted"
+            | otherwise             -> Left $ tPath ++ ": not formatted"
 
 stdioTarget :: Target
 stdioTarget = Target TextIO.getContents "<stdin>" TextIO.putStr
@@ -89,7 +89,7 @@ toOperation Nixfmt{ width = w, check = True } = checkTarget w
 toOperation Nixfmt{ width = w } = formatTarget w
 
 toWriteError :: Nixfmt -> String -> IO ()
-toWriteError Nixfmt{ quiet = False } = hPutStr stderr
+toWriteError Nixfmt{ quiet = False } = hPutStrLn stderr
 toWriteError Nixfmt{ quiet = True } = const $ return ()
 
 toJobs :: Nixfmt -> [IO Result]
