@@ -44,7 +44,8 @@ options = Nixfmt
     , width = 80 &= help "Maximum width in characters"
     , check = False &= help "Check whether files are formatted"
     , quiet = False &= help "Do not report errors"
-    } &= summary ("Format Nix source code v" ++ showVersion version)
+    } &= summary ("nixfmt v" ++ showVersion version)
+    &= help "Format Nix source code"
 
 format' :: Width -> FilePath -> Text -> Either String Text
 format' w path = first errorBundlePretty . format w path
