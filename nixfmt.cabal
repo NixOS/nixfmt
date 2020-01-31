@@ -29,6 +29,7 @@ source-repository head
 executable nixfmt
   main-is:             Main.hs
   other-modules:
+    Paths_nixfmt
     System.IO.Utf8
     System.IO.Atomic
   other-extensions:    DeriveDataTypeable
