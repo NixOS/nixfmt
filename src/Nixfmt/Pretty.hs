@@ -111,8 +111,9 @@ prettyTerm (Set krec (Ann paropen trailing leading) binders parclose)
         <> nest 2 (pretty leading <> sepBy hardline binders) <> line
         <> pretty parclose
 
-prettyTerm (Parenthesized paropen expr parclose)
-    = base $ pretty paropen <> nest 2 (group expr) <> pretty parclose
+prettyTerm (Parenthesized (Ann paropen trailing leading) expr parclose)
+    = base $ pretty paropen <> pretty trailing
+        <> nest 2 (pretty leading <> group expr) <> pretty parclose
 
 instance Pretty Term where
     pretty l@(List _ _ _) = group $ prettyTerm l
