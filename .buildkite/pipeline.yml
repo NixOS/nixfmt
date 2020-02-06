@@ -1,0 +1,16 @@
+env:
+  NIX_PATH: nixpkgs=https://github.com/NixOS/nixpkgs-channels/archive/nixos-unstable.tar.gz
+
+steps:
+  - label: nix-build
+    commands:
+      - nix-build | cachix push nixfmt
+      - nix-build -A cabal2nixDeriver | cachix push nixfmt
+  - label: build web-demo
+    commands:
+      - nix-build release.nix -A web-demo | cachix push nixfmt
+  - wait
+  - label: deploy web demo
+    branches: master
+    commands:
+      - nix-build release.nix -A web-demo --out-link /var/lib/buildkite-agent-public/cd/nixfmt-web
