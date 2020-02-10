@@ -7,6 +7,11 @@
 
 # Revision history for nixfmt
 
+## 0.4.0 -- 2020-02-10
+* Report non-conforming files on the same line to aid line-oriented processing
+* Fix help, summary, and version flag contents.
+* Fix indentation of leading comments in parens
+
 ## 0.3.0 -- 2019-08-29
 
 * Added check flag for use in CI.
