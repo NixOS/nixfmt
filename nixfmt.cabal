@@ -32,6 +32,8 @@ executable nixfmt
     Paths_nixfmt
     System.IO.Utf8
     System.IO.Atomic
+  autogen-modules:
+    Paths_nixfmt
   other-extensions:    DeriveDataTypeable
   hs-source-dirs:      main
   if impl(ghcjs)
