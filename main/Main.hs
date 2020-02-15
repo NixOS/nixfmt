@@ -64,6 +64,15 @@ readTarget :: Target -> IO Text
 readTarget StdioTarget = TextIO.getContents
 readTarget (FileTarget path) = readFileUtf8 path
 
+filterTarget :: (Target -> IO Result) -> Target -> IO Result
+filterTarget operation StdioTarget = operation StdioTarget
+filterTarget operation (FileTarget path) = do
+    isSymlink <- try $ pathIsSymbolicLink path
+    case isSymlink of
+         Right True  -> return $ Left $ path ++ ": ignoring symlink"
+         Right False -> operation (FileTarget path)
+         Left e      -> return $ Left $ show (e :: IOException)
+
 writeTarget :: Target -> Text -> IO ()
 writeTarget StdioTarget t = TextIO.putStr t
 writeTarget (FileTarget path) t = withOutputFile path $ \h -> do
@@ -100,7 +109,7 @@ toWriteError Nixfmt{ quiet = False } = hPutStrLn stderr
 toWriteError Nixfmt{ quiet = True } = const $ return ()
 
 toJobs :: Nixfmt -> [IO Result]
-toJobs opts = map (toOperation opts) $ toTargets opts
+toJobs opts = map (filterTarget $ toOperation opts) $ toTargets opts
 
 -- TODO: Efficient parallel implementation. This is just a sequential stub.
 -- This was originally implemented using parallel-io, but it gave a factor two
