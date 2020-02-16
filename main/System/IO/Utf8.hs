@@ -10,7 +10,7 @@
 --
 -- Standard IO functions assume that the character encoding of the data
 -- they read or write is the same as the one used by current locale. In many
--- situtations this assumption is wrong, as tools work with files, and
+-- situations this assumption is wrong, as tools work with files, and
 -- the files nowadays are mostly UTF-8 encoded, regardless of the locale.
 -- Therefore, it is almost always a good idea to switch the encoding of
 -- file handles to UTF-8.
