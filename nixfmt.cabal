@@ -67,6 +67,7 @@ library
     Nixfmt.Parser
     Nixfmt.Predoc
     Nixfmt.Pretty
+    Nixfmt.Transform
     Nixfmt.Types
     Nixfmt.Util
   other-extensions:    OverloadedStrings, LambdaCase, FlexibleInstances, DeriveFoldable, DeriveFunctor, StandaloneDeriving
