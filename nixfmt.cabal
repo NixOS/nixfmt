@@ -7,6 +7,7 @@ cabal-version:       2.0
 
 name:                nixfmt
 version:             0.4.0
+x-revision:          1
 synopsis:            An opinionated formatter for Nix
 description:
   A formatter for Nix that ensures consistent and clear formatting by forgetting
@@ -41,7 +42,7 @@ executable nixfmt
   else
     buildable: True
   build-depends:
-      base             >= 4.12.0 && < 4.13
+      base             >= 4.12.0 && < 4.14
     , cmdargs          >= 0.10.20 && < 0.11
     , nixfmt
     , unix             >= 2.7.2 && < 2.8
@@ -72,8 +73,8 @@ library
   other-extensions:    OverloadedStrings, LambdaCase, FlexibleInstances, DeriveFoldable, DeriveFunctor, StandaloneDeriving
   hs-source-dirs:      src
   build-depends:
-      base             >= 4.12.0 && < 4.13
-    , megaparsec       >= 7.0.5 && < 7.1
+      base             >= 4.12.0 && < 4.14
+    , megaparsec       >= 7.0.5 && < 8.1
     , parser-combinators >= 1.0.3 && < 1.3
     , text             >= 1.2.3 && < 1.3
   default-language:    Haskell2010
@@ -98,7 +99,7 @@ executable js-interface
       -Wredundant-constraints
       -Wno-orphans
     build-depends:
-        base           >= 4.12.0 && < 4.13
+        base           >= 4.12.0 && < 4.14
       , ghcjs-base     >= 0.2.0 && < 0.3
       , nixfmt
     js-sources:        js/js-interface-wrapper.js
