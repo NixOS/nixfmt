@@ -56,4 +56,6 @@ in rec {
       stylish-haskell
     ]);
   });
+
+  inherit (pkgs) awscli;
 }

@@ -3,6 +3,10 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 
+env:
+  CDN_DISTRIBUTION_ID: E13UN1J1JFIWUZ
+  CDN_BUCKET: s3://nixfmt.serokell.io
+
 steps:
   - label: nix-build
     commands:
@@ -15,4 +19,8 @@ steps:
   - label: deploy web demo
     branches: master
     commands:
-      - nix-build -A nixfmt-webdemo --out-link /var/lib/buildkite-agent-public/cd/nixfmt-web
+      - nix-build -A nixfmt-webdemo
+      - nix run -f . awscli -c
+          aws s3 sync --delete result/ "$CDN_BUCKET"
+      - nix run -f . awscli -c
+          aws cloudfront create-invalidation --distribution-id "$CDN_DISTRIBUTION_ID" --paths '/*'
