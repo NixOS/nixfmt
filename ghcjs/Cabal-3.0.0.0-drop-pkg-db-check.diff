@@ -1,0 +1,39 @@
+diff --git a/Distribution/Simple/GHCJS.hs b/Distribution/Simple/GHCJS.hs
+index 46896c3..5381a3a 100644
+--- a/Distribution/Simple/GHCJS.hs
++++ b/Distribution/Simple/GHCJS.hs
+@@ -256,7 +256,6 @@ getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
+                      -> IO InstalledPackageIndex
+ getInstalledPackages verbosity packagedbs progdb = do
+   checkPackageDbEnvVar verbosity
+-  checkPackageDbStack verbosity packagedbs
+   pkgss <- getInstalledPackages' verbosity packagedbs progdb
+   index <- toPackageIndex verbosity pkgss progdb
+   return $! index
+@@ -313,18 +312,6 @@ checkPackageDbEnvVar :: Verbosity -> IO ()
+ checkPackageDbEnvVar verbosity =
+     Internal.checkPackageDbEnvVar verbosity "GHCJS" "GHCJS_PACKAGE_PATH"
+ 
+-checkPackageDbStack :: Verbosity -> PackageDBStack -> IO ()
+-checkPackageDbStack _ (GlobalPackageDB:rest)
+-  | GlobalPackageDB `notElem` rest = return ()
+-checkPackageDbStack verbosity rest
+-  | GlobalPackageDB `notElem` rest =
+-  die' verbosity $ "With current ghc versions the global package db is always used "
+-     ++ "and must be listed first. This ghc limitation may be lifted in "
+-     ++ "future, see http://ghc.haskell.org/trac/ghc/ticket/5977"
+-checkPackageDbStack verbosity _ =
+-  die' verbosity $ "If the global package db is specified, it must be "
+-     ++ "specified first and cannot be specified multiple times"
+-
+ getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramDb
+                       -> IO [(PackageDB, [InstalledPackageInfo])]
+ getInstalledPackages' verbosity packagedbs progdb =
+@@ -732,7 +719,6 @@ startInterpreter verbosity progdb comp platform packageDBs = do
+         ghcOptMode       = toFlag GhcModeInteractive,
+         ghcOptPackageDBs = packageDBs
+         }
+-  checkPackageDbStack verbosity packageDBs
+   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram progdb
+   runGHC verbosity ghcjsProg comp platform replOpts
+ 

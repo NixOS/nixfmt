@@ -1,0 +1,24 @@
+diff --git a/Distribution/Simple.hs b/Distribution/Simple.hs
+index e632acc..534d0cc 100644
+--- a/Distribution/Simple.hs
++++ b/Distribution/Simple.hs
+@@ -623,7 +623,6 @@ simpleUserHooks :: UserHooks
+ simpleUserHooks =
+     emptyUserHooks {
+        confHook  = configure,
+-       postConf  = finalChecks,
+        buildHook = defaultBuildHook,
+        replHook  = defaultReplHook,
+        copyHook  = \desc lbi _ f -> install desc lbi f,
+@@ -638,11 +637,6 @@ simpleUserHooks =
+        regHook   = defaultRegHook,
+        unregHook = \p l _ f -> unregister p l f
+       }
+-  where
+-    finalChecks _args flags pkg_descr lbi =
+-      checkForeignDeps pkg_descr lbi (lessVerbose verbosity)
+-      where
+-        verbosity = fromFlag (configVerbosity flags)
+ 
+ -- | Basic autoconf 'UserHooks':
+ --
