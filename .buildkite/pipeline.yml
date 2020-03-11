@@ -1,13 +1,12 @@
-env:
-  NIX_PATH: nixpkgs=https://github.com/NixOS/nixpkgs-channels/archive/nixos-unstable.tar.gz
-
 steps:
   - label: nix-build
     commands:
+      - set -o pipefail
       - nix-build | cachix push nixfmt
       - nix-build -A cabal2nixDeriver | cachix push nixfmt
   - label: build web-demo
     commands:
+      - set -o pipefail
       - nix-build release.nix -A web-demo | cachix push nixfmt
   - wait
   - label: deploy web demo
