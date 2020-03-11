@@ -1,14 +1,14 @@
 {
     "haskell.nix": {
-        "branch": "master",
+        "branch": "yorickvp/fix-ghcjs",
         "description": "Alternative Haskell Infrastructure for Nixpkgs",
         "homepage": "https://input-output-hk.github.io/haskell.nix",
-        "owner": "input-output-hk",
+        "owner": "serokell",
         "repo": "haskell.nix",
-        "rev": "8099da8fe035efe49e81a6eb974eea9e5656b9c6",
-        "sha256": "195rldxg6bmhxfrjz0bzqs0099wiq956wv49fz1i6h6rznaxy5y4",
+        "rev": "532cbc22268ccab93601cb9dd3bbea202405aad4",
+        "sha256": "17hvpcl7f36q92wc684j8gdb1nbcq9m50vfm97rys6k4ilvaajnm",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/8099da8fe035efe49e81a6eb974eea9e5656b9c6.tar.gz",
+        "url": "https://github.com/serokell/haskell.nix/archive/532cbc22268ccab93601cb9dd3bbea202405aad4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "niv": {
