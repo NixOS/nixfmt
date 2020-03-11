@@ -1,2 +1,2 @@
 let sources = import ./sources.nix; in
-import sources.nixpkgs (import ../../haskell.nix)
+import sources.nixpkgs (import sources."haskell.nix")
