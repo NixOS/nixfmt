@@ -5,6 +5,7 @@ pkgs.haskell-nix.hackage-project {
     modules = [
       {
         packages.Cabal.patches = [
+          ./Cabal-3.0.0.0-js-input-exes.diff
           ./Cabal-3.0.0.0-drop-pkg-db-check.diff
           ./Cabal-3.0.0.0-no-final-checks.diff
         ];
