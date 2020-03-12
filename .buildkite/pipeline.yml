@@ -3,7 +3,6 @@ steps:
     commands:
       - set -o pipefail
       - nix-build | cachix push nixfmt
-      - nix-build -A cabal2nixDeriver | cachix push nixfmt
   - label: build web-demo
     commands:
       - set -o pipefail
