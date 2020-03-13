@@ -7,7 +7,6 @@ cabal-version:       2.0
 
 name:                nixfmt
 version:             0.4.0
-x-revision:          1
 synopsis:            An opinionated formatter for Nix
 description:
   A formatter for Nix that ensures consistent and clear formatting by forgetting
