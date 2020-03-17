@@ -45,7 +45,8 @@ in rec {
   nixfmt-js = ghcjsPackages.callCabal2nix "nixfmt" src { };
   nixfmt-webdemo = pkgs.runCommandNoCC "nixfmt-webdemo" { } ''
     mkdir $out
-    cp ${./js/index.html} $_/index.html
+    cp ${./js/index.html} $out/index.html
+    cp ${./js/404.html} $out/404.html
     cp ${nixfmt-js}/bin/js-interface.jsexe/{rts,lib,out,runmain}.js $out
     substituteInPlace $out/index.html --replace ../dist/build/js-interface/js-interface.jsexe/ ./
   '';
