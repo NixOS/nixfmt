@@ -1,16 +1,18 @@
-env:
-  NIX_PATH: nixpkgs=https://github.com/NixOS/nixpkgs-channels/archive/nixos-unstable.tar.gz
+# © 2019 Serokell <hi@serokell.io>
+# © 2019 Lars Jellema <lars.jellema@gmail.com>
+#
+# SPDX-License-Identifier: MPL-2.0
 
 steps:
   - label: nix-build
     commands:
-      - nix-build | cachix push nixfmt
-      - nix-build -A cabal2nixDeriver | cachix push nixfmt
-  - label: build web-demo
+      - nix-build -A nixfmt-static | cachix push nixfmt
+      - nix-build -A nixfmt-deriver | cachix push nixfmt
+  - label: build web demo
     commands:
-      - nix-build release.nix -A web-demo | cachix push nixfmt
+      - nix-build -A nixfmt-webdemo | cachix push nixfmt
   - wait
   - label: deploy web demo
     branches: master
     commands:
-      - nix-build release.nix -A web-demo --out-link /var/lib/buildkite-agent-public/cd/nixfmt-web
+      - nix-build -A nixfmt-webdemo --out-link /var/lib/buildkite-agent-public/cd/nixfmt-web

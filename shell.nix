@@ -3,12 +3,4 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 
-{ pkgs ? import <nixpkgs> { } }:
-
-(import ./. { inherit pkgs; installOnly = false; }).env.overrideAttrs
-  (oldAttrs: {
-    buildInputs = oldAttrs.buildInputs ++ [
-      pkgs.cabal-install
-      pkgs.stylish-haskell
-    ];
-  })
+(import ./. { }).nixfmt-shell
