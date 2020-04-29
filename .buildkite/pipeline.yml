@@ -21,6 +21,9 @@ steps:
     commands:
       - nix-build -A nixfmt-webdemo
       - nix run -f . awscli -c
-          aws s3 sync --delete result/ "$CDN_BUCKET"
+          aws s3 cp --recursive result/ "$CDN_BUCKET"
+      # delete files that don't exist anymore, use `--size-only` so behavior won't depend on local file timestamps
+      - nix run -f . awscli -c
+          aws s3 sync --delete --size-only result/ "$CDN_BUCKET"
       - nix run -f . awscli -c
           aws cloudfront create-invalidation --distribution-id "$CDN_DISTRIBUTION_ID" --paths '/*'
