@@ -17,7 +17,6 @@
     };
   };
 
-
   outputs = { self, nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
@@ -29,7 +28,10 @@
           };
         };
 
-        pkgs = import nixpkgs { inherit system; overlays = [ overlay ]; };
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ overlay ];
+        };
 
         inherit (pkgs) haskell lib;
 
@@ -43,7 +45,8 @@
           });
         });
 
-        regexes = [ ".*.cabal$" "^src.*" "^main.*" "^Setup.hs$" "^js.*" "LICENSE" ];
+        regexes =
+          [ ".*.cabal$" "^src.*" "^main.*" "^Setup.hs$" "^js.*" "LICENSE" ];
         src = builtins.path {
           path = ./.;
           name = "nixfmt-src";
@@ -52,8 +55,7 @@
             in lib.any (re: builtins.match re relPath != null) regexes;
         };
 
-      in
-      {
+      in {
         packages = rec {
           nixfmt = pkgs.haskellPackages.nixfmt;
           nixfmt-static = haskell.lib.justStaticExecutables nixfmt;
@@ -78,17 +80,14 @@
           inherit (pkgs) awscli;
         };
 
-        apps = builtins.mapAttrs
-          (name: p: {
-            type = "app";
-            program = "${p}/bin/${name}";
-          })
-          self.packages.${system};
+        apps = builtins.mapAttrs (name: p: {
+          type = "app";
+          program = "${p}/bin/${name}";
+        }) self.packages.${system};
 
         defaultPackage = self.packages.${system}.nixfmt;
         defaultApp = self.apps.${system}.nixfmt;
 
         devShell = self.packages.${system}.nixfmt-shell;
-      }
-    );
+      });
 }
