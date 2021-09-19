@@ -16,7 +16,7 @@ import qualified Control.Monad.Combinators.Expr as MPExpr
   (Operator(..), makeExprParser)
 import Data.Char (isAlpha)
 import Data.Foldable (toList)
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text as Text (Text, cons, empty, singleton, split, stripPrefix)
 import Text.Megaparsec
   (anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf,
@@ -166,7 +166,7 @@ splitLines (x : xs) =
         _           -> error "unreachable"
 
 stripIndentation :: [[StringPart]] -> [[StringPart]]
-stripIndentation parts = case commonIndentation $ catMaybes $ map lineHead parts of
+stripIndentation parts = case commonIndentation $ mapMaybe lineHead parts of
     Nothing -> map (const []) parts
     Just indentation -> map (stripParts indentation) parts
 
