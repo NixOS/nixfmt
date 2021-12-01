@@ -38,10 +38,10 @@ formatVerify width path unformatted = do
     formattedOnceParsed <- parse formattedOnce
     let formattedTwice = layout width formattedOnceParsed
     if formattedOnceParsed /= unformattedParsed
-    then pleaseReport "The formatted file parses differently."
+    then pleaseReport "Parses differently after formatting."
     else if formattedOnce /= formattedTwice
-    then pleaseReport "Nixfmt is not idempotent on this file."
+    then pleaseReport "Nixfmt is not idempotent."
     else Right formattedOnce
     where
         parse = first errorBundlePretty . Megaparsec.parse file path
-        pleaseReport x = Left $ x <> " This is a bug in nixfmt. Please report it at https://github.com/serokell/nixfmt"
+        pleaseReport x = Left $ path <> ": " <> x <> " This is a bug in nixfmt. Please report it at https://github.com/serokell/nixfmt"
