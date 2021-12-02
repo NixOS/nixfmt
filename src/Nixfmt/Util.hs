@@ -13,6 +13,7 @@ module Nixfmt.Util
     , commonIndentation
     , dropCommonIndentation
     , identChar
+    , isSpaces
     , pathChar
     , schemeChar
     , uriChar
@@ -21,7 +22,7 @@ module Nixfmt.Util
 import Data.Char (isAlpha, isDigit, isSpace)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text
-  (Text, commonPrefixes, concat, empty, stripEnd, stripPrefix, takeWhile)
+  (Text, all, commonPrefixes, concat, empty, stripEnd, stripPrefix, takeWhile)
 import Text.Megaparsec
   (ParsecT, Stream, Token, Tokens, many, some, takeWhile1P, takeWhileP)
 
@@ -78,3 +79,6 @@ dropCommonIndentation unstrippedLines =
     in case commonIndentation (filter (/=empty) strippedLines) of
             Nothing          -> map (const empty) strippedLines
             Just indentation -> map (fromMaybe empty . stripPrefix indentation) strippedLines
+
+isSpaces :: Text -> Bool
+isSpaces = Text.all (==' ')

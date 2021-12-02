@@ -16,9 +16,8 @@ import qualified Control.Monad.Combinators.Expr as MPExpr
   (Operator(..), makeExprParser)
 import Data.Char (isAlpha)
 import Data.Foldable (toList)
-import Data.Maybe (fromMaybe)
-import Data.Text as Text
-  (Text, cons, empty, null, singleton, split, strip, stripPrefix)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Text as Text (Text, cons, empty, singleton, split, stripPrefix)
 import Text.Megaparsec
   (anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf,
   optional, satisfy, try, (<|>))
@@ -31,8 +30,8 @@ import Nixfmt.Types
   ParamAttr(..), Parameter(..), Parser, Selector(..), SimpleSelector(..),
   String, StringPart(..), Term(..), Token(..), operators, tokenText)
 import Nixfmt.Util
-  (commonIndentation, identChar, manyP, manyText, pathChar, schemeChar, someP,
-  someText, uriChar)
+  (commonIndentation, identChar, isSpaces, manyP, manyText, pathChar,
+  schemeChar, someP, someText, uriChar)
 
 -- HELPER FUNCTIONS
 
@@ -124,22 +123,27 @@ indentedLine = many (indentedStringPart <|> interpolation)
 
 isEmptyLine :: [StringPart] -> Bool
 isEmptyLine []           = True
-isEmptyLine [TextPart t] = Text.null (Text.strip t)
+isEmptyLine [TextPart t] = isSpaces t
 isEmptyLine _            = False
 
--- | Strip the first line of a string if it is empty.
-stripFirstLine :: [[StringPart]] -> [[StringPart]]
-stripFirstLine [] = []
-stripFirstLine (x : xs)
-    | isEmptyLine x = xs
-    | otherwise     = x : xs
+-- | Drop the first line of a string if it is empty.
+fixFirstLine :: [[StringPart]] -> [[StringPart]]
+fixFirstLine []       = []
+fixFirstLine (x : xs) = if isEmptyLine x' then xs else x' : xs
+    where x' = normalizeLine x
 
-textHeads :: [StringPart] -> [Text]
-textHeads line@(TextPart t : _)
-    | isEmptyLine line              = []
-    | otherwise                     = [t]
-textHeads (Interpolation _ _ _ : _) = [""]
-textHeads []                        = []
+-- | Empty the last line if it contains only spaces.
+fixLastLine :: [[StringPart]] -> [[StringPart]]
+fixLastLine []       = []
+fixLastLine [line]   = if isEmptyLine line' then [[]] else [line']
+    where line' = normalizeLine line
+fixLastLine (x : xs) = x : fixLastLine xs
+
+lineHead :: [StringPart] -> Maybe Text
+lineHead []                        = Nothing
+lineHead line | isEmptyLine line   = Nothing
+lineHead (TextPart t : _)          = Just t
+lineHead (Interpolation _ _ _ : _) = Just ""
 
 stripParts :: Text -> [StringPart] -> [StringPart]
 stripParts indentation (TextPart t : xs) =
@@ -162,28 +166,31 @@ splitLines (x : xs) =
         _           -> error "unreachable"
 
 stripIndentation :: [[StringPart]] -> [[StringPart]]
-stripIndentation parts = case commonIndentation (concatMap textHeads parts) of
+stripIndentation parts = case commonIndentation $ mapMaybe lineHead parts of
     Nothing -> map (const []) parts
     Just indentation -> map (stripParts indentation) parts
 
-dropEmptyParts :: [[StringPart]] -> [[StringPart]]
-dropEmptyParts = map $ filter (\case
-    TextPart t | Text.null t -> False
-    _                        -> True)
+normalizeLine :: [StringPart] -> [StringPart]
+normalizeLine [] = []
+normalizeLine (TextPart "" : xs) = normalizeLine xs
+normalizeLine (TextPart x : TextPart y : xs) = normalizeLine (TextPart (x <> y) : xs)
+normalizeLine (x : xs) = x : normalizeLine xs
 
 fixSimpleString :: [StringPart] -> [[StringPart]]
-fixSimpleString parts = case splitLines parts of
-    [] -> []
-    [line] -> [line]
-    parts' -> dropEmptyParts (stripIndentation parts')
+fixSimpleString = map normalizeLine . splitLines
 
 simpleString :: Parser [[StringPart]]
 simpleString = rawSymbol TDoubleQuote *>
-    fmap splitLines (many (simpleStringPart <|> interpolation)) <*
+    fmap fixSimpleString (many (simpleStringPart <|> interpolation)) <*
     rawSymbol TDoubleQuote
 
 fixIndentedString :: [[StringPart]] -> [[StringPart]]
-fixIndentedString = dropEmptyParts . concatMap splitLines . stripIndentation . stripFirstLine
+fixIndentedString
+    = map normalizeLine
+    . concatMap splitLines
+    . stripIndentation
+    . fixLastLine
+    . fixFirstLine
 
 indentedString :: Parser [[StringPart]]
 indentedString = rawSymbol TDoubleSingleQuote *>

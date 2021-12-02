@@ -23,7 +23,7 @@ import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), File(..), Leaf, ParamAttr(..),
   Parameter(..), Selector(..), SimpleSelector(..), StringPart(..), Term(..),
   Token(..), TrailingComment(..), Trivia, Trivium(..), tokenText)
-import Nixfmt.Util (commonIndentation)
+import Nixfmt.Util (commonIndentation, isSpaces)
 
 prettyCommentLine :: Text -> Doc
 prettyCommentLine l
@@ -301,23 +301,32 @@ isIndented parts =
           nonEmpty _                  = True
           inits = map textInit $ filter nonEmpty parts
 
-isEmptyLine :: [StringPart] -> Bool
-isEmptyLine []           = True
-isEmptyLine [TextPart t] = Text.null $ Text.strip t
-isEmptyLine _            = False
+-- | If the last line has at least one space but nothing else, it cannot be
+-- cleanly represented in an indented string.
+lastLineIsSpaces :: [[StringPart]] -> Bool
+lastLineIsSpaces [] = False
+lastLineIsSpaces xs = case last xs of
+    [TextPart t] -> isSpaces t
+    _            -> False
+
+isInvisibleLine :: [StringPart] -> Bool
+isInvisibleLine []           = True
+isInvisibleLine [TextPart t] = Text.null $ Text.strip t
+isInvisibleLine _            = False
 
 isSimpleString :: [[StringPart]] -> Bool
 isSimpleString [parts]
-    | hasDualQuotes parts     = True
-    | endsInSingleQuote parts = True
-    | isIndented [parts]      = True
-    | hasQuotes parts         = False
-    | otherwise               = True
+    | hasDualQuotes parts       = True
+    | endsInSingleQuote parts   = True
+    | isIndented [parts]        = True
+    | hasQuotes parts           = False
+    | otherwise                 = True
 
 isSimpleString parts
-    | all isEmptyLine parts = True
-    | isIndented parts      = True
-    | otherwise             = False
+    | all isInvisibleLine parts = True
+    | isIndented parts          = True
+    | lastLineIsSpaces parts    = True
+    | otherwise                 = False
 
 instance Pretty StringPart where
     pretty (TextPart t) = text t
