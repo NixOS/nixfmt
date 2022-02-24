@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 {
-  description = "A Simple multi-profile Nix-flake deploy tool.";
+  description = "A formatter for Nix code, intended to easily apply a uniform style.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
