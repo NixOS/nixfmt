@@ -8,6 +8,9 @@ env:
   CDN_BUCKET: s3://nixfmt.serokell.io
 
 steps:
+  - label: reuse lint
+    commands:
+      - nix run -f. packages.x86_64-linux.reuse -c reuse lint
   - label: nix-build
     commands:
       - nix-build -A packages.x86_64-linux.nixfmt-static | cachix push nixfmt
