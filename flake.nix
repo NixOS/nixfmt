@@ -77,7 +77,7 @@
             ]);
           });
 
-          inherit (pkgs) awscli;
+          inherit (pkgs) awscli reuse;
         };
 
         apps = builtins.mapAttrs (name: p: {
