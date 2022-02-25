@@ -101,7 +101,6 @@ executable js-interface
       base             >= 4.12.0 && < 4.15
       , ghcjs-base     >= 0.2.0 && < 0.3
       , nixfmt
-    js-sources:        js/js-interface-wrapper.js
     hs-source-dirs:    js/
   else
     buildable: False

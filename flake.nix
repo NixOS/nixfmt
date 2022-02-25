@@ -35,7 +35,7 @@
 
         inherit (pkgs) haskell lib;
 
-        ghcjsPackages = haskell.packages.ghcjs86.override (old: {
+        ghcjsPackages = haskell.packages.ghcjs810.override (old: {
           overrides = (self: super: {
             QuickCheck = haskell.lib.dontCheck super.QuickCheck;
             tasty-quickcheck = haskell.lib.dontCheck super.tasty-quickcheck;
