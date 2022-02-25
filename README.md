@@ -25,6 +25,10 @@ You are encouraged to test this out on your code and submit any undesirable form
       cachix use nixfmt
       nix-env -f https://github.com/serokell/nixfmt/archive/master.tar.gz -i
 
+- Nix with flakes
+
+      nix profile install github:serokell/nixfmt
+
 ## Development
 
 ### With Nix
