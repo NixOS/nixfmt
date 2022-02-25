@@ -10,20 +10,20 @@ env:
 steps:
   - label: nix-build
     commands:
-      - nix-build -A nixfmt-static | cachix push nixfmt
-      - nix-build -A nixfmt-deriver | cachix push nixfmt
+      - nix-build -A packages.x86_64-linux.nixfmt-static | cachix push nixfmt
+      - nix-build -A packages.x86_64-linux.nixfmt-deriver | cachix push nixfmt
   - label: build web demo
     commands:
-      - nix-build -A nixfmt-webdemo | cachix push nixfmt
+      - nix-build -A packages.x86_64-linux.nixfmt-webdemo | cachix push nixfmt
   - wait
   - label: deploy web demo
     branches: master
     commands:
-      - nix-build -A nixfmt-webdemo
-      - nix run -f . awscli -c
+      - nix-build -A packages.x86_64-linux.nixfmt-webdemo
+      - nix run -f . packages.x86_64-linux.awscli -c
           aws s3 cp --recursive result/ "$CDN_BUCKET"
       # delete files that don't exist anymore, use `--size-only` so behavior won't depend on local file timestamps
-      - nix run -f . awscli -c
+      - nix run -f . packages.x86_64-linux.awscli -c
           aws s3 sync --delete --size-only result/ "$CDN_BUCKET"
-      - nix run -f . awscli -c
+      - nix run -f . packages.x86_64-linux.awscli -c
           aws cloudfront create-invalidation --distribution-id "$CDN_DISTRIBUTION_ID" --paths '/*'
