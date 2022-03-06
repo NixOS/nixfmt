@@ -23,7 +23,7 @@ import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), File(..), Leaf, ParamAttr(..),
   Parameter(..), Selector(..), SimpleSelector(..), StringPart(..), Term(..),
   Token(..), TrailingComment(..), Trivia, Trivium(..), tokenText)
-import Nixfmt.Util (commonIndentation, isSpaces)
+import Nixfmt.Util (commonIndentation, isSpaces, replaceMultiple)
 
 prettyCommentLine :: Text -> Doc
 prettyCommentLine l
@@ -395,10 +395,11 @@ prettyIndentedString parts = group $ base $
     text "''" <> line'
     <> nest 2 (sepBy newline (map (prettyLine escape unescapeInterpol) parts))
     <> text "''"
-    where escape
-              = Text.replace "$''${" "$${"
-              . Text.replace "${" "''${"
-              . Text.replace "''" "'''"
+    where escape = replaceMultiple
+              [ ("'${", "''\\'''${")
+              , ("${", "''${")
+              , ("''", "'''")
+              ]
 
           unescapeInterpol t
               | Text.null t        = t

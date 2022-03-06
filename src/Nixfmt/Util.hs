@@ -4,6 +4,8 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
+{-# LANGUAGE TupleSections #-}
+
 module Nixfmt.Util
     ( manyP
     , someP
@@ -15,14 +17,18 @@ module Nixfmt.Util
     , identChar
     , isSpaces
     , pathChar
+    , replaceMultiple
     , schemeChar
     , uriChar
     ) where
 
+import Control.Applicative ((<|>))
 import Data.Char (isAlpha, isDigit, isSpace)
+import Data.Foldable (asum)
+import Data.List (unfoldr)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text
-  (Text, all, commonPrefixes, concat, empty, stripEnd, stripPrefix, takeWhile)
+  (Text, all, commonPrefixes, concat, empty, null, splitAt, stripEnd, stripPrefix, takeWhile)
 import Text.Megaparsec
   (ParsecT, Stream, Token, Tokens, many, some, takeWhile1P, takeWhileP)
 
@@ -82,3 +88,20 @@ dropCommonIndentation unstrippedLines =
 
 isSpaces :: Text -> Bool
 isSpaces = Text.all (==' ')
+
+-- | Apply multiple independent replacements. This function passes over the text
+-- once and applies the first replacement it can find at each position. After a
+-- replacement is matched, the function continues after the replacement, not
+-- inside it.
+replaceMultiple :: [(Text, Text)] -> Text -> Text
+replaceMultiple replacements = mconcat . unfoldr replaceAny
+  where
+    -- | replaceAny assumes input is nonempty
+    replaceAny :: Text -> Maybe (Text, Text)
+    replaceAny t
+      | Text.null t = Nothing
+      | otherwise   = asum (map (replaceStart t) replacements)
+                      <|> Just (Text.splitAt 1 t)
+
+    replaceStart :: Text -> (Text, Text) -> Maybe (Text, Text)
+    replaceStart t (pat, rep) = (rep,) <$> Text.stripPrefix pat t
