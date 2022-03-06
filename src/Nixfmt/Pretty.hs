@@ -88,6 +88,7 @@ instance Pretty Binder where
 prettyTerm :: Term -> Doc
 prettyTerm (Token t) = pretty t
 prettyTerm (String s) = pretty s
+prettyTerm (Path p) = pretty p
 prettyTerm (Selection term selectors) = pretty term <> hcat selectors
 
 prettyTerm (List (Ann paropen Nothing []) [] parclose)

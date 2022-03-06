@@ -16,18 +16,18 @@ import qualified Control.Monad.Combinators.Expr as MPExpr
   (Operator(..), makeExprParser)
 import Data.Char (isAlpha)
 import Data.Foldable (toList)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Text as Text (Text, cons, empty, singleton, split, stripPrefix)
 import Text.Megaparsec
   (anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf,
-  optional, satisfy, try, (<|>))
+  optional, satisfy, some, try, (<|>))
 import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L (decimal, float)
 
 import Nixfmt.Lexer (lexeme)
 import Nixfmt.Types
   (Ann, Binder(..), Expression(..), File(..), Fixity(..), Leaf, Operator(..),
-  ParamAttr(..), Parameter(..), Parser, Selector(..), SimpleSelector(..),
+  ParamAttr(..), Parameter(..), Parser, Path, Selector(..), SimpleSelector(..),
   String, StringPart(..), Term(..), Token(..), operators, tokenText)
 import Nixfmt.Util
   (commonIndentation, identChar, isSpaces, manyP, manyText, pathChar,
@@ -82,8 +82,15 @@ envPath = ann EnvPath $ char '<' *>
     someP pathChar <> manyText (slash <> someP pathChar)
     <* char '>'
 
-path :: Parser (Ann Token)
-path = ann Path $ manyP pathChar <> someText (slash <> someP pathChar)
+pathText :: Parser StringPart
+pathText = TextPart <$> someP pathChar
+
+pathTraversal :: Parser [StringPart]
+pathTraversal = liftM2 (:) (TextPart <$> slash) (some (pathText <|> interpolation))
+
+path :: Parser Path
+path = try $ lexeme $ fmap normalizeLine $
+    (maybeToList <$> optional pathText) <> (concat <$> some pathTraversal)
 
 uri :: Parser [[StringPart]]
 uri = fmap (pure . pure . TextPart) $ try $
@@ -219,8 +226,8 @@ selectorPath = (pure <$> selector Nothing) <>
     many (selector $ Just $ symbol TDot)
 
 simpleTerm :: Parser Term
-simpleTerm = (String <$> string) <|>
-    (Token <$> (path <|> envPath <|> float <|> integer <|> identifier)) <|>
+simpleTerm = (String <$> string) <|> (Path <$> path) <|>
+    (Token <$> (envPath <|> float <|> integer <|> identifier)) <|>
     parens <|> set <|> list
 
 term :: Parser Term
