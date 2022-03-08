@@ -9,7 +9,6 @@
 module Main where
 
 import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
-import Data.Bifunctor (first)
 import Data.Either (lefts)
 import Data.Text (Text)
 import Data.Version (showVersion)
@@ -24,7 +23,7 @@ import System.Posix.Signals (Handler(..), installHandler, keyboardSignal)
 
 import qualified Data.Text.IO as TextIO (getContents, hPutStr, putStr)
 
-import Nixfmt
+import qualified Nixfmt
 import System.IO.Atomic (withOutputFile)
 import System.IO.Utf8 (readFileUtf8, withUtf8StdHandles)
 
@@ -36,6 +35,7 @@ data Nixfmt = Nixfmt
     , width :: Width
     , check :: Bool
     , quiet :: Bool
+    , verify :: Bool
     } deriving (Show, Data, Typeable)
 
 options :: Nixfmt
@@ -44,11 +44,9 @@ options = Nixfmt
     , width = 80 &= help "Maximum width in characters"
     , check = False &= help "Check whether files are formatted"
     , quiet = False &= help "Do not report errors"
+    , verify = False &= help "Check that the output parses and formats the same as the input"
     } &= summary ("nixfmt v" ++ showVersion version)
     &= help "Format Nix source code"
-
-format' :: Width -> FilePath -> Text -> Either String Text
-format' w path = first errorBundlePretty . format w path
 
 data Target = Target
     { tDoRead :: IO Text
@@ -56,18 +54,18 @@ data Target = Target
     , tDoWrite :: Text -> IO ()
     }
 
-formatTarget :: Width -> Target -> IO Result
-formatTarget w Target{tDoRead, tPath, tDoWrite} = do
+formatTarget :: Formatter -> Target -> IO Result
+formatTarget format Target{tDoRead, tPath, tDoWrite} = do
     contents <- tDoRead
-    let formatted = format' w tPath contents
+    let formatted = format tPath contents
     mapM tDoWrite formatted
 
 -- | Return an error if target could not be parsed or was not formatted
 -- correctly.
-checkTarget :: Width -> Target -> IO Result
-checkTarget w Target{tDoRead, tPath} = do
+checkTarget :: Formatter -> Target -> IO Result
+checkTarget format Target{tDoRead, tPath} = do
     contents <- tDoRead
-    return $ case format' w tPath contents of
+    return $ case format tPath contents of
         Left err -> Left err
         Right formatted
             | formatted == contents -> Right ()
@@ -87,16 +85,24 @@ toTargets :: Nixfmt -> [Target]
 toTargets Nixfmt{ files = [] }    = [stdioTarget]
 toTargets Nixfmt{ files = paths } = map fileTarget paths
 
-toOperation :: Nixfmt -> Target -> IO Result
-toOperation Nixfmt{ width = w, check = True } = checkTarget w
-toOperation Nixfmt{ width = w } = formatTarget w
+type Formatter = FilePath -> Text -> Either String Text
+
+toFormatter :: Nixfmt -> Formatter
+toFormatter Nixfmt{ width, verify = True  } = Nixfmt.formatVerify width
+toFormatter Nixfmt{ width, verify = False } = Nixfmt.format width
+
+type Operation = Formatter -> Target -> IO Result
+
+toOperation :: Nixfmt -> Operation
+toOperation Nixfmt{ check = True } = checkTarget
+toOperation Nixfmt{ } = formatTarget
 
 toWriteError :: Nixfmt -> String -> IO ()
 toWriteError Nixfmt{ quiet = False } = hPutStrLn stderr
 toWriteError Nixfmt{ quiet = True } = const $ return ()
 
 toJobs :: Nixfmt -> [IO Result]
-toJobs opts = map (toOperation opts) $ toTargets opts
+toJobs opts = map (toOperation opts $ toFormatter opts) $ toTargets opts
 
 -- TODO: Efficient parallel implementation. This is just a sequential stub.
 -- This was originally implemented using parallel-io, but it gave a factor two

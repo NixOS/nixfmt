@@ -24,22 +24,27 @@ data Trivium
     = EmptyLine
     | LineComment     Text
     | BlockComment    [Text]
-    deriving (Show)
+    deriving (Eq, Show)
 
 type Trivia = [Trivium]
 
-newtype TrailingComment = TrailingComment Text deriving (Show)
+newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
 
 data Ann a
     = Ann a (Maybe TrailingComment) Trivia
     deriving (Show)
+
+-- | Equality of annotated syntax is defines as equality of their corresponding
+-- semantics, thus ignoring the annotations.
+instance Eq a => Eq (Ann a) where
+    Ann x _ _ == Ann y _ _ = x == y
 
 type Leaf = Ann Token
 
 data StringPart
     = TextPart Text
     | Interpolation Leaf Expression Token
-    deriving (Show)
+    deriving (Eq, Show)
 
 type String = Ann [[StringPart]]
 
@@ -47,16 +52,16 @@ data SimpleSelector
     = IDSelector Leaf
     | InterpolSelector (Ann StringPart)
     | StringSelector String
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Selector
     = Selector (Maybe Leaf) SimpleSelector (Maybe (Leaf, Term))
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Binder
     = Inherit Leaf (Maybe Term) [Leaf] Leaf
     | Assignment [Selector] Leaf Expression Leaf
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Term
     = Token Leaf
@@ -65,18 +70,18 @@ data Term
     | Set (Maybe Leaf) Leaf [Binder] Leaf
     | Selection Term [Selector]
     | Parenthesized Leaf Expression Leaf
-    deriving (Show)
+    deriving (Eq, Show)
 
 data ParamAttr
     = ParamAttr Leaf (Maybe (Leaf, Expression)) (Maybe Leaf)
     | ParamEllipsis Leaf
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Parameter
     = IDParameter Leaf
     | SetParameter Leaf [ParamAttr] Leaf
     | ContextParameter Parameter Leaf Parameter
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Expression
     = Term Term
@@ -91,11 +96,11 @@ data Expression
     | MemberCheck Expression Leaf [Selector]
     | Negation Leaf Expression
     | Inversion Leaf Expression
-    deriving (Show)
+    deriving (Eq, Show)
 
 data File
     = File Leaf Expression
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Token
     = Integer    Int
@@ -165,12 +170,12 @@ data Fixity
     | InfixN
     | InfixR
     | Postfix
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Operator
     = Op Fixity Token
     | Apply
-    deriving (Show)
+    deriving (Eq, Show)
 
 -- | A list of lists of operators where lists that come first contain operators
 -- that bind more strongly.
