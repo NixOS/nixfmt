@@ -46,6 +46,8 @@ data StringPart
     | Interpolation Leaf Expression Token
     deriving (Eq, Show)
 
+type Path = Ann [StringPart]
+
 type String = Ann [[StringPart]]
 
 data SimpleSelector
@@ -66,6 +68,7 @@ data Binder
 data Term
     = Token Leaf
     | String String
+    | Path Path
     | List Leaf [Term] Leaf
     | Set (Maybe Leaf) Leaf [Binder] Leaf
     | Selection Term [Selector]
@@ -106,7 +109,6 @@ data Token
     = Integer    Int
     | Float      Double
     | Identifier Text
-    | Path       Text
     | EnvPath    Text
 
     | KAssert
@@ -206,7 +208,6 @@ tokenText :: Token -> Text
 tokenText (Identifier i)     = i
 tokenText (Integer i)        = pack (show i)
 tokenText (Float f)          = pack (show f)
-tokenText (Path p)           = p
 tokenText (EnvPath p)        = "<" <> p <> ">"
 
 tokenText KAssert            = "assert"

@@ -5,6 +5,21 @@ Copyright: 2019 Serokell <hi@serokell.io>
 Copyright: 2019 Lars Jellema <lars.jellema@gmail.com>
 License: MPL-2.0
 
+Files: test/correct/*
+Copyright: 2022 Serokell <hi@serokell.io>
+Copyright: 2022 Lars Jellema <lars.jellema@gmail.com>
+License: MPL-2.0
+
+Files: test/changed/*
+Copyright: 2022 Serokell <hi@serokell.io>
+Copyright: 2022 Lars Jellema <lars.jellema@gmail.com>
+License: MPL-2.0
+
+Files: test/invalid/*
+Copyright: 2022 Serokell <hi@serokell.io>
+Copyright: 2022 Lars Jellema <lars.jellema@gmail.com>
+License: MPL-2.0
+
 Files: flake.lock
 Copyright: 2020 Serokell <hi@serokell.io>
 Copyright: 2022 Yorick van Pelt <yorickvanpelt@gmail.com>
