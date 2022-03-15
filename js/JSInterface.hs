@@ -29,7 +29,7 @@ main = do
         out <- case format width filename text of
           Left err -> do
             setProp "err" (toJSBool True) obj
-            toJSVal $ S.pack $ errorBundlePretty err
+            toJSVal $ S.pack err
           Right out_ -> do
             setProp "err" (toJSBool False) obj
             toJSVal out_
