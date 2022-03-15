@@ -17,7 +17,7 @@ steps:
       - nix-build -A packages.x86_64-linux.nixfmt-deriver | cachix push nixfmt
   - label: build web demo
     commands:
-      - nix-build -A packages.x86_64-linux.nixfmt-webdemo | cachix push nixfmt
+      - set -o pipefail; nix-build -A packages.x86_64-linux.nixfmt-webdemo | cachix push nixfmt
   - wait
   - label: deploy web demo
     branches: master
