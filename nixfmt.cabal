@@ -1,12 +1,12 @@
 cabal-version:       2.0
 
--- © 2019 Serokell <hi@serokell.io>
--- © 2019 Lars Jellema <lars.jellema@gmail.com>
+-- © 2022 Serokell <hi@serokell.io>
+-- © 2022 Lars Jellema <lars.jellema@gmail.com>
 --
 -- SPDX-License-Identifier: MPL-2.0
 
 name:                nixfmt
-version:             0.4.0
+version:             0.5.0
 synopsis:            An opinionated formatter for Nix
 description:
   A formatter for Nix that ensures consistent and clear formatting by forgetting
@@ -17,7 +17,7 @@ license:             MPL-2.0
 license-file:        LICENSE
 author:              Lars Jellema
 maintainer:          lars.jellema@gmail.com
-copyright:           2019 Serokell, 2019 Lars Jellema
+copyright:           2022 Serokell, 2022 Lars Jellema
 category:            Development
 build-type:          Simple
 extra-source-files:  README.md, CHANGELOG.md
