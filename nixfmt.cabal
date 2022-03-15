@@ -69,7 +69,16 @@ library
     Nixfmt.Pretty
     Nixfmt.Types
     Nixfmt.Util
-  other-extensions:    OverloadedStrings, LambdaCase, FlexibleInstances, DeriveFoldable, DeriveFunctor, StandaloneDeriving
+
+  other-extensions:
+    DeriveFoldable
+    DeriveFunctor
+    FlexibleInstances
+    LambdaCase
+    OverloadedStrings
+    StandaloneDeriving
+    TupleSections
+
   hs-source-dirs:      src
   build-depends:
       base             >= 4.12.0 && < 4.15
