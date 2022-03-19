@@ -7,6 +7,13 @@
 
 # Revision history for nixfmt
 
+## 0.5.0 -- 2022-03-15
+* Add a nix flake to the nixfmt project.
+* Add a --verify flag to check idempotency.
+* Support nix path (`./${foo}.nix`) interpolations.
+* Fix escaping of interpolations after single quotes.
+* Fix handling of multiline strings with spaces in the last line.
+
 ## 0.4.0 -- 2020-02-10
 * Report non-conforming files on the same line to aid line-oriented processing
 * Fix help, summary, and version flag contents.
