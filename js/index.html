@@ -6,69 +6,108 @@
    -->
 
 <html>
-  <head>
-    <title>nixfmt online demo</title>
-    <script language="javascript" src="../dist/build/js-interface/js-interface.jsexe/rts.js"></script>
-    <script language="javascript" src="../dist/build/js-interface/js-interface.jsexe/lib.js"></script>
-    <script language="javascript" src="../dist/build/js-interface/js-interface.jsexe/out.js"></script><link rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/default.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/highlight.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/languages/nix.min.js"></script>
-<style>
-  html {
+
+<head>
+  <title>nixfmt online demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script language="javascript" src="../dist/build/js-interface/js-interface.jsexe/rts.js"></script>
+  <script language="javascript" src="../dist/build/js-interface/js-interface.jsexe/lib.js"></script>
+  <script language="javascript" src="../dist/build/js-interface/js-interface.jsexe/out.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/default.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/languages/nix.min.js"></script>
+  <style>
+    html {
       height: 100%;
       padding: 0;
       margin: 0;
-  }
-  body {
+    }
+
+    body {
       padding: 0;
       margin: 0;
-      display: grid;
-      max-height: 100vh;
-      height: 100vh;
-  }
-  #in { resize: none; } 
-  pre {
+      height: 100%;
+      display: flex;
+    }
+
+    * {
+      flex: 1;
+    }
+
+    #in {
+      resize: none;
+      flex: 1;
+    }
+
+    #fmt {
+      flex: 0;
+    }
+
+    #out {
+      resize: none;
+    }
+
+    #out-wrap {
+      resize: both;
+    }
+
+    pre {
       overflow-y: scroll;
       overflow-x: auto;
-      resize: horizontal;
       margin: 0;
+      resize: none;
       white-space: pre-wrap;
-  }
-  code {
+    }
+
+    code {
       min-height: 100%;
       min-width: 100%;
-  }
-  * { box-sizing: border-box; }
-  .gh-ribbon {
+    }
+
+    .gh-ribbon {
       position: absolute;
-      top: 0; right: 0;
+      top: 0;
+      right: 0;
       display: inline-block;
       -moz-user-select: none;
       -webkit-user-select: none;
       user-select: none;
-  }
-  @media only screen and (max-width: 80em) {
-      body { grid-template-rows: 1fr 2em 1fr; }
-  }
-  @media only screen and (min-width: 80em) {
-      body { grid-template-columns: 0.9fr 3em 1fr; }
-  }
-  button {
+    }
+
+    @media only screen and (max-width: 80em) {
+      body {
+        flex-direction: column;
+      }
+    }
+
+    @media only screen and (min-width: 80em) {
+      body {
+        flex-direction: row;
+      }
+    }
+
+    button {
       word-wrap: break-word;
-  }
-  #probe {
-      visibility: hidden; position: absolute;
-      width: auto; height: auto; margin: 0; padding: 0;
+      flex: 0;
+    }
+
+    #probe {
+      visibility: hidden;
+      position: absolute;
+      width: auto;
+      height: auto;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
-  }
+    }
   </style>
-  </head>
-  <body>
+</head>
+
+<body>
   <script language="javascript" src="../dist/build/js-interface/js-interface.jsexe/runmain.js" defer></script>
   <textarea id="in" cols=80 spellcheck="false">
 let
-/* 
+/*
  * What you're seeing here is our nix formatter. It's quite opinionated:
  */
   sample-01 = { lib }:
@@ -152,40 +191,44 @@ in
   <pre id="probe">xxx</pre>
   <script>
     hljs.configure({ languages: ["nix"] })
-    function nixfmt(text, width=80, filename="<stdin>") {
-        const param = {width, filename}
-        nixfmt_(text, param)
-        return {text: param.ret, err: param.err}
+    function nixfmt(text, width = 80, filename = "<stdin>") {
+      const param = { width, filename }
+      nixfmt_(text, param)
+      return { text: param.ret, err: param.err }
     }
+
     function format() {
-        if (!window.nixfmt_) {
-            return setTimeout(format, 100)
-        }
-        const outWrap = document.getElementById("out-wrap")
-        let width = 80;
-        if (outWrap.style.width) {
-            const fontwidth = (document.getElementById("probe").clientWidth + 1) / 3
-            width = parseFloat(outWrap.style.width) / fontwidth
-        }
-        const outText = nixfmt(document.getElementById('in').value, width).text
-        const out = document.getElementById('out')
-        out.textContent = outText
-        hljs.highlightBlock(out)
+      if (!window.nixfmt_) {
+        return setTimeout(format, 100)
+      }
+      const outWrap = document.getElementById("out-wrap")
+      let width = 80;
+      if (outWrap.style.width) {
+        const fontwidth = (document.getElementById("probe").clientWidth + 1) / 3
+        width = parseFloat(outWrap.style.width) / fontwidth
+      }
+      const outText = nixfmt(document.getElementById('in').value, width).text
+      const out = document.getElementById('out')
+      out.textContent = outText
+      hljs.highlightBlock(out)
     }
     document.getElementById('fmt').addEventListener('click', format)
     window.onload = format
     let resizeTimer = false
     const resizeObserver = new MutationObserver(entries => {
-        if (resizeTimer) {
-            clearTimeout(resizeTimer)
-            resizeTimer = false
-        }
-        resizeTimer = setTimeout(format, 500)
+      if (resizeTimer) {
+        clearTimeout(resizeTimer)
+        resizeTimer = false
+      }
+      resizeTimer = setTimeout(format, 500)
     });
     resizeObserver.observe(document.getElementById('out-wrap'), {
-        attributes: true, attributeFilter: ["style"]
+      attributes: true, attributeFilter: ["style"]
     });
-    </script>
-<a href="https://github.com/serokell/nixfmt" class="gh-ribbon"><img width="149" height="149" src="https://github.blog/wp-content/uploads/2008/12/forkme_right_darkblue_121621.png?resize=149%2C149" class="attachment-full size-full" alt="Fork me on GitHub" data-recalc-dims="1"></a>
-  </body>
+  </script>
+  <a href="https://github.com/serokell/nixfmt" class="gh-ribbon"><img width="149" height="149"
+      src="https://github.blog/wp-content/uploads/2008/12/forkme_right_darkblue_121621.png?resize=149%2C149"
+      class="attachment-full size-full" alt="Fork me on GitHub" data-recalc-dims="1"></a>
+</body>
+
 </html>
