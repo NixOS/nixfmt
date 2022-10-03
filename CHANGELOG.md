@@ -7,6 +7,10 @@
 
 # Revision history for nixfmt
 
+## Unreleased
+
+* Fix escaping of interpolations after dollar signs.
+
 ## 0.5.0 -- 2022-03-15
 * Add a nix flake to the nixfmt project.
 * Add a --verify flag to check idempotency.

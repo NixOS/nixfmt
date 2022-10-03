@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE FlexibleInstances, LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
 
 module Nixfmt.Pretty where
 
@@ -14,7 +14,7 @@ import Data.Char (isSpace)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, isPrefixOf, isSuffixOf, stripPrefix)
 import qualified Data.Text as Text
-  (dropEnd, empty, init, isInfixOf, last, null, replace, strip, takeWhile)
+  (dropEnd, empty, init, isInfixOf, last, null, strip, takeWhile)
 
 import Nixfmt.Predoc
   (Doc, Pretty, base, emptyline, group, hardline, hardspace, hcat, line, line',
@@ -377,14 +377,15 @@ prettyLine escapeText unescapeInterpol
 prettySimpleString :: [[StringPart]] -> Doc
 prettySimpleString parts = group $
     text "\""
-    <> (sepBy (text "\\n") (map (prettyLine escape unescapeInterpol) parts))
+    <> sepBy (text "\\n") (map (prettyLine escape unescapeInterpol) parts)
     <> text "\""
-    where escape
-              = Text.replace "$\\${" "$${"
-              . Text.replace "${" "\\${"
-              . Text.replace "\"" "\\\""
-              . Text.replace "\r" "\\r"
-              . Text.replace "\\" "\\\\"
+    where escape = replaceMultiple
+              [ ("$\\${", "$${")
+              , ("${",    "\\${")
+              , ("\"",    "\\\"")
+              , ("\r",    "\\r")
+              , ("\\",    "\\\\")
+              ]
 
           unescapeInterpol t
               | "$" `isSuffixOf` t = Text.init t <> "\\$"
