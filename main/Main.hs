@@ -39,14 +39,24 @@ data Nixfmt = Nixfmt
     } deriving (Show, Data, Typeable)
 
 options :: Nixfmt
-options = Nixfmt
-    { files = [] &= args &= typ "FILES"
-    , width = 80 &= help "Maximum width in characters"
-    , check = False &= help "Check whether files are formatted"
-    , quiet = False &= help "Do not report errors"
-    , verify = False &= help "Check that the output parses and formats the same as the input"
-    } &= summary ("nixfmt v" ++ showVersion version)
-    &= help "Format Nix source code"
+options =
+  let defaultWidth = 80
+      addDefaultHint value message =
+        message ++ "\n[default: " ++ show value ++ "]"
+   in Nixfmt
+        { files = [] &= args &= typ "FILES"
+        , width =
+            defaultWidth &=
+            help (addDefaultHint defaultWidth "Maximum width in characters")
+        , check = False &= help "Check whether files are formatted"
+        , quiet = False &= help "Do not report errors"
+        , verify =
+            False &=
+            help
+              "Check that the output parses and formats the same as the input"
+        } &=
+      summary ("nixfmt v" ++ showVersion version) &=
+      help "Format Nix source code"
 
 data Target = Target
     { tDoRead :: IO Text
