@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE BlockArguments, LambdaCase, OverloadedStrings #-}
 
 module Nixfmt.Parser where
 
@@ -26,9 +26,10 @@ import qualified Text.Megaparsec.Char.Lexer as L (decimal)
 
 import Nixfmt.Lexer (lexeme)
 import Nixfmt.Types
-  (Ann, Binder(..), Expression(..), File(..), Fixity(..), Leaf, Operator(..),
+  (Ann(..), Binder(..), Expression(..), File(..), Fixity(..), Leaf, Operator(..),
   ParamAttr(..), Parameter(..), Parser, Path, Selector(..), SimpleSelector(..),
-  String, StringPart(..), Term(..), Token(..), operators, tokenText)
+  String, StringPart(..), Term(..), Token(..), operators, reservedNames,
+  toLeading, tokenText)
 import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Util
   (commonIndentation, identChar, isSpaces, manyP, manyText, pathChar,
@@ -46,16 +47,6 @@ rawSymbol t = chunk (tokenText t) *> return t
 symbol :: Token -> Parser (Ann Token)
 symbol = lexeme . rawSymbol
 
-reservedNames :: [Text]
-reservedNames =
-    [ "let", "in"
-    , "if", "then", "else"
-    , "assert"
-    , "with"
-    , "rec"
-    , "inherit"
-    ]
-
 reserved :: Token -> Parser (Ann Token)
 reserved t = try $ lexeme $ rawSymbol t
     <* lookAhead (satisfy (\x -> not $ identChar x || pathChar x))
@@ -68,12 +59,32 @@ integer = ann Integer L.decimal
 float :: Parser (Ann Token)
 float = ann Float floatParse
 
+rawIdentifier :: Parser Text
+rawIdentifier = Text.cons
+    <$> satisfy (\x -> isAlpha x || x == '_')
+    <*> manyP identChar
+
 identifier :: Parser (Ann Token)
-identifier = ann Identifier $ do
-    ident <- Text.cons <$> satisfy (\x -> isAlpha x || x == '_')
-                       <*> manyP identChar
+identifier = ann Identifier do
+    ident <- rawIdentifier
     guard $ not $ ident `elem` reservedNames
     return ident
+
+-- Support all of: { inherit foo "bar" ${"baz"}; }
+fancyIdentifier :: Parser (Ann Token)
+fancyIdentifier = identifier <|> stringIdentifier <|> curlyIdentifier
+
+stringIdentifier :: Parser (Ann Token)
+stringIdentifier = ann Identifier do
+    rawSymbol TDoubleQuote *> rawIdentifier <* rawSymbol TDoubleQuote
+
+curlyIdentifier :: Parser (Ann Token)
+curlyIdentifier = do
+    (Ann _ trailing1 leading1) <- symbol TInterOpen
+    (Ann i trailing2 leading2) <- stringIdentifier
+    (Ann _ trailing3 leading3) <- symbol TInterClose
+    pure $ Ann i trailing1 $
+      leading1 <> toLeading trailing2 <> leading2 <> toLeading trailing3 <> leading3
 
 slash :: Parser Text
 slash = chunk "/" <* notFollowedBy (char '/')
@@ -271,7 +282,7 @@ abstraction = try (Abstraction <$>
 
 inherit :: Parser Binder
 inherit = Inherit <$> reserved KInherit <*> optional parens <*>
-    many identifier <*> symbol TSemicolon
+    many fancyIdentifier <*> symbol TSemicolon
 
 assignment :: Parser Binder
 assignment = Assignment <$>

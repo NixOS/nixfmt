@@ -30,6 +30,10 @@ type Trivia = [Trivium]
 
 newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
 
+toLeading :: Maybe TrailingComment -> Trivia
+toLeading Nothing = []
+toLeading (Just (TrailingComment c)) = [LineComment (" " <> c)]
+
 data Ann a
     = Ann a (Maybe TrailingComment) Trivia
     deriving (Show)
@@ -204,7 +208,19 @@ operators =
     , [ Op InfixL TImplies ]
     ]
 
+reservedNames :: [Text]
+reservedNames =
+    [ "let", "in"
+    , "if", "then", "else"
+    , "assert"
+    , "with"
+    , "rec"
+    , "inherit"
+    ]
+
 tokenText :: Token -> Text
+tokenText (Identifier i)
+    | i `elem` reservedNames = "\"" <> i <> "\""
 tokenText (Identifier i)     = i
 tokenText (Integer i)        = pack (show i)
 tokenText (Float f)          = pack (show f)

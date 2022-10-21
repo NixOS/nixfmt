@@ -22,7 +22,7 @@ import Nixfmt.Predoc
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), File(..), Leaf, ParamAttr(..),
   Parameter(..), Selector(..), SimpleSelector(..), StringPart(..), Term(..),
-  Token(..), TrailingComment(..), Trivia, Trivium(..), tokenText)
+  Token(..), TrailingComment(..), Trivium(..), toLeading, tokenText)
 import Nixfmt.Util (commonIndentation, isSpaces, replaceMultiple)
 
 prettyCommentLine :: Text -> Doc
@@ -119,10 +119,6 @@ prettyTerm (Parenthesized (Ann paropen trailing leading) expr parclose)
 instance Pretty Term where
     pretty l@(List _ _ _) = group $ prettyTerm l
     pretty x              = prettyTerm x
-
-toLeading :: Maybe TrailingComment -> Trivia
-toLeading Nothing = []
-toLeading (Just (TrailingComment c)) = [LineComment (" " <> c)]
 
 prettyComma :: Maybe Leaf -> Doc
 prettyComma Nothing = mempty
