@@ -91,9 +91,13 @@ fileTarget path = Target (readFileUtf8 path) path atomicWriteFile
       hSetEncoding h utf8
       TextIO.hPutStr h t
 
+checkFileTarget :: FilePath -> Target
+checkFileTarget path = Target (readFileUtf8 path) path (const $ pure ())
+
 toTargets :: Nixfmt -> [Target]
 toTargets Nixfmt{ files = [] }    = [stdioTarget]
-toTargets Nixfmt{ files = paths } = map fileTarget paths
+toTargets Nixfmt{ check = False, files = paths } = map checkFileTarget paths
+toTargets Nixfmt{ check = True, files = paths } = map fileTarget paths
 
 type Formatter = FilePath -> Text -> Either String Text
 
