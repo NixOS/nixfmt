@@ -18,6 +18,7 @@ import Paths_nixfmt (version)
 import System.Console.CmdArgs
   (Data, Typeable, args, cmdArgs, help, summary, typ, (&=))
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
+import System.FilePath ((</>))
 import System.IO (hPutStrLn, hSetEncoding, stderr)
 import System.Posix.Process (exitImmediately)
 import System.Posix.Signals (Handler(..), installHandler, keyboardSignal)
@@ -72,13 +73,13 @@ collectNixFiles path = do
   dir <- doesDirectoryExist path
   if | dir -> do
          files <- listDirectory path
-         concat <$> mapM collectNixFiles (((path <> "/") <>) <$> files)
-     | isSuffixOf ".nix" path -> pure [path]
+         concat <$> mapM collectNixFiles ((path </>) <$> files)
+     | ".nix" `isSuffixOf` path -> pure [path]
      | otherwise -> pure []
 
 -- | Recursively collect nix files in a list of directories
 collectAllNixFiles :: [FilePath] -> IO [FilePath]
-collectAllNixFiles paths = concat <$> (sequence $ collectNixFiles <$> paths)
+collectAllNixFiles paths = concat <$> mapM collectNixFiles paths
 
 formatTarget :: Formatter -> Target -> IO Result
 formatTarget format Target{tDoRead, tPath, tDoWrite} = do
