@@ -4,13 +4,14 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE DeriveDataTypeable, NamedFieldPuns #-}
+{-# LANGUAGE DeriveDataTypeable, NamedFieldPuns, MultiWayIf #-}
 
 module Main where
 
 import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
 import Data.Either (lefts)
 import Data.Text (Text)
+import Data.List (isSuffixOf)
 import Data.Version (showVersion)
 import GHC.IO.Encoding (utf8)
 import Paths_nixfmt (version)
@@ -20,6 +21,7 @@ import System.Exit (ExitCode(..), exitFailure, exitSuccess)
 import System.IO (hPutStrLn, hSetEncoding, stderr)
 import System.Posix.Process (exitImmediately)
 import System.Posix.Signals (Handler(..), installHandler, keyboardSignal)
+import System.Directory (listDirectory, doesDirectoryExist)
 
 import qualified Data.Text.IO as TextIO (getContents, hPutStr, putStr)
 
@@ -64,6 +66,20 @@ data Target = Target
     , tDoWrite :: Text -> IO ()
     }
 
+-- | Recursively collect nix files in a directory
+collectNixFiles :: FilePath -> IO [FilePath]
+collectNixFiles path = do
+  dir <- doesDirectoryExist path
+  if | dir -> do
+         files <- listDirectory path
+         concat <$> mapM collectNixFiles (((path <> "/") <>) <$> files)
+     | isSuffixOf ".nix" path -> pure [path]
+     | otherwise -> pure []
+
+-- | Recursively collect nix files in a list of directories
+collectAllNixFiles :: [FilePath] -> IO [FilePath]
+collectAllNixFiles paths = concat <$> (sequence $ collectNixFiles <$> paths)
+
 formatTarget :: Formatter -> Target -> IO Result
 formatTarget format Target{tDoRead, tPath, tDoWrite} = do
     contents <- tDoRead
@@ -94,11 +110,11 @@ fileTarget path = Target (readFileUtf8 path) path atomicWriteFile
 checkFileTarget :: FilePath -> Target
 checkFileTarget path = Target (readFileUtf8 path) path (const $ pure ())
 
-toTargets :: Nixfmt -> [Target]
-toTargets Nixfmt{ files = [] }    = [stdioTarget]
-toTargets Nixfmt{ files = ["-"] } = [stdioTarget]
-toTargets Nixfmt{ check = False, files = paths } = map fileTarget paths
-toTargets Nixfmt{ check = True, files = paths } = map checkFileTarget paths
+toTargets :: Nixfmt -> IO [Target]
+toTargets Nixfmt{ files = [] }    = pure [stdioTarget]
+toTargets Nixfmt{ files = ["-"] } = pure [stdioTarget]
+toTargets Nixfmt{ check = False, files = paths } = map fileTarget <$> collectAllNixFiles paths
+toTargets Nixfmt{ check = True, files = paths } = map checkFileTarget <$> collectAllNixFiles paths
 
 type Formatter = FilePath -> Text -> Either String Text
 
@@ -116,8 +132,8 @@ toWriteError :: Nixfmt -> String -> IO ()
 toWriteError Nixfmt{ quiet = False } = hPutStrLn stderr
 toWriteError Nixfmt{ quiet = True } = const $ return ()
 
-toJobs :: Nixfmt -> [IO Result]
-toJobs opts = map (toOperation opts $ toFormatter opts) $ toTargets opts
+toJobs :: Nixfmt -> IO [IO Result]
+toJobs opts = map (toOperation opts $ toFormatter opts) <$> toTargets opts
 
 -- TODO: Efficient parallel implementation. This is just a sequential stub.
 -- This was originally implemented using parallel-io, but it gave a factor two
@@ -156,7 +172,7 @@ main = withUtf8StdHandles $ do
     _ <- installHandler keyboardSignal
             (Catch (exitImmediately $ ExitFailure 2)) Nothing
     opts <- cmdArgs options
-    results <- runJobs (toWriteError opts) (toJobs opts)
+    results <- runJobs (toWriteError opts) =<< toJobs opts
     case lefts results of
          [] -> exitSuccess
          _  -> exitFailure
