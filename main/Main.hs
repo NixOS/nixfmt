@@ -96,6 +96,7 @@ checkFileTarget path = Target (readFileUtf8 path) path (const $ pure ())
 
 toTargets :: Nixfmt -> [Target]
 toTargets Nixfmt{ files = [] }    = [stdioTarget]
+toTargets Nixfmt{ files = ["-"] } = [stdioTarget]
 toTargets Nixfmt{ check = False, files = paths } = map fileTarget paths
 toTargets Nixfmt{ check = True, files = paths } = map checkFileTarget paths
 
