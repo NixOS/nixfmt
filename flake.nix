@@ -57,6 +57,7 @@
 
       in {
         packages = rec {
+          default = nixfmt;
           nixfmt = pkgs.haskellPackages.nixfmt;
           nixfmt-static = haskell.lib.justStaticExecutables nixfmt;
           nixfmt-deriver = nixfmt-static.cabal2nixDeriver;
@@ -80,14 +81,11 @@
           inherit (pkgs) awscli reuse;
         };
 
-        apps = builtins.mapAttrs (name: p: {
+        apps.default = {
           type = "app";
-          program = "${p}/bin/${name}";
-        }) self.packages.${system};
+          program = "${self.packages.${system}.nixfmt-static}/bin/nixfmt";
+        };
 
-        defaultPackage = self.packages.${system}.nixfmt;
-        defaultApp = self.apps.${system}.nixfmt;
-
-        devShell = self.packages.${system}.nixfmt-shell;
+        devShells.default = self.packages.${system}.nixfmt-shell;
       });
 }
