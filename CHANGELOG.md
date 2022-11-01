@@ -15,6 +15,7 @@
 * Nixfmt now accepts the '-' argument to read from stdin.
 * `nixfmt [dir]` now recursively formats nix files in that directory.
 * Float and int literal parsing now matches nix.
+* Add support for quoted inherit names.
 
 ## 0.5.0 -- 2022-03-15
 
