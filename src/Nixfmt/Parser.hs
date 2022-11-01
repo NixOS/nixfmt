@@ -4,37 +4,32 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE LambdaCase, OverloadedStrings, TypeFamilies, TypeApplications, ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase, OverloadedStrings #-}
 
 module Nixfmt.Parser where
 
 import Prelude hiding (String)
 
-import Data.Foldable (foldl')
-import Control.Monad (guard, liftM2, void)
+import Control.Monad (guard, liftM2)
 import Control.Monad.Combinators (sepBy)
 import qualified Control.Monad.Combinators.Expr as MPExpr
   (Operator(..), makeExprParser)
 import Data.Char (isAlpha)
-import qualified Data.Char as Char
-import Data.Proxy
 import Data.Foldable (toList)
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Text as Text (Text, cons, empty, singleton, split, stripPrefix)
 import Text.Megaparsec
-  (anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf, option,
-  chunkToTokens, takeWhile1P,
-  optional, satisfy, some, try, (<|>), (<?>), MonadParsec)
-import Text.Megaparsec.Char (char, char')
-import qualified Text.Megaparsec.Char.Lexer as L (decimal, signed)
-import qualified Text.Megaparsec as L (Token)
-import qualified Data.Scientific as Sci
+  (anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf,
+  optional, satisfy, some, try, (<|>))
+import Text.Megaparsec.Char (char)
+import qualified Text.Megaparsec.Char.Lexer as L (decimal)
 
 import Nixfmt.Lexer (lexeme)
 import Nixfmt.Types
   (Ann, Binder(..), Expression(..), File(..), Fixity(..), Leaf, Operator(..),
   ParamAttr(..), Parameter(..), Parser, Path, Selector(..), SimpleSelector(..),
   String, StringPart(..), Term(..), Token(..), operators, tokenText)
+import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Util
   (commonIndentation, identChar, isSpaces, manyP, manyText, pathChar,
   schemeChar, someP, someText, uriChar)
@@ -69,41 +64,6 @@ reserved t = try $ lexeme $ rawSymbol t
 
 integer :: Parser (Ann Token)
 integer = ann Integer L.decimal
-
--- copied (and modified) from Text.Megaparsec.Char.Lexer
-data SP = SP !Integer {-# UNPACK #-} !Int
-floatParse :: (MonadParsec e s m, L.Token s ~ Char, RealFloat a) => m a
-floatParse = do
-  c' <- (L.decimal <?> "decimal") <|> return 0
-  Sci.toRealFloat
-    <$> (( do
-              SP c e' <- dotDecimal_ c'
-              e <- option e' (try $ exponent_ e')
-              return (Sci.scientific c e)
-         )
-            <|> (Sci.scientific c' <$> exponent_ 0)
-        )
-{-# INLINE floatParse #-}
-
--- copied from Text.Megaparsec.Char.Lexer
-dotDecimal_ :: forall e s m.
-  (MonadParsec e s m, L.Token s ~ Char) => Integer -> m SP
-dotDecimal_ c' = do
-  void (char '.')
-  let mkNum = foldl' step (SP c' 0) . chunkToTokens @s Proxy
-      step (SP a e') c =
-        SP
-          (a * 10 + fromIntegral (Char.digitToInt c))
-          (e' - 1)
-  mkNum <$> takeWhile1P (Just "digit") Char.isDigit
-{-# INLINE dotDecimal_ #-}
-
--- copied from Text.Megaparsec.Char.Lexer
-exponent_ :: (MonadParsec e s m, L.Token s ~ Char) => Int -> m Int
-exponent_ e' = do
-  void (char' 'e')
-  (+ e') <$> L.signed (return ()) L.decimal
-{-# INLINE exponent_ #-}
 
 float :: Parser (Ann Token)
 float = ann Float floatParse

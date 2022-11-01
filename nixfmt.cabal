@@ -65,10 +65,14 @@ library
     Nixfmt
     Nixfmt.Lexer
     Nixfmt.Parser
+    Nixfmt.Parser.Float
     Nixfmt.Predoc
     Nixfmt.Pretty
     Nixfmt.Types
     Nixfmt.Util
+
+  default-extensions:
+    PackageImports
 
   other-extensions:
     DeriveFoldable
@@ -76,6 +80,7 @@ library
     FlexibleInstances
     LambdaCase
     OverloadedStrings
+    ScopedTypeVariables
     StandaloneDeriving
     TupleSections
 
