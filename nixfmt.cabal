@@ -65,10 +65,14 @@ library
     Nixfmt
     Nixfmt.Lexer
     Nixfmt.Parser
+    Nixfmt.Parser.Float
     Nixfmt.Predoc
     Nixfmt.Pretty
     Nixfmt.Types
     Nixfmt.Util
+
+  default-extensions:
+    PackageImports
 
   other-extensions:
     DeriveFoldable
@@ -76,6 +80,7 @@ library
     FlexibleInstances
     LambdaCase
     OverloadedStrings
+    ScopedTypeVariables
     StandaloneDeriving
     TupleSections
 
@@ -84,6 +89,7 @@ library
       base             >= 4.12.0 && < 4.17
     , megaparsec       >= 9.0.1 && < 9.3
     , parser-combinators >= 1.0.3 && < 1.4
+    , scientific       >= 0.3.0 && < 0.4.0
     , text             >= 1.2.3 && < 1.3
   default-language:    Haskell2010
   ghc-options:

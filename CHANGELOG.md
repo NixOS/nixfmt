@@ -13,6 +13,7 @@
 * Fix nixfmt trying to allocate temp files that aren't used.
 * Nixfmt now accepts the '-' argument to read from stdin.
 * `nixfmt [dir]` now recursively formats nix files in that directory.
+* Float and int literal parsing now matches nix.
 
 ## 0.5.0 -- 2022-03-15
 

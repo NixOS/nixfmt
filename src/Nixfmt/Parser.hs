@@ -22,13 +22,14 @@ import Text.Megaparsec
   (anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf,
   optional, satisfy, some, try, (<|>))
 import Text.Megaparsec.Char (char)
-import qualified Text.Megaparsec.Char.Lexer as L (decimal, float)
+import qualified Text.Megaparsec.Char.Lexer as L (decimal)
 
 import Nixfmt.Lexer (lexeme)
 import Nixfmt.Types
   (Ann, Binder(..), Expression(..), File(..), Fixity(..), Leaf, Operator(..),
   ParamAttr(..), Parameter(..), Parser, Path, Selector(..), SimpleSelector(..),
   String, StringPart(..), Term(..), Token(..), operators, tokenText)
+import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Util
   (commonIndentation, identChar, isSpaces, manyP, manyText, pathChar,
   schemeChar, someP, someText, uriChar)
@@ -65,7 +66,7 @@ integer :: Parser (Ann Token)
 integer = ann Integer L.decimal
 
 float :: Parser (Ann Token)
-float = ann Float L.float
+float = ann Float floatParse
 
 identifier :: Parser (Ann Token)
 identifier = ann Identifier $ do
@@ -227,7 +228,7 @@ selectorPath = (pure <$> selector Nothing) <>
 
 simpleTerm :: Parser Term
 simpleTerm = (String <$> string) <|> (Path <$> path) <|>
-    (Token <$> (envPath <|> float <|> integer <|> identifier)) <|>
+    (Token <$> (envPath <|> integer <|> float <|> identifier)) <|>
     parens <|> set <|> list
 
 term :: Parser Term
