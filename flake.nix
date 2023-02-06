@@ -8,6 +8,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-22.11";
 
     flake-utils.url = "github:numtide/flake-utils";
 
@@ -17,7 +18,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, ... }:
+  outputs = { self, nixpkgs, nixpkgs-stable, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlay = self: super: {
@@ -33,9 +34,14 @@
           overlays = [ overlay ];
         };
 
+        pkgs-stable = import nixpkgs-stable {
+          inherit system;
+          overlays = [ overlay ];
+        };
+
         inherit (pkgs) haskell lib;
 
-        ghcjsPackages = haskell.packages.ghcjs810.override (old: {
+        ghcjsPackages = pkgs-stable.haskell.packages.ghcjs810.override (old: {
           overrides = (self: super: {
             QuickCheck = haskell.lib.dontCheck super.QuickCheck;
             tasty-quickcheck = haskell.lib.dontCheck super.tasty-quickcheck;
