@@ -14,11 +14,11 @@ import qualified "base" Data.Char as Char
 
 import "base" Control.Monad (void)
 import "megaparsec" Text.Megaparsec (
-    option, chunkToTokens, takeWhile1P, try,
+    option, chunkToTokens, takeWhile1P, try, notFollowedBy,
     (<|>), (<?>), MonadParsec, Token,
   )
 import "megaparsec" Text.Megaparsec.Char.Lexer (decimal, signed)
-import "megaparsec" Text.Megaparsec.Char (char, char')
+import "megaparsec" Text.Megaparsec.Char (char, char', digitChar)
 
 import "scientific" Data.Scientific (toRealFloat, scientific)
 
@@ -26,6 +26,7 @@ import "scientific" Data.Scientific (toRealFloat, scientific)
 data SP = SP !Integer {-# UNPACK #-} !Int
 floatParse :: (MonadParsec e s m, Token s ~ Char, RealFloat a) => m a
 floatParse = do
+  notFollowedBy $ (char '0') >> digitChar
   c' <- (decimal <?> "decimal") <|> return 0
   toRealFloat
     <$> (( do
