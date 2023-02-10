@@ -48,6 +48,7 @@
             scientific = haskell.lib.dontCheck super.scientific;
             temporary = haskell.lib.dontCheck super.temporary;
             time-compat = haskell.lib.dontCheck super.time-compat;
+            text-short = haskell.lib.dontCheck super.text-short;
           });
         });
 
