@@ -228,7 +228,7 @@ selectorPath = (pure <$> selector Nothing) <>
 
 simpleTerm :: Parser Term
 simpleTerm = (String <$> string) <|> (Path <$> path) <|>
-    (Token <$> (envPath <|> integer <|> float <|> identifier)) <|>
+    (Token <$> (envPath <|> float <|> integer <|> identifier)) <|>
     parens <|> set <|> list
 
 term :: Parser Term
