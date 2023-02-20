@@ -49,6 +49,8 @@
             temporary = haskell.lib.dontCheck super.temporary;
             time-compat = haskell.lib.dontCheck super.time-compat;
             text-short = haskell.lib.dontCheck super.text-short;
+            vector = haskell.lib.dontCheck super.vector;
+            aeson = super.aeson_1_5_6_0;
           });
         });
 
