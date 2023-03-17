@@ -10,23 +10,23 @@ env:
 steps:
   - label: reuse lint
     commands:
-      - nix run -f. packages.x86_64-linux.reuse -c reuse lint
+      - nix shell .#packages.x86_64-linux.reuse -c reuse lint
   - label: nix-build
     commands:
-      - nix-build -A packages.x86_64-linux.nixfmt-static | cachix push nixfmt
-      - nix-build -A packages.x86_64-linux.nixfmt-deriver | cachix push nixfmt
+      - nix build .#nixfmt-static | cachix push nixfmt
+      - nix build .#nixfmt-deriver | cachix push nixfmt
   - label: build web demo
     commands:
-      - set -o pipefail; nix-build -A packages.x86_64-linux.nixfmt-webdemo | cachix push nixfmt
+      - set -o pipefail; nix build .#nixfmt-webdemo | cachix push nixfmt
   - wait
   - label: deploy web demo
     branches: master
     commands:
-      - nix-build -A packages.x86_64-linux.nixfmt-webdemo
-      - nix run -f . packages.x86_64-linux.awscli -c
+      - nix build .#nixfmt-webdemo
+      - nix shell .#awscli -c
           aws s3 cp --recursive result/ "$CDN_BUCKET"
       # delete files that don't exist anymore, use `--size-only` so behavior won't depend on local file timestamps
-      - nix run -f . packages.x86_64-linux.awscli -c
+      - nix shell .#awscli -c
           aws s3 sync --delete --size-only result/ "$CDN_BUCKET"
-      - nix run -f . packages.x86_64-linux.awscli -c
+      - nix shell .#awscli -c
           aws cloudfront create-invalidation --distribution-id "$CDN_DISTRIBUTION_ID" --paths '/*'
