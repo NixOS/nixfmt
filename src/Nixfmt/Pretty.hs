@@ -117,8 +117,8 @@ prettyTerm (Parenthesized (Ann paropen trailing leading) expr parclose)
         <> nest 2 (pretty leading <> group expr) <> pretty parclose
 
 instance Pretty Term where
-    pretty l@(List _ _ _) = group $ prettyTerm l
-    pretty x              = prettyTerm x
+    pretty l@List{} = group $ prettyTerm l
+    pretty x        = prettyTerm x
 
 toLeading :: Maybe TrailingComment -> Trivia
 toLeading Nothing = []

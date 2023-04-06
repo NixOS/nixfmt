@@ -12,8 +12,8 @@ import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text
-  (Text, intercalate, length, lines, null, pack, replace, replicate, strip,
-  stripEnd, stripPrefix, stripStart, takeWhile)
+  (Text, length, lines, null, pack, replace, replicate, strip,
+  stripEnd, stripPrefix, stripStart, takeWhile, unwords)
 import Text.Megaparsec
   (SourcePos(..), anySingle, chunk, getSourcePos, hidden, many, manyTill, some,
   try, unPos, (<|>))
@@ -32,7 +32,7 @@ preLexeme :: Parser a -> Parser a
 preLexeme p = p <* manyP (\x -> isSpace x && x /= '\n' && x /= '\r')
 
 newlines :: Parser ParseTrivium
-newlines = PTNewlines <$> Prelude.length <$> some (preLexeme eol)
+newlines = PTNewlines . Prelude.length <$> some (preLexeme eol)
 
 splitLines :: Text -> [Text]
 splitLines = dropWhile Text.null . dropWhileEnd Text.null
@@ -65,7 +65,7 @@ convertTrailing = toMaybe . join . map toText
     where toText (PTLineComment c)    = strip c
           toText (PTBlockComment [c]) = strip c
           toText _                    = ""
-          join = intercalate " " . filter (/="")
+          join = Text.unwords . filter (/="")
           toMaybe "" = Nothing
           toMaybe c  = Just $ TrailingComment c
 

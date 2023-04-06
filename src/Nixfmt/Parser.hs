@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Nixfmt.Parser where
 
@@ -16,6 +16,7 @@ import qualified Control.Monad.Combinators.Expr as MPExpr
   (Operator(..), makeExprParser)
 import Data.Char (isAlpha)
 import Data.Foldable (toList)
+import Data.Functor (($>))
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Text as Text (Text, cons, empty, singleton, split, stripPrefix)
 import Text.Megaparsec
@@ -41,7 +42,7 @@ ann f p = try $ lexeme $ f <$> p
 
 -- | parses a token without parsing trivia after it
 rawSymbol :: Token -> Parser Token
-rawSymbol t = chunk (tokenText t) *> return t
+rawSymbol t = chunk (tokenText t) $> t
 
 symbol :: Token -> Parser (Ann Token)
 symbol = lexeme . rawSymbol
@@ -72,7 +73,7 @@ identifier :: Parser (Ann Token)
 identifier = ann Identifier $ do
     ident <- Text.cons <$> satisfy (\x -> isAlpha x || x == '_')
                        <*> manyP identChar
-    guard $ not $ ident `elem` reservedNames
+    guard $ ident `notElem` reservedNames
     return ident
 
 slash :: Parser Text
@@ -105,9 +106,9 @@ interpolation = Interpolation <$>
 
 simpleStringPart :: Parser StringPart
 simpleStringPart = TextPart <$> someText (
-    chunk "\\n" *> pure "\n" <|>
-    chunk "\\r" *> pure "\r" <|>
-    chunk "\\t" *> pure "\t" <|>
+    chunk "\\n" $> "\n" <|>
+    chunk "\\r" $> "\r" <|>
+    chunk "\\t" $> "\t" <|>
     chunk "\\" *> (Text.singleton <$> anySingle) <|>
     chunk "$$" <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
@@ -115,12 +116,12 @@ simpleStringPart = TextPart <$> someText (
 
 indentedStringPart :: Parser StringPart
 indentedStringPart = TextPart <$> someText (
-    chunk "''\\n" *> pure "\n" <|>
-    chunk "''\\r" *> pure "\r" <|>
-    chunk "''\\t" *> pure "\t" <|>
+    chunk "''\\n" $> "\n" <|>
+    chunk "''\\r" $> "\r" <|>
+    chunk "''\\t" $> "\t" <|>
     chunk "''\\" *> (Text.singleton <$> anySingle) <|>
-    chunk "''$" *> pure "$" <|>
-    chunk "'''" *> pure "''" <|>
+    chunk "''$" $> "$" <|>
+    chunk "'''" $> "''" <|>
     chunk "$$" <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     try (chunk "'" <* notFollowedBy (char '\'')) <|>
@@ -151,7 +152,7 @@ lineHead :: [StringPart] -> Maybe Text
 lineHead []                        = Nothing
 lineHead line | isEmptyLine line   = Nothing
 lineHead (TextPart t : _)          = Just t
-lineHead (Interpolation _ _ _ : _) = Just ""
+lineHead (Interpolation{} : _) = Just ""
 
 stripParts :: Text -> [StringPart] -> [StringPart]
 stripParts indentation (TextPart t : xs) =
@@ -170,7 +171,7 @@ splitLines (TextPart t : xs) =
 
 splitLines (x : xs) =
     case splitLines xs of
-        (xs' : xss) -> ((x : xs') : xss)
+        (xs' : xss) -> (x : xs') : xss
         _           -> error "unreachable"
 
 stripIndentation :: [[StringPart]] -> [[StringPart]]
@@ -255,7 +256,7 @@ setParameter = SetParameter <$> bopen <*> attrs <*> bclose
           commaAttrs = many $ try $ attrParameter $ Just $ symbol TComma
           ellipsis   = ParamEllipsis <$> symbol TEllipsis
           lastAttr   = attrParameter Nothing <|> ellipsis
-          attrs      = commaAttrs <> (toList <$> optional (lastAttr))
+          attrs      = commaAttrs <> (toList <$> optional lastAttr)
 
 contextParameter :: Parser Parameter
 contextParameter =

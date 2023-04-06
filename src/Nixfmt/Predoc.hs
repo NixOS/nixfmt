@@ -4,8 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE DeriveFoldable, DeriveFunctor, FlexibleInstances,
-             OverloadedStrings, StandaloneDeriving #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
 
 -- | This module implements a layer around the prettyprinter package, making it
 -- easier to use.
