@@ -20,7 +20,7 @@ import Nixfmt.Predoc
   (Doc, Pretty, base, emptyline, group, hardline, hardspace, hcat, line, line',
   nest, newline, pretty, sepBy, softline, softline', text, textWidth)
 import Nixfmt.Types
-  (Ann(..), Binder(..), Expression(..), File(..), Leaf, ParamAttr(..),
+  (Ann(..), Binder(..), Expression(..), Whole(..), Leaf, ParamAttr(..),
   Parameter(..), Selector(..), SimpleSelector(..), StringPart(..), Term(..),
   Token(..), TrailingComment(..), Trivia, Trivium(..), tokenText)
 import Nixfmt.Util (commonIndentation, isSpaces, replaceMultiple)
@@ -53,13 +53,13 @@ instance Pretty [Trivium] where
 
 instance Pretty a => Pretty (Ann a) where
     pretty (Ann x trailing leading)
-        = pretty x <> pretty trailing <> pretty leading
+        = pretty leading <> pretty x <> pretty trailing
 
 instance Pretty SimpleSelector where
     pretty (IDSelector i)              = pretty i
     pretty (InterpolSelector interpol) = pretty interpol
     pretty (StringSelector (Ann s trailing leading))
-        = prettySimpleString s <> pretty trailing <> pretty leading
+        = pretty leading <> prettySimpleString s <> pretty trailing
 
 instance Pretty Selector where
     pretty (Selector dot sel Nothing)
@@ -74,15 +74,15 @@ instance Pretty Binder where
         = base $ group (pretty inherit <> softline
                  <> nest 2 (sepBy softline ids)) <> pretty semicolon
 
-    pretty (Inherit inherit source ids semicolon)
+    pretty (Inherit inherit (Just source) ids semicolon)
         = base $ group (pretty inherit <> hardspace
                  <> pretty source <> line
                  <> nest 2 (sepBy softline ids)) <> pretty semicolon
 
     pretty (Assignment selectors assign expr semicolon)
-        = base $ group (hcat selectors <> hardspace
-                 <> nest 2 (pretty assign <> softline <> pretty expr))
-          <> pretty semicolon
+        = base $ hcat selectors <> hardspace <> group (nest 2 value)
+        where
+            value = pretty assign <> softline <> pretty expr <> pretty semicolon
 
 -- | Pretty print a term without wrapping it in a group.
 prettyTerm :: Term -> Doc
@@ -91,30 +91,29 @@ prettyTerm (String s) = pretty s
 prettyTerm (Path p) = pretty p
 prettyTerm (Selection term selectors) = pretty term <> hcat selectors
 
-prettyTerm (List (Ann paropen Nothing []) [] parclose)
-    = pretty paropen <> hardspace <> pretty parclose
+prettyTerm (List (Ann paropen Nothing leading) [] (Ann parclose trailing []))
+    = pretty leading <> pretty paropen <> hardspace <> pretty parclose <> pretty trailing
 
-prettyTerm (List (Ann paropen Nothing []) [item] parclose)
+prettyTerm (List (Ann paropen Nothing leading) [item] (Ann parclose trailing []))
     | isAbsorbable item
-        = pretty paropen <> pretty item <> pretty parclose
+        = pretty leading <> pretty paropen <> pretty item <> pretty parclose <> pretty trailing
 
-prettyTerm (List (Ann paropen trailing leading) items parclose)
-    = base $ pretty paropen <> pretty trailing <> line
-        <> nest 2 (pretty leading <> sepBy line (map group items)) <> line
+prettyTerm (List paropen items parclose)
+    = base $ pretty paropen <> line
+        <> nest 2 (sepBy line (map group items)) <> line
         <> pretty parclose
 
 prettyTerm (Set Nothing (Ann paropen Nothing []) [] parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
-prettyTerm (Set krec (Ann paropen trailing leading) binders parclose)
+prettyTerm (Set krec paropen binders parclose)
     = base $ pretty (fmap ((<>hardspace) . pretty) krec)
-        <> pretty paropen <> pretty trailing <> line
-        <> nest 2 (pretty leading <> sepBy hardline binders) <> line
+        <> pretty paropen <> line
+        <> nest 2 (sepBy hardline binders) <> line
         <> pretty parclose
 
-prettyTerm (Parenthesized (Ann paropen trailing leading) expr parclose)
-    = base $ pretty paropen <> pretty trailing
-        <> nest 2 (pretty leading <> group expr) <> pretty parclose
+prettyTerm (Parenthesized paropen expr parclose)
+    = base $ pretty paropen <> nest 2 (group expr) <> pretty parclose
 
 instance Pretty Term where
     pretty l@List{} = group $ prettyTerm l
@@ -200,16 +199,11 @@ instance Pretty Expression where
           <> nest 2 (group expr0) <> pretty semicolon)
           <> absorbSet expr1
 
-    pretty (Let (Ann let_ letTrailing letLeading) binders
-                (Ann in_ inTrailing inLeading) expr)
+    pretty (Let let_ binders in_ expr)
         = base $ group letPart <> line <> group inPart
-        where letPart = pretty let_ <> pretty letTrailing <> line <> letBody
+        where letPart = pretty let_ <> line <> letBody
               inPart = pretty in_ <> hardspace <> pretty expr
-              letBody = nest 2 $
-                  pretty letLeading
-                  <> sepBy hardline binders
-                  <> pretty (toLeading inTrailing)
-                  <> pretty inLeading
+              letBody = nest 2 $ sepBy hardline binders
 
     pretty (Assert assert cond semicolon expr)
         = base (pretty assert <> hardspace
@@ -247,13 +241,9 @@ instance Pretty Expression where
     pretty (Inversion bang expr)
         = pretty bang <> pretty expr
 
-instance Pretty File where
-    pretty (File (Ann _ Nothing leading) expr)
-        = group $ hcat leading <> pretty expr <> hardline
-
-    pretty (File (Ann _ (Just (TrailingComment trailing)) leading) expr)
-        = group $ text "# " <> pretty trailing <> hardline
-                  <> hcat leading <> pretty expr <> hardline
+instance Pretty a => Pretty (Whole a) where
+    pretty (Whole x finalTrivia)
+        = group $ pretty x <> pretty finalTrivia
 
 instance Pretty Token where
     pretty = text . tokenText
@@ -331,22 +321,26 @@ isSimpleString parts
 
 instance Pretty StringPart where
     pretty (TextPart t) = text t
-    pretty (Interpolation paropen (Term t) parclose)
+    pretty (Interpolation (Whole (Term t) []))
         | isAbsorbable t
-            = group $ pretty paropen <> prettyTerm t <> pretty parclose
+            = group $ text "${" <> prettyTerm t <> text "}"
 
-    pretty (Interpolation paropen expr parclose)
+    pretty (Interpolation (Whole expr []))
         | isSimple expr
-            = pretty paropen <> pretty expr <> pretty parclose
-        | otherwise
-            = group $ pretty paropen <> line'
-                <> nest 2 (pretty expr) <> line'
-                <> pretty parclose
+            = text "${" <> pretty expr <> text "}"
+
+    pretty (Interpolation whole)
+        = group $ text "${" <> line'
+            <> nest 2 (pretty whole) <> line'
+            <> text "}"
 
 instance Pretty [StringPart] where
-    pretty [Interpolation paropen expr parclose]
-        = group $ pretty paropen <> pretty expr <> pretty parclose
+    pretty [Interpolation expr]
+        = group $ text "${" <> pretty expr <> text "}"
 
+    -- If we split a string line over multiple code lines due to large
+    -- interpolations, make sure to indent based on the indentation of the line
+    -- in the string.
     pretty (TextPart t : parts)
         = text t <> nest indentation (hcat parts)
         where indentation = textWidth $ Text.takeWhile isSpace t
@@ -370,7 +364,7 @@ prettyLine escapeText unescapeInterpol
           unescapeInterpols [] = []
           unescapeInterpols (TextPart t : TextPart u : xs)
               = unescapeInterpols (TextPart (t <> u) : xs)
-          unescapeInterpols (TextPart t : xs@(Interpolation _ _ _ : _))
+          unescapeInterpols (TextPart t : xs@(Interpolation{} : _))
               = TextPart (unescapeInterpol t) : unescapeInterpols xs
           unescapeInterpols (x : xs) = x : unescapeInterpols xs
 

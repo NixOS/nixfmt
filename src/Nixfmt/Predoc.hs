@@ -32,7 +32,7 @@ module Nixfmt.Predoc
     ) where
 
 import Data.List (intersperse)
-import Data.Text as Text (Text, concat, length, pack, replicate)
+import Data.Text as Text (Text, concat, length, pack, replicate, strip)
 
 -- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
 -- This means that e.g. a Space followed by an Emptyline results in just an
@@ -192,7 +192,7 @@ moveLinesIn (Node ann xs : ys) =
 moveLinesIn (x : xs) = x : moveLinesIn xs
 
 layout :: Pretty a => Int -> a -> Text
-layout w = layoutGreedy w . fixup . pretty
+layout w = (<>"\n") . Text.strip . layoutGreedy w . fixup . pretty
 
 -- 1. Move and merge Spacings.
 -- 2. Convert Softlines to Grouped Lines and Hardspaces to Texts.

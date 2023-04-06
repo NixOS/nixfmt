@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
 
 module Nixfmt.Parser where
 
@@ -14,23 +14,25 @@ import Control.Monad (guard, liftM2)
 import Control.Monad.Combinators (sepBy)
 import qualified Control.Monad.Combinators.Expr as MPExpr
   (Operator(..), makeExprParser)
+import Control.Monad.Trans.Class (lift)
 import Data.Char (isAlpha)
 import Data.Foldable (toList)
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Text as Text (Text, cons, empty, singleton, split, stripPrefix)
+import Data.Void (Void)
 import Text.Megaparsec
-  (anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf,
+  (Parsec, anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf,
   optional, satisfy, some, try, (<|>))
 import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L (decimal)
 
-import Nixfmt.Lexer (lexeme)
+import Nixfmt.Lexer (lexeme, whole)
+import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Types
-  (Ann, Binder(..), Expression(..), File(..), Fixity(..), Leaf, Operator(..),
+  (Ann, Binder(..), Expression(..), File, Fixity(..), Leaf, Operator(..),
   ParamAttr(..), Parameter(..), Parser, Path, Selector(..), SimpleSelector(..),
   String, StringPart(..), Term(..), Token(..), operators, tokenText)
-import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Util
   (commonIndentation, identChar, isSpaces, manyP, manyText, pathChar,
   schemeChar, someP, someText, uriChar)
@@ -79,6 +81,12 @@ identifier = ann Identifier $ do
 slash :: Parser Text
 slash = chunk "/" <* notFollowedBy (char '/')
 
+instance Semigroup a => Semigroup (Parser a) where
+  fx <> fy = do
+    x <- fx
+    y <- fy
+    pure $ x <> y
+
 envPath :: Parser (Ann Token)
 envPath = ann EnvPath $ char '<' *>
     someP pathChar <> manyText (slash <> someP pathChar)
@@ -102,7 +110,7 @@ uri = fmap (pure . pure . TextPart) $ try $
 
 interpolation :: Parser StringPart
 interpolation = Interpolation <$>
-    symbol TInterOpen <*> expression <*> rawSymbol TInterClose
+    (rawSymbol TInterOpen *> lift (whole expression) <* rawSymbol TInterClose)
 
 simpleStringPart :: Parser StringPart
 simpleStringPart = TextPart <$> someText (
@@ -342,5 +350,5 @@ expression :: Parser Expression
 expression = label "expression" $ try operation <|> abstraction <|>
     with <|> letIn <|> ifThenElse <|> assert
 
-file :: Parser File
-file = File <$> lexeme (return SOF) <*> expression <* eof
+file :: Parsec Void Text File
+file = whole (expression <* eof)

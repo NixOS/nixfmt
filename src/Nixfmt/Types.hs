@@ -10,12 +10,13 @@ module Nixfmt.Types where
 
 import Prelude hiding (String)
 
+import Control.Monad.State (StateT)
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import qualified Text.Megaparsec as MP (ParseErrorBundle, Parsec)
 
 -- | A @megaparsec@ @ParsecT@ specified for use with @nixfmt@.
-type Parser = MP.Parsec Void Text
+type Parser = StateT Trivia (MP.Parsec Void Text)
 
 -- | A @megaparsec@ @ParseErrorBundle@ specified for use with @nixfmt@.
 type ParseErrorBundle = MP.ParseErrorBundle Text Void
@@ -43,7 +44,7 @@ type Leaf = Ann Token
 
 data StringPart
     = TextPart Text
-    | Interpolation Leaf Expression Token
+    | Interpolation (Whole Expression)
     deriving (Eq, Show)
 
 type Path = Ann [StringPart]
@@ -101,9 +102,13 @@ data Expression
     | Inversion Leaf Expression
     deriving (Eq, Show)
 
-data File
-    = File Leaf Expression
+-- | A Whole a is an a including final trivia. It's assumed the a stores the
+-- initial trivia.
+data Whole a
+    = Whole a Trivia
     deriving (Eq, Show)
+
+type File = Whole Expression
 
 data Token
     = Integer    Int
