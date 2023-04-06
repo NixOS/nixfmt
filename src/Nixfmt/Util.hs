@@ -30,7 +30,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text as Text
   (Text, all, commonPrefixes, concat, empty, null, splitAt, stripEnd, stripPrefix, takeWhile)
 import Text.Megaparsec
-  (ParsecT, Stream, Token, Tokens, many, some, takeWhile1P, takeWhileP)
+  (MonadParsec, Token, Tokens, many, some, takeWhile1P, takeWhileP)
 
 charClass :: [Char] -> Char -> Bool
 charClass s c = isAlpha c || isDigit c || elem c s
@@ -48,19 +48,19 @@ uriChar :: Char -> Bool
 uriChar = charClass "~!@$%&*-=_+:',./?"
 
 -- | Match one or more characters that match a predicate.
-someP :: (Stream s, Ord e) => (Token s -> Bool) -> ParsecT e s m (Tokens s)
+someP :: MonadParsec e s m => (Token s -> Bool) -> m (Tokens s)
 someP = takeWhile1P Nothing
 
 -- | Match zero or more characters that match a predicate.
-manyP :: (Stream s, Ord e) => (Token s -> Bool) -> ParsecT e s m (Tokens s)
+manyP :: MonadParsec e s m => (Token s -> Bool) -> m (Tokens s)
 manyP = takeWhileP Nothing
 
 -- | Match one or more texts and return the concatenation.
-someText :: (Stream s, Ord e) => ParsecT e s m Text -> ParsecT e s m Text
+someText :: MonadParsec e s m => m Text -> m Text
 someText p = Text.concat <$> some p
 
 -- | Match zero or more texts and return the concatenation.
-manyText :: (Stream s, Ord e) => ParsecT e s m Text -> ParsecT e s m Text
+manyText :: MonadParsec e s m => m Text -> m Text
 manyText p = Text.concat <$> many p
 
 -- | The longest common prefix of the arguments.
