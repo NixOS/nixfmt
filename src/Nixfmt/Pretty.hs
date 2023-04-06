@@ -52,13 +52,13 @@ instance Pretty [Trivium] where
     pretty trivia = hardline <> hcat trivia
 
 instance Pretty a => Pretty (Ann a) where
-    pretty (Ann x trailing leading)
+    pretty (Ann leading x trailing)
         = pretty leading <> pretty x <> pretty trailing
 
 instance Pretty SimpleSelector where
     pretty (IDSelector i)              = pretty i
     pretty (InterpolSelector interpol) = pretty interpol
-    pretty (StringSelector (Ann s trailing leading))
+    pretty (StringSelector (Ann leading s trailing))
         = pretty leading <> prettySimpleString s <> pretty trailing
 
 instance Pretty Selector where
@@ -91,10 +91,10 @@ prettyTerm (String s) = pretty s
 prettyTerm (Path p) = pretty p
 prettyTerm (Selection term selectors) = pretty term <> hcat selectors
 
-prettyTerm (List (Ann paropen Nothing leading) [] (Ann parclose trailing []))
+prettyTerm (List (Ann leading paropen Nothing) [] (Ann [] parclose trailing))
     = pretty leading <> pretty paropen <> hardspace <> pretty parclose <> pretty trailing
 
-prettyTerm (List (Ann paropen Nothing leading) [item] (Ann parclose trailing []))
+prettyTerm (List (Ann leading paropen Nothing) [item] (Ann [] parclose trailing))
     | isAbsorbable item
         = pretty leading <> pretty paropen <> pretty item <> pretty parclose <> pretty trailing
 
@@ -103,7 +103,7 @@ prettyTerm (List paropen items parclose)
         <> nest 2 (sepBy line (map group items)) <> line
         <> pretty parclose
 
-prettyTerm (Set Nothing (Ann paropen Nothing []) [] parclose)
+prettyTerm (Set Nothing (Ann [] paropen Nothing) [] parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
 prettyTerm (Set krec paropen binders parclose)
@@ -150,11 +150,11 @@ instance Pretty Parameter where
         = pretty param1 <> pretty at <> pretty param2
 
 isAbsorbable :: Term -> Bool
-isAbsorbable (String (Ann parts@(_:_:_) _ _))
+isAbsorbable (String (Ann _ parts@(_:_:_) _))
     = not $ isSimpleString parts
 isAbsorbable (Set _ _ (_:_) _)                             = True
-isAbsorbable (List (Ann _ Nothing []) [item] _)            = isAbsorbable item
-isAbsorbable (Parenthesized (Ann _ Nothing []) (Term t) _) = isAbsorbable t
+isAbsorbable (List (Ann [] _ Nothing) [item] _)            = isAbsorbable item
+isAbsorbable (Parenthesized (Ann [] _ Nothing) (Term t) _) = isAbsorbable t
 isAbsorbable (List _ (_:_:_) _)                            = True
 isAbsorbable _                                             = False
 
@@ -258,7 +258,7 @@ isSimpleSelector (Selector _ (IDSelector _) Nothing) = True
 isSimpleSelector _                                   = False
 
 isSimple :: Expression -> Bool
-isSimple (Term (Token (Ann (Identifier _) Nothing []))) = True
+isSimple (Term (Token (Ann [] (Identifier _) Nothing))) = True
 isSimple (Term (Selection t selectors))
     = isSimple (Term t) && all isSimpleSelector selectors
 isSimple _ = False

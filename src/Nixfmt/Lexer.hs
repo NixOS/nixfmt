@@ -110,7 +110,7 @@ lexeme p = do
     token <- preLexeme p
     (trailing, nextLeading) <- convertTrivia <$> trivia
     pushTrivia nextLeading
-    return $ Ann token trailing lastLeading
+    return $ Ann lastLeading token trailing
 
 -- | Tokens normally have only leading trivia and one trailing comment on the same
 -- line. A whole x also parses and stores final trivia after the x. A whole also

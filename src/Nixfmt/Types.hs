@@ -32,13 +32,13 @@ type Trivia = [Trivium]
 newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
 
 data Ann a
-    = Ann a (Maybe TrailingComment) Trivia
+    = Ann Trivia a (Maybe TrailingComment)
     deriving (Show)
 
 -- | Equality of annotated syntax is defines as equality of their corresponding
 -- semantics, thus ignoring the annotations.
 instance Eq a => Eq (Ann a) where
-    Ann x _ _ == Ann y _ _ = x == y
+    Ann _ x _ == Ann _ y _ = x == y
 
 type Leaf = Ann Token
 
