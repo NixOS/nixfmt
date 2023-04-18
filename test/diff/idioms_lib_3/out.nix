@@ -98,9 +98,11 @@ in rec {
         k: v: map (mkLine k) (if lib.isList v then v else [ v ])
       else
         k: v: [ (mkLine k v) ];
-    in attrs:
-    libStr.concatStrings
-    (lib.concatLists (libAttr.mapAttrsToList mkLines attrs));
+    in
+      attrs:
+      libStr.concatStrings
+      (lib.concatLists (libAttr.mapAttrsToList mkLines attrs))
+  ;
 
   # Generate an INI-style config file from an
   # attrset of sections to an attrset of key-value pairs.
@@ -143,7 +145,9 @@ in rec {
           [${mkSectionName sectName}]
         '' + toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } sectValues;
       # map input to ini sections
-    in mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
+    in
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+  ;
 
   # Generate an INI-style config file from an attrset
   # specifying the global section (no header), and an
@@ -233,8 +237,11 @@ in rec {
 
       # generation for multiple ini values
       mkKeyValue = k: v:
-        let mkKeyValue = mkKeyValueDefault { } " = " k;
-        in concatStringsSep "\n" (map (kv: "	" + mkKeyValue kv) (lib.toList v));
+        let
+          mkKeyValue = mkKeyValueDefault { } " = " k;
+        in
+          concatStringsSep "\n" (map (kv: "	" + mkKeyValue kv) (lib.toList v))
+      ;
 
       # converts { a.b.c = 5; } to { "a.b".c = 5; } for toINI
       gitFlattenAttrs = let
@@ -248,11 +255,15 @@ in rec {
           } else {
             ${head path} = value;
           };
-      in attrs:
-      lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs));
+      in
+        attrs:
+        lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs))
+      ;
 
       toINI_ = toINI { inherit mkKeyValue mkSectionName; };
-    in toINI_ (gitFlattenAttrs attrs);
+    in
+      toINI_ (gitFlattenAttrs attrs)
+  ;
 
   # Generates JSON from an arbitrary (non-function) value.
   # For more information see the documentation of the builtin.
@@ -293,14 +304,17 @@ in rec {
           id;
       mapAny = with builtins;
         depth: v:
-        let evalNext = x: mapAny (depth + 1) (transform (depth + 1) x);
+        let
+          evalNext = x: mapAny (depth + 1) (transform (depth + 1) x);
         in if isAttrs v then
           mapAttrs (stepIntoAttr evalNext) v
         else if isList v then
           map evalNext v
         else
           transform (depth + 1) v;
-    in mapAny 0;
+    in
+      mapAny 0
+  ;
 
   # Pretty print a value, akin to `builtins.trace`.
   # Should probably be a builtin as well.
@@ -360,10 +374,12 @@ in rec {
               # The last line gets a special treatment: if it's empty, '' is on its own line at the "outer"
               # indentation level. Otherwise, '' is appended to the last line.
               lastLine = lib.last escapedLines;
-            in "''" + introSpace
-            + concatStringsSep introSpace (lib.init escapedLines)
-            + (if lastLine == "" then outroSpace else introSpace + lastLine)
-            + "''";
+            in
+              "''" + introSpace
+              + concatStringsSep introSpace (lib.init escapedLines)
+              + (if lastLine == "" then outroSpace else introSpace + lastLine)
+              + "''"
+            ;
           in if multiline && length lines > 1 then
             multilineResult
           else
@@ -410,7 +426,9 @@ in rec {
               };") v) + outroSpace + "}"
         else
           abort "generators.toPretty: should never happen (v = ${v})";
-    in go indent;
+    in
+      go indent
+  ;
 
   # PLIST handling
   toPlist = { }:
@@ -462,21 +480,24 @@ in rec {
           (literal ind "</dict>")
         ];
 
-      attr = let attrFilter = name: value: name != "_module" && value != null;
-      in ind: x:
-      libStr.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList
-        (name: value:
-          lib.optionals (attrFilter name value) [
-            (key "	${ind}" name)
-            (expr "	${ind}" value)
-          ]) x));
+      attr = let
+        attrFilter = name: value: name != "_module" && value != null;
+      in
+        ind: x:
+        libStr.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList
+          (name: value:
+            lib.optionals (attrFilter name value) [
+              (key "	${ind}" name)
+              (expr "	${ind}" value)
+            ]) x))
+      ;
 
     in ''
       <?xml version="1.0" encoding="UTF-8"?>
       <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
       <plist version="1.0">
       ${expr "" v}
-      </plist>'';
+      </plist>'' ;
 
   # Translate a simple Nix expression to Dhall notation.
   # Note that integers are translated to Integer and never
@@ -484,7 +505,8 @@ in rec {
   toDhall = { }@args:
     v:
     with builtins;
-    let concatItems = lib.strings.concatStringsSep ", ";
+    let
+      concatItems = lib.strings.concatStringsSep ", ";
     in if isAttrs v then
       "{ ${
         concatItems (lib.attrsets.mapAttrsToList

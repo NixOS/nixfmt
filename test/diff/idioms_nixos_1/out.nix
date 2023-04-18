@@ -359,11 +359,14 @@ in {
       assertions = if config.boot.kernelPackages.kernel ? features then
         [ ]
       else
-        let cfg = config.boot.kernelPackages.kernel.config;
-        in map (attrs: {
-          assertion = attrs.assertion cfg;
-          inherit (attrs) message;
-        }) config.system.requiredKernelConfig;
+        let
+          cfg = config.boot.kernelPackages.kernel.config;
+        in
+          map (attrs: {
+            assertion = attrs.assertion cfg;
+            inherit (attrs) message;
+          }) config.system.requiredKernelConfig
+      ;
 
     })
 

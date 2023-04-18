@@ -71,7 +71,9 @@
 
     d = 1;
     #7
-  in d)
+  in
+    d
+  )
 
   ({
       a, # comment

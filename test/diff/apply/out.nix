@@ -14,8 +14,9 @@
               buildScript = "true";
               installMethod = "copy";
             });
-          in "${pkg}/lib/node_modules/${pname}/node_modules")
-        outputs.subPackages))
+          in
+            "${pkg}/lib/node_modules/${pname}/node_modules"
+        ) outputs.subPackages))
     }
   ''
   {

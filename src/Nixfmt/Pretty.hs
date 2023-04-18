@@ -188,6 +188,16 @@ absorbThen :: Expression -> Doc
 absorbThen (Term t) | isAbsorbable t = hardspace <> prettyTerm t <> hardspace
 absorbThen x                         = line <> nest 2 (group x) <> line
 
+-- What is allowed to come on the same line as `in`?
+-- Absorbable terms like sets
+-- if, with, let
+absorbIn :: Expression -> Doc
+absorbIn (Term t) | isAbsorbable t = hardspace <> prettyTerm t <> hardspace
+absorbIn x@(If _ _ _ _ _ _)        = group x
+absorbIn x@(With _ _ _ _)          = group x
+absorbIn x@(Let _ _ _ _)           = group x
+absorbIn x                         = line <> nest 2 (group x) <> line
+
 absorbElse :: Expression -> Doc
 absorbElse (If if_ cond then_ expr0 else_ expr1)
     = hardspace <> pretty if_ <> hardspace <> group cond <> hardspace
@@ -212,9 +222,9 @@ instance Pretty Expression where
 
     pretty (Let (Ann let_ letTrailing letLeading) binders
                 (Ann in_ inTrailing inLeading) expr)
-        = base $ group letPart <> line <> group inPart
-        where letPart = pretty let_ <> pretty letTrailing <> line <> letBody
-              inPart = pretty in_ <> hardspace <> pretty expr
+        = base $ group letPart <> line <> inPart
+        where letPart = pretty let_ <> pretty letTrailing <> hardline <> letBody
+              inPart = pretty in_ <> hardspace <> absorbIn expr
               letBody = nest 2 $
                   pretty letLeading
                   <> sepBy hardline binders
