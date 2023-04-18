@@ -91,21 +91,25 @@ prettyTerm (String s) = pretty s
 prettyTerm (Path p) = pretty p
 prettyTerm (Selection term selectors) = pretty term <> hcat selectors
 
+-- Empty list
 prettyTerm (List (Ann paropen Nothing []) [] parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
+-- Singleton list
 prettyTerm (List (Ann paropen Nothing []) [item] parclose)
-    | isAbsorbable item
-        = pretty paropen <> pretty item <> pretty parclose
+        = pretty paropen <> hardspace <> pretty item <> hardspace <> pretty parclose
 
+-- General list
 prettyTerm (List (Ann paropen trailing leading) items parclose)
-    = base $ pretty paropen <> pretty trailing <> line
-        <> nest 2 (pretty leading <> sepBy line (map group items)) <> line
+    = base $ pretty paropen <> pretty trailing <> hardline
+        <> nest 2 (pretty leading <> sepBy hardline (map group items)) <> hardline
         <> pretty parclose
 
+-- Empty, non-recursive attribute set
 prettyTerm (Set Nothing (Ann paropen Nothing []) [] parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
+-- General set
 prettyTerm (Set krec (Ann paropen trailing leading) binders parclose)
     = base $ pretty (fmap ((<>hardspace) . pretty) krec)
         <> pretty paropen <> pretty trailing <> line
@@ -160,7 +164,7 @@ isAbsorbable :: Term -> Bool
 isAbsorbable (String (Ann parts@(_:_:_) _ _))
     = not $ isSimpleString parts
 isAbsorbable (Set _ _ (_:_) _)                             = True
-isAbsorbable (List (Ann _ Nothing []) [item] _)            = isAbsorbable item
+isAbsorbable (List (Ann _ Nothing []) [_item] _)           = True
 isAbsorbable (Parenthesized (Ann _ Nothing []) (Term t) _) = isAbsorbable t
 isAbsorbable (List _ (_:_:_) _)                            = True
 isAbsorbable _                                             = False

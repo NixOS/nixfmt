@@ -304,13 +304,16 @@ rec {
 
      Type: string -> a -> a
   */
-  warn =
-    if lib.elem (builtins.getEnv "NIX_ABORT_ON_WARN") [ "1" "true" "yes" ] then
-      msg:
-      builtins.trace "[1;31mwarning: ${msg}[0m" (abort
-        "NIX_ABORT_ON_WARN=true; warnings are treated as unrecoverable errors.")
-    else
-      msg: builtins.trace "[1;31mwarning: ${msg}[0m";
+  warn = if lib.elem (builtins.getEnv "NIX_ABORT_ON_WARN") [
+    "1"
+    "true"
+    "yes"
+  ] then
+    msg:
+    builtins.trace "[1;31mwarning: ${msg}[0m" (abort
+      "NIX_ABORT_ON_WARN=true; warnings are treated as unrecoverable errors.")
+  else
+    msg: builtins.trace "[1;31mwarning: ${msg}[0m";
 
   /* Like warn, but only warn when the first argument is `true`.
 
@@ -433,9 +436,7 @@ rec {
   toBaseDigits = base: i:
     let
       go = i:
-        if i < base then
-          [ i ]
-        else
+        if i < base then [ i ] else
           let
             r = i - ((i / base) * base);
             q = (i - r) / base;

@@ -32,6 +32,10 @@ let
     # e
   in f;
 
-  a = let in [ 1 2 ];
+  a = let
+  in [
+    1
+    2
+  ];
 
 in a
