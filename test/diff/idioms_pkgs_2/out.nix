@@ -1,4 +1,12 @@
-{ lib, stdenv, fetchurl, nixos, testVersion, testEqualDerivation, hello }:
+{
+  lib,
+  stdenv,
+  fetchurl,
+  nixos,
+  testVersion,
+  testEqualDerivation,
+  hello,
+}:
 
 stdenv.mkDerivation rec {
   pname = "hello";

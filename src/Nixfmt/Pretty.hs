@@ -124,27 +124,33 @@ toLeading :: Maybe TrailingComment -> Trivia
 toLeading Nothing = []
 toLeading (Just (TrailingComment c)) = [LineComment (" " <> c)]
 
-prettyComma :: Maybe Leaf -> Doc
-prettyComma Nothing = mempty
-prettyComma (Just comma) = softline' <> pretty comma <> hardspace
-
 instance Pretty ParamAttr where
-    pretty (ParamAttr name Nothing comma)
-        = pretty name <> prettyComma comma
+    -- Simple parameter
+    pretty (ParamAttr name Nothing maybeComma)
+        = pretty name <> (fromMaybe (text ",") (fmap pretty maybeComma)) <> softline
 
+    -- With ? default
     pretty (ParamAttr name (Just (qmark, def)) comma)
         = group (pretty name <> hardspace <> pretty qmark
             <> absorb softline mempty (Just 2) def)
-            <> prettyComma comma
+            <> pretty comma <> softline
 
+    -- ...
     pretty (ParamEllipsis ellipsis)
         = pretty ellipsis
 
 instance Pretty Parameter where
+    -- param:
     pretty (IDParameter i) = pretty i
+
+    -- {}:
+    pretty (SetParameter bopen [] bclose)
+        = group $ pretty bopen <> hardspace <> pretty bclose
+
+    -- { stuff }:
     pretty (SetParameter bopen attrs bclose)
-        = group $ pretty bopen <> hardspace
-                  <> hcat attrs <> softline
+        = group $ pretty bopen <> hardline
+                  <> nest 2 (sepBy hardline attrs) <> hardline
                   <> pretty bclose
 
     pretty (ContextParameter param1 at param2)

@@ -1,6 +1,21 @@
-{ stdenv, lib, fetchFromGitLab, cairo, desktop-file-utils, gettext, glib, gtk4
-, libadwaita, meson, ninja, pango, pkg-config, python3, rustPlatform
-, wrapGAppsHook4 }:
+{
+  stdenv,
+  lib,
+  fetchFromGitLab,
+  cairo,
+  desktop-file-utils,
+  gettext,
+  glib,
+  gtk4,
+  libadwaita,
+  meson,
+  ninja,
+  pango,
+  pkg-config,
+  python3,
+  rustPlatform,
+  wrapGAppsHook4,
+}:
 stdenv.mkDerivation rec {
   pname = "contrast";
   version = "0.0.5";

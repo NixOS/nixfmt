@@ -1,67 +1,68 @@
 {
 # foo
-stdenv
-# foo
-,
-# foo
-lib
-# foo
-,
-# foo
-fetchFromGitLab
-# foo
-,
-# foo
-cairo
-# foo
-,
-# foo
-desktop-file-utils
-# foo
-,
-# foo
-gettext
-# foo
-,
-# foo
-glib
-# foo
-,
-# foo
-gtk4
-# foo
-,
-# foo
-libadwaita
-# foo
-,
-# foo
-meson
-# foo
-,
-# foo
-ninja
-# foo
-,
-# foo
-pango
-# foo
-,
-# foo
-pkg-config
-# foo
-,
-# foo
-python3
-# foo
-,
-# foo
-rustPlatform
-# foo
-,
-# foo
-wrapGAppsHook4
-# foo
+  stdenv
+  # foo
+  ,
+  # foo
+  lib
+  # foo
+  ,
+  # foo
+  fetchFromGitLab
+  # foo
+  ,
+  # foo
+  cairo
+  # foo
+  ,
+  # foo
+  desktop-file-utils
+  # foo
+  ,
+  # foo
+  gettext
+  # foo
+  ,
+  # foo
+  glib
+  # foo
+  ,
+  # foo
+  gtk4
+  # foo
+  ,
+  # foo
+  libadwaita
+  # foo
+  ,
+  # foo
+  meson
+  # foo
+  ,
+  # foo
+  ninja
+  # foo
+  ,
+  # foo
+  pango
+  # foo
+  ,
+  # foo
+  pkg-config
+  # foo
+  ,
+  # foo
+  python3
+  # foo
+  ,
+  # foo
+  rustPlatform
+  # foo
+  ,
+  # foo
+  wrapGAppsHook4
+  # foo
+  ,
 }:
 # foo
 stdenv.mkDerivation

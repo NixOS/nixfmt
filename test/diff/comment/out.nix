@@ -73,8 +73,9 @@
     #7
   in d)
 
-  ({ a, # comment
-    b ? 2, # comment
+  ({
+      a, # comment
+      b ? 2, # comment
     }:
     _)
 ]

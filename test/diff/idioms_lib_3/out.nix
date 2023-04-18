@@ -12,7 +12,9 @@
 #
 # Tests can be found in ./tests/misc.nix
 # Documentation in the manual, #sec-generators
-{ lib, }:
+{
+  lib,
+}:
 with (lib).trivial;
 let
   libStr = lib.strings;
@@ -75,7 +77,9 @@ in rec {
   #
   # mkKeyValueDefault {} ":" "f:oo" "bar"
   # > "f\:oo:bar"
-  mkKeyValueDefault = { mkValueString ? mkValueStringDefault { } }:
+  mkKeyValueDefault = {
+      mkValueString ? mkValueStringDefault { }
+    }:
     sep: k: v:
     "${libStr.escape [ sep ] k}${sep}${mkValueString v}";
 
@@ -84,8 +88,10 @@ in rec {
   # Generate a key-value-style config file from an attrset.
   #
   # mkKeyValue is the same as in toINI.
-  toKeyValue =
-    { mkKeyValue ? mkKeyValueDefault { } "=", listsAsDuplicateKeys ? false }:
+  toKeyValue = {
+      mkKeyValue ? mkKeyValueDefault { } "=",
+      listsAsDuplicateKeys ? false
+    }:
     let
       mkLine = k: v: mkKeyValue k v + "\n";
       mkLines = if listsAsDuplicateKeys then
@@ -117,11 +123,12 @@ in rec {
   # For more examples see the test cases in ./tests/misc.nix.
   toINI = {
     # apply transformations (e.g. escapes) to section names
-    mkSectionName ? (name: libStr.escape [ "[" "]" ] name),
-    # format a setting line from key and value
-    mkKeyValue ? mkKeyValueDefault { } "=",
-    # allow lists as values for duplicate keys
-    listsAsDuplicateKeys ? false }:
+      mkSectionName ? (name: libStr.escape [ "[" "]" ] name),
+      # format a setting line from key and value
+      mkKeyValue ? mkKeyValueDefault { } "=",
+      # allow lists as values for duplicate keys
+      listsAsDuplicateKeys ? false
+    }:
     attrsOfAttrs:
     let
       # map function to string for each key val
@@ -166,12 +173,16 @@ in rec {
   # the part in `sections`.
   toINIWithGlobalSection = {
     # apply transformations (e.g. escapes) to section names
-    mkSectionName ? (name: libStr.escape [ "[" "]" ] name),
-    # format a setting line from key and value
-    mkKeyValue ? mkKeyValueDefault { } "=",
-    # allow lists as values for duplicate keys
-    listsAsDuplicateKeys ? false }:
-    { globalSection, sections, }:
+      mkSectionName ? (name: libStr.escape [ "[" "]" ] name),
+      # format a setting line from key and value
+      mkKeyValue ? mkKeyValueDefault { } "=",
+      # allow lists as values for duplicate keys
+      listsAsDuplicateKeys ? false
+    }:
+    {
+      globalSection,
+      sections,
+    }:
     (if globalSection == { } then
       ""
     else
@@ -247,9 +258,11 @@ in rec {
 
   withRecursion = {
     # If this option is not null, the given value will stop evaluating at a certain depth
-    depthLimit
-    # If this option is true, an error will be thrown, if a certain given depth is exceeded
-    , throwOnDepthLimit ? true }:
+      depthLimit
+      # If this option is true, an error will be thrown, if a certain given depth is exceeded
+      ,
+      throwOnDepthLimit ? true
+    }:
     assert builtins.isInt depthLimit;
     let
       specialAttrs = [ "__functor" "__functionArgs" "__toString" "__pretty" ];
@@ -286,11 +299,12 @@ in rec {
        will use fn to convert val to a pretty printed representation.
        (This means fn is type Val -> String.)
     */
-    allowPrettyValues ? false,
-    # If this option is true, the output is indented with newlines for attribute sets and lists
-    multiline ? true,
-    # Initial indentation level
-    indent ? "" }:
+      allowPrettyValues ? false,
+      # If this option is true, the output is indented with newlines for attribute sets and lists
+      multiline ? true,
+      # Initial indentation level
+      indent ? ""
+    }:
     let
       go = indent: v:
         with builtins;

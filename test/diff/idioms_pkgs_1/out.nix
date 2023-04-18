@@ -1,4 +1,9 @@
-{ stdenv, lib, fetchFrom, ... }:
+{
+  stdenv,
+  lib,
+  fetchFrom,
+  ...
+}:
 
 stdenv.mkDerivation rec {
   pname = "test";

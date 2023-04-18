@@ -19,25 +19,44 @@
   (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
   (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
-  ({ pkgs ? import ./.. { }, locationsXml }: null)
+  ({
+      pkgs ? import ./.. { },
+      locationsXml,
+    }:
+    null)
   (a: b: c: { }: a: b: c: a)
 
-  ({ pkgs, ... }:
+  ({
+      pkgs,
+      ...
+    }:
     {
       # Stuff
     })
 
-  ({ pkgs, ... }: let in pkgs)
+  ({
+      pkgs,
+      ...
+    }:
+    let
+    in pkgs)
 
   (a:
-    { b, ... }:
+    {
+      b,
+      ...
+    }:
     c:
     {
       # Stuff
     })
 
   (a:
-    { b, c, ... }:
+    {
+      b,
+      c,
+      ...
+    }:
     d:
     {
       # Stuff

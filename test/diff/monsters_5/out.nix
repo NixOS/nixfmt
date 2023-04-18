@@ -1,12 +1,12 @@
 {
 
-config,
+  config,
 
-lib,
+  lib,
 
-pkgs,
+  pkgs,
 
-...
+  ...
 
 }:
 
