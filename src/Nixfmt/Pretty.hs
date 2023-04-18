@@ -184,9 +184,11 @@ absorb left right (Just level) x
 absorbSet :: Expression -> Doc
 absorbSet = absorb line mempty Nothing
 
+-- Don't absorb the if body, always force content on new line
 absorbThen :: Expression -> Doc
+-- XXX this should be removed, but does not appear to work anyways?
 absorbThen (Term t) | isAbsorbable t = hardspace <> prettyTerm t <> hardspace
-absorbThen x                         = line <> nest 2 (group x) <> line
+absorbThen x                         = hardline <> nest 2 (group x) <> hardline
 
 -- What is allowed to come on the same line as `in`?
 -- Absorbable terms like sets
@@ -198,12 +200,13 @@ absorbIn x@(With _ _ _ _)          = group x
 absorbIn x@(Let _ _ _ _)           = group x
 absorbIn x                         = line <> nest 2 (group x) <> line
 
+-- Only absorb "else if"
 absorbElse :: Expression -> Doc
 absorbElse (If if_ cond then_ expr0 else_ expr1)
     = hardspace <> pretty if_ <> hardspace <> group cond <> hardspace
       <> pretty then_ <> absorbThen expr0
       <> pretty else_ <> absorbElse expr1
-
+-- XXX Same as for Then
 absorbElse (Term t) | isAbsorbable t = hardspace <> prettyTerm t
 absorbElse x                         = line <> nest 2 (group x)
 
@@ -238,7 +241,8 @@ instance Pretty Expression where
 
     pretty (If if_ cond then_ expr0 else_ expr1)
         = base $ group $
-            pretty if_ <> hardspace <> group cond <> hardspace
+            -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
+            pretty if_ <> hardspace <> line' <> nest 2 (group cond) <> hardspace <> line'
             <> pretty then_ <> absorbThen expr0
             <> pretty else_ <> absorbElse expr1
 
