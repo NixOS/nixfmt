@@ -6,7 +6,7 @@
 
 {-# LANGUAGE BlockArguments, FlexibleContexts, LambdaCase, OverloadedStrings #-}
 
-module Nixfmt.Lexer (lexeme, whole) where
+module Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole) where
 
 import Control.Monad.State (MonadState, evalStateT, get, modify, put)
 import Data.Char (isSpace)

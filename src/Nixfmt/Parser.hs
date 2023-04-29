@@ -19,20 +19,22 @@ import Data.Char (isAlpha)
 import Data.Foldable (toList)
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
-import Data.Text as Text (Text, cons, empty, singleton, split, stripPrefix)
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Data.Void (Void)
 import Text.Megaparsec
-  (Parsec, anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf,
-  optional, satisfy, some, try, (<|>))
+  (Parsec, anySingle, chunk, empty, eof, label, lookAhead, many, notFollowedBy,
+  oneOf, optional, satisfy, some, try, (<|>))
 import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L (decimal)
 
-import Nixfmt.Lexer (lexeme, whole)
+import Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole)
 import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Types
-  (Ann, Binder(..), Expression(..), File, Fixity(..), Leaf, Operator(..),
-  ParamAttr(..), Parameter(..), Parser, Path, Selector(..), SimpleSelector(..),
-  String, StringPart(..), Term(..), Token(..), operators, tokenText)
+  (Ann, Binder(..), Expression(..), File, Fixity(..), Item(..), Items(..), Leaf,
+  Operator(..), ParamAttr(..), Parameter(..), Parser, Path, Selector(..),
+  SimpleSelector(..), String, StringPart(..), Term(..), Token(..), Trivium(..),
+  operators, tokenText)
 import Nixfmt.Util
   (commonIndentation, identChar, isSpaces, manyP, manyText, pathChar,
   schemeChar, someP, someText, uriChar)
@@ -247,6 +249,28 @@ term = label "term" $ do
     return $ case s of [] -> t
                        _  -> Selection t s
 
+items :: Parser a -> Parser (Items a)
+items p = Items <$> many (item p) <> (toList <$> optional lastItem)
+
+item :: Parser a -> Parser (Item a)
+item p = detachedComment <|> CommentedItem <$> takeTrivia <*> p
+
+lastItem :: Parser (Item a)
+lastItem = do
+    trivia <- takeTrivia
+    case trivia of
+        [] -> empty
+        _  -> pure $ DetachedComments trivia
+
+detachedComment :: Parser (Item a)
+detachedComment = do
+    trivia <- takeTrivia
+    case break (== EmptyLine) trivia of
+        -- Return a set of comments that don't annotate the next item
+        (detached, EmptyLine : trivia') -> pushTrivia trivia' >> pure (DetachedComments detached)
+        -- The remaining trivia annotate the next item
+        _ -> pushTrivia trivia >> empty
+
 -- ABSTRACTIONS
 
 attrParameter :: Maybe (Parser Leaf) -> Parser ParamAttr
@@ -286,15 +310,15 @@ assignment :: Parser Binder
 assignment = Assignment <$>
     selectorPath <*> symbol TAssign <*> expression <*> symbol TSemicolon
 
-binders :: Parser [Binder]
-binders = many (assignment <|> inherit)
+binders :: Parser (Items Binder)
+binders = items (assignment <|> inherit)
 
 set :: Parser Term
 set = Set <$> optional (reserved KRec <|> reserved KLet) <*>
     symbol TBraceOpen <*> binders <*> symbol TBraceClose
 
 list :: Parser Term
-list = List <$> symbol TBrackOpen <*> many term <*> symbol TBrackClose
+list = List <$> symbol TBrackOpen <*> items term <*> symbol TBrackClose
 
 -- OPERATORS
 

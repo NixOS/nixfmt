@@ -20,9 +20,10 @@ import Nixfmt.Predoc
   (Doc, Pretty, base, emptyline, group, hardline, hardspace, hcat, line, line',
   nest, newline, pretty, sepBy, softline, softline', text, textWidth)
 import Nixfmt.Types
-  (Ann(..), Binder(..), Expression(..), Whole(..), Leaf, ParamAttr(..),
-  Parameter(..), Selector(..), SimpleSelector(..), StringPart(..), Term(..),
-  Token(..), TrailingComment(..), Trivia, Trivium(..), tokenText)
+  (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
+  ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
+  StringPart(..), Term(..), Token(..), TrailingComment(..), Trivia, Trivium(..),
+  Whole(..), tokenText)
 import Nixfmt.Util (commonIndentation, isSpaces, replaceMultiple)
 
 prettyCommentLine :: Text -> Doc
@@ -32,6 +33,12 @@ prettyCommentLine l
 
 toLineComment :: Text -> Trivium
 toLineComment c = LineComment $ fromMaybe (" " <> c) $ stripPrefix "*" c
+
+-- Make sure a group is not expanded because the token that starts it has
+-- leading comments.
+groupWithStart :: Pretty a => Ann a -> Doc -> Doc
+groupWithStart (Ann leading a trailing) b
+    = pretty leading <> group (pretty a <> pretty trailing <> b)
 
 instance Pretty TrailingComment where
     pretty (TrailingComment c)
@@ -46,6 +53,18 @@ instance Pretty Trivium where
             = base $ text "/*" <> hardspace
               <> nest 3 (hcat (map prettyCommentLine c))
               <> text "*/" <> hardline
+
+prettyItems :: Pretty a => Doc -> Items a -> Doc
+prettyItems sep = prettyItems' . unItems
+  where
+    prettyItems' :: Pretty a => [Item a] -> Doc
+    prettyItems' [] = mempty
+    prettyItems' [DetachedComments trivia] = pretty trivia
+    prettyItems' [CommentedItem trivia x]  = pretty trivia <> group x
+    prettyItems' (DetachedComments trivia : xs)
+        = pretty trivia <> emptyline <> prettyItems' xs
+    prettyItems' (CommentedItem trivia x : xs)
+        = pretty trivia <> group x <> sep <> prettyItems' xs
 
 instance Pretty [Trivium] where
     pretty []     = mempty
@@ -71,16 +90,16 @@ instance Pretty Selector where
 
 instance Pretty Binder where
     pretty (Inherit inherit Nothing ids semicolon)
-        = base $ group (pretty inherit <> softline
-                 <> nest 2 (sepBy softline ids)) <> pretty semicolon
+        = base $ pretty inherit <> softline
+                 <> nest 2 (sepBy softline ids) <> pretty semicolon
 
     pretty (Inherit inherit (Just source) ids semicolon)
-        = base $ group (pretty inherit <> hardspace
+        = base $ pretty inherit <> hardspace
                  <> pretty source <> line
-                 <> nest 2 (sepBy softline ids)) <> pretty semicolon
+                 <> nest 2 (sepBy softline ids) <> pretty semicolon
 
     pretty (Assignment selectors assign expr semicolon)
-        = base $ hcat selectors <> hardspace <> group (nest 2 value)
+        = base $ group $ hcat selectors <> hardspace <> nest 2 value
         where
             value = pretty assign <> softline <> pretty expr <> pretty semicolon
 
@@ -91,25 +110,33 @@ prettyTerm (String s) = pretty s
 prettyTerm (Path p) = pretty p
 prettyTerm (Selection term selectors) = pretty term <> hcat selectors
 
-prettyTerm (List (Ann leading paropen Nothing) [] (Ann [] parclose trailing))
+prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trailing))
     = pretty leading <> pretty paropen <> hardspace <> pretty parclose <> pretty trailing
 
-prettyTerm (List (Ann leading paropen Nothing) [item] (Ann [] parclose trailing))
+prettyTerm (List (Ann leading paropen Nothing) (Items [CommentedItem [] item]) (Ann [] parclose trailing))
     | isAbsorbable item
         = pretty leading <> pretty paropen <> pretty item <> pretty parclose <> pretty trailing
 
-prettyTerm (List paropen items parclose)
-    = base $ pretty paropen <> line
-        <> nest 2 (sepBy line (map group items)) <> line
+prettyTerm (List (Ann [] paropen trailing) items parclose)
+    = base $ pretty paropen <> pretty trailing <> line
+        <> nest 2 (prettyItems line items) <> line
         <> pretty parclose
 
-prettyTerm (Set Nothing (Ann [] paropen Nothing) [] parclose)
+-- Lists with leading comments get their own group so the comments don't always
+-- force the list to be split over multiple lines.
+prettyTerm (List paropen items parclose)
+    = base $ groupWithStart paropen $
+        line
+        <> nest 2 (prettyItems line items) <> line
+        <> pretty parclose
+
+prettyTerm (Set Nothing (Ann [] paropen Nothing) (Items []) parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
 prettyTerm (Set krec paropen binders parclose)
     = base $ pretty (fmap ((<>hardspace) . pretty) krec)
         <> pretty paropen <> line
-        <> nest 2 (sepBy hardline binders) <> line
+        <> nest 2 (prettyItems hardline binders) <> line
         <> pretty parclose
 
 prettyTerm (Parenthesized paropen expr parclose)
@@ -142,9 +169,10 @@ instance Pretty ParamAttr where
 instance Pretty Parameter where
     pretty (IDParameter i) = pretty i
     pretty (SetParameter bopen attrs bclose)
-        = group $ pretty bopen <> hardspace
-                  <> hcat attrs <> softline
-                  <> pretty bclose
+        = groupWithStart bopen $
+            hardspace
+            <> hcat attrs <> softline
+            <> pretty bclose
 
     pretty (ContextParameter param1 at param2)
         = pretty param1 <> pretty at <> pretty param2
@@ -152,11 +180,11 @@ instance Pretty Parameter where
 isAbsorbable :: Term -> Bool
 isAbsorbable (String (Ann _ parts@(_:_:_) _))
     = not $ isSimpleString parts
-isAbsorbable (Set _ _ (_:_) _)                             = True
-isAbsorbable (List (Ann [] _ Nothing) [item] _)            = isAbsorbable item
-isAbsorbable (Parenthesized (Ann [] _ Nothing) (Term t) _) = isAbsorbable t
-isAbsorbable (List _ (_:_:_) _)                            = True
-isAbsorbable _                                             = False
+isAbsorbable (Set _ _ (Items (_:_)) _)                                   = True
+isAbsorbable (List (Ann [] _ Nothing) (Items [CommentedItem [] item]) _) = isAbsorbable item
+isAbsorbable (Parenthesized (Ann [] _ Nothing) (Term t) _)               = isAbsorbable t
+isAbsorbable (List _ (Items (_:_:_)) _)                                  = True
+isAbsorbable _                                                           = False
 
 absorb :: Doc -> Doc -> Maybe Int -> Expression -> Doc
 absorb left right _ (Term t)
@@ -199,11 +227,19 @@ instance Pretty Expression where
           <> nest 2 (group expr0) <> pretty semicolon)
           <> absorbSet expr1
 
+    pretty (Let let_ (Items []) in_ expr)
+        = base $ pretty let_ <> hardspace <> pretty in_ <> hardspace <> pretty expr
+
+    pretty (Let let_ (Items [CommentedItem [] item]) in_ expr)
+        = base $ letPart <> line <> inPart
+        where letPart = groupWithStart let_ $ line <> nest 2 (pretty item)
+              inPart = groupWithStart in_ $ hardspace <> pretty expr
+
     pretty (Let let_ binders in_ expr)
-        = base $ group letPart <> line <> group inPart
-        where letPart = pretty let_ <> line <> letBody
-              inPart = pretty in_ <> hardspace <> pretty expr
-              letBody = nest 2 $ sepBy hardline binders
+        = base $ letPart <> emptyline <> inPart
+        where letPart = groupWithStart let_ $ line <> letBody
+              inPart = groupWithStart in_ $ hardspace <> pretty expr
+              letBody = nest 2 $ prettyItems hardline binders
 
     pretty (Assert assert cond semicolon expr)
         = base (pretty assert <> hardspace
@@ -211,8 +247,8 @@ instance Pretty Expression where
           <> absorbSet expr
 
     pretty (If if_ cond then_ expr0 else_ expr1)
-        = base $ group $
-            pretty if_ <> hardspace <> group cond <> hardspace
+        = base $ groupWithStart if_ $
+            hardspace <> group cond <> hardspace
             <> pretty then_ <> absorbThen expr0
             <> pretty else_ <> absorbElse expr1
 
@@ -247,9 +283,6 @@ instance Pretty a => Pretty (Whole a) where
 
 instance Pretty Token where
     pretty = text . tokenText
-
-instance Pretty [Token] where
-    pretty = hcat
 
 -- STRINGS
 
