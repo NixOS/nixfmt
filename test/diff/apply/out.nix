@@ -57,10 +57,12 @@
   }
   # https://github.com/kamadorueda/alejandra/issues/372#issuecomment-1435083516
   {
-    outputs = {
+    outputs =
+      {
         utils,
       }:
       # For each supported platform,
-      utils.lib.eachDefaultSystem (system: { });
+      utils.lib.eachDefaultSystem (system: { })
+      ;
   }
 ]

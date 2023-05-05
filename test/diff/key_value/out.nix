@@ -7,7 +7,7 @@ rec {
 
   b = {
     a = 1 # d
-    ;
+      ;
   };
 
   c = {
@@ -17,7 +17,7 @@ rec {
   d = {
     a = # c
       1 # d
-    ;
+      ;
   };
   e = {
     a # b
@@ -26,7 +26,7 @@ rec {
   f = {
     a # b
       = 1 # d
-    ;
+      ;
   };
   h = {
     a # b
@@ -37,28 +37,36 @@ rec {
     a # b
       = # c
       1 # d
-    ;
+      ;
   };
   j = a: { b = 1; };
-  k = a: {
-    b = 1;
-    c = 2;
-  };
-  l = a: # b
+  k =
+    a: {
+      b = 1;
+      c = 2;
+    }
+    ;
+  l =
+    a: # b
     {
       b = 1;
-    };
-  m = a: # b
+    }
+    ;
+  m =
+    a: # b
     {
       b = 1;
       c = 2;
-    };
+    }
+    ;
   n = pkgs: { };
-  o = {
+  o =
+    {
       pkgs,
       ...
     }:
-    { };
+    { }
+    ;
 
   a
   # b
@@ -66,7 +74,7 @@ rec {
     # c
     1
     # d
-  ;
+    ;
 
   p =
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa { } a;

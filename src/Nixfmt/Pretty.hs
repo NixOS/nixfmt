@@ -83,9 +83,21 @@ instance Pretty Binder where
 
     -- `foo = bar`
     pretty (Assignment selectors assign expr semicolon)
-        = base $ group (hcat selectors <> hardspace
-                 <> nest 2 (pretty assign <> softline <> pretty expr))
-          <> pretty semicolon
+        = base $ group $ hcat selectors <> hardspace
+                 <> nest 2 (pretty assign <> absorbInner expr)
+        where
+          -- Function declaration / If statement / Let binding
+          -- If it is multi-line, force it into a new line with indentation, semicolon on separate line
+          absorbInner expr@(Abstraction _ _ _) = line <> pretty expr <> line' <> pretty semicolon
+          absorbInner expr@(If _ _ _ _ _ _)    = line <> pretty expr <> line' <> pretty semicolon
+          absorbInner expr@(Let _ _ _ _)       = line <> pretty expr <> line' <> pretty semicolon
+          -- Absorbable term (list/attrset)
+          -- force-absorb the term and then the semicolon
+          absorbInner expr@(Term t) | isAbsorbable t = hardspace <> group expr <> softline' <> pretty semicolon
+          -- `foo = bar`, otherwise
+          -- Try to absorb and keep the semicolon attached, spread otherwise
+          absorbInner expr = softline <> group (pretty expr <> softline' <> pretty semicolon)
+
 
 -- | Pretty print a term without wrapping it in a group.
 prettyTerm :: Term -> Doc

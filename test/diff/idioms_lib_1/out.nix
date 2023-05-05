@@ -9,5 +9,6 @@
     if pred then
       trace msg x
     else
-      x;
+      x
+    ;
 }

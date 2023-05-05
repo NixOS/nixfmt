@@ -76,13 +76,13 @@ rec
     =
     # foo
     "contrast";
-  # foo
+    # foo
   version
   # foo
     =
     # foo
     "0.0.5";
-  # foo
+    # foo
   src
   # foo
     =
@@ -96,39 +96,39 @@ rec
         =
         # foo
         "gitlab.gnome.org";
-      # foo
+        # foo
       group
       # foo
         =
         # foo
         "World";
-      # foo
+        # foo
       owner
       # foo
         =
         # foo
         "design";
-      # foo
+        # foo
       repo
       # foo
         =
         # foo
         "contrast";
-      # foo
+        # foo
       rev
       # foo
         =
         # foo
         version;
-      # foo
+        # foo
       sha256
       # foo
         =
         # foo
         "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0=";
-      # foo
+        # foo
     };
-  # foo
+    # foo
   cargoDeps
   # foo
     =
@@ -147,15 +147,15 @@ rec
         =
         # foo
         "${pname}-${version}";
-      # foo
+        # foo
       hash
       # foo
         =
         # foo
         "sha256-W4FyqwJpimf0isQRCq9TegpTQPQfsumx40AFQCFG5VQ=";
-      # foo
+        # foo
     };
-  # foo
+    # foo
   nativeBuildInputs
   # foo
     =
@@ -188,7 +188,7 @@ rec
 
       # foo
     ];
-  # foo
+    # foo
   buildInputs
   # foo
     =
@@ -206,7 +206,7 @@ rec
       pango
       # foo
     ];
-  # foo
+    # foo
   postPatch
   # foo
     =
@@ -217,7 +217,7 @@ rec
       substituteInPlace build-aux/meson_post_install.py \
         --replace "gtk-update-icon-cache" "gtk4-update-icon-cache"
     '';
-  # foo
+    # foo
   meta
   # foo
     =
@@ -232,20 +232,21 @@ rec
       # foo
         =
         # foo
-        "Checks whether the contrast between two colors meet the WCAG requirements";
-      # foo
+        "Checks whether the contrast between two colors meet the WCAG requirements"
+        ;
+        # foo
       homepage
       # foo
         =
         # foo
         "https://gitlab.gnome.org/World/design/contrast";
-      # foo
+        # foo
       license
       # foo
         =
         # foo
         licenses.gpl3Plus;
-      # foo
+        # foo
       maintainers
       # foo
         =
@@ -259,13 +260,13 @@ rec
           jtojnar
           # foo
         ];
-      # foo
+        # foo
       platforms
       # foo
         =
         # foo
         platforms.unix;
-      # foo
+        # foo
     };
-  # foo
+    # foo
 }
