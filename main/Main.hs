@@ -51,12 +51,12 @@ options =
         , width =
             defaultWidth &=
             help (addDefaultHint defaultWidth "Maximum width in characters")
-        , check = False &= help "Check whether files are formatted"
+        , check = False &= help "Check whether files are formatted without modifying them"
         , quiet = False &= help "Do not report errors"
         , verify =
             False &=
             help
-              "Check that the output parses and formats the same as the input"
+              "Apply sanity checks on the output after formatting"
         } &=
       summary ("nixfmt v" ++ showVersion version) &=
       help "Format Nix source code"
