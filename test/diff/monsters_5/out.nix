@@ -18,23 +18,26 @@ let
 
   inherit
 
-  (config.boot)
+    (config.boot)
 
-    kernelPatches;
+    kernelPatches
+    ;
 
   inherit
 
-  (config.boot.kernel)
+    (config.boot.kernel)
 
     features
 
-    randstructSeed;
+    randstructSeed
+    ;
 
   inherit
 
-  (config.boot.kernelPackages)
+    (config.boot.kernelPackages)
 
-    kernel;
+    kernel
+    ;
 
   kernelModulesConf
 
@@ -158,7 +161,8 @@ in {
 
                       inherit
 
-                        randstructSeed;
+                        randstructSeed
+                        ;
 
                       kernelPatches
 

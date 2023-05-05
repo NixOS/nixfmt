@@ -139,8 +139,9 @@ rec
       # foo
       inherit
       # foo
-        src;
-      # foo
+        src
+        ;
+        # foo
       name
       # foo
         =

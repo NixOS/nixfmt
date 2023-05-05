@@ -69,7 +69,8 @@ rec # Foo
     rustPlatform.fetchCargoTarball # Foo
     { # Foo
       inherit # Foo
-        src; # Foo
+        src
+        ; # Foo
       name # Foo
         = # Foo
         "${pname}-${version}"; # Foo

@@ -1,4 +1,13 @@
 [
+  {
+    inherit (builtins)
+      pathExists readFile isBool
+      isInt isFloat add sub lessThan
+      seq deepSeq genericClosure;
+  }
+  {
+    inherit ({ foo = "1"; bar = "2"; /* force multiline */}) foo bar;
+  }
   { inherit       (      c      )       f       h      ; }
   { inherit       (      c      )       f       h /*i*/; }
   { inherit       (      c      )       f /*g*/ h      ; }

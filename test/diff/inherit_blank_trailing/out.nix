@@ -7,12 +7,16 @@
       c # test
       d # test
 
-      e f
+      e
+      f
 
-      g h;
+      g
+      h
+      ;
   }
   {
-    inherit a # mixed trivialities
+    inherit
+      a # mixed trivialities
 
       # comment 1
       # comment 2
@@ -24,6 +28,6 @@
       # comment 1
       # comment 2
       # comment 3
-    ;
+      ;
   }
 ]

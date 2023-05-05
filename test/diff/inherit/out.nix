@@ -7,37 +7,46 @@
   }
   { inherit b d; }
   {
-    inherit b d # e
-    ;
-  }
-  {
-    inherit b # c
-      d;
-  }
-  {
-    inherit b # c
+    inherit
+      b
       d # e
-    ;
+      ;
+  }
+  {
+    inherit
+      b # c
+      d
+      ;
+  }
+  {
+    inherit
+      b # c
+      d # e
+      ;
   }
   {
     inherit # a
-      b d;
+      b
+      d
+      ;
   }
   {
     inherit # a
-      b d # e
-    ;
+      b
+      d # e
+      ;
   }
   {
     inherit # a
       b # c
-      d;
+      d
+      ;
   }
   {
     inherit # a
       b # c
       d # e
-    ;
+      ;
   }
   {
     inherit # test
@@ -47,8 +56,11 @@
       c # test
       d # test
 
-      e f
+      e
+      f
 
-      g h;
+      g
+      h
+      ;
   }
 ]

@@ -185,12 +185,22 @@ rec {
 
   # Pull in some builtins not included elsewhere.
   inherit (builtins)
-    pathExists readFile isBool isInt isFloat add sub lessThan seq deepSeq
-    genericClosure;
+    pathExists
+    readFile
+    isBool
+    isInt
+    isFloat
+    add
+    sub
+    lessThan
+    seq
+    deepSeq
+    genericClosure
+    ;
 
-  ## nixpkgs version strings
+    ## nixpkgs version strings
 
-  # Returns the current full nixpkgs version number.
+    # Returns the current full nixpkgs version number.
   version = release + versionSuffix;
 
   # Returns the current nixpkgs release number as string.

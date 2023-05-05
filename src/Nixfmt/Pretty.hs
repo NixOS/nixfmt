@@ -69,16 +69,19 @@ instance Pretty Selector where
         = pretty dot <> pretty sel
           <> hardspace <> pretty kw <> hardspace <> pretty def
 
+-- in attrsets and let bindings
 instance Pretty Binder where
+    -- `inherit bar` statement
     pretty (Inherit inherit Nothing ids semicolon)
-        = base $ group (pretty inherit <> softline
-                 <> nest 2 (sepBy softline ids)) <> pretty semicolon
+        = base $ group (pretty inherit <> line
+                 <> nest 2 (sepBy line ids <> line' <> pretty semicolon))
 
+    -- `inherit (foo) bar` statement
     pretty (Inherit inherit source ids semicolon)
         = base $ group (pretty inherit <> hardspace
-                 <> pretty source <> line
-                 <> nest 2 (sepBy softline ids)) <> pretty semicolon
+                 <> nest 2 ((pretty source) <> line <> sepBy line ids <> line' <> pretty semicolon))
 
+    -- `foo = bar`
     pretty (Assignment selectors assign expr semicolon)
         = base $ group (hcat selectors <> hardspace
                  <> nest 2 (pretty assign <> softline <> pretty expr))
