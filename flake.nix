@@ -84,6 +84,7 @@
               # nixfmt: expand
               cabal-install
               stylish-haskell
+              shellcheck
             ]);
           });
 
