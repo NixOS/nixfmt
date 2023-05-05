@@ -15,7 +15,7 @@
               installMethod = "copy";
             });
           in
-            "${pkg}/lib/node_modules/${pname}/node_modules"
+          "${pkg}/lib/node_modules/${pname}/node_modules"
         ) outputs.subPackages))
     }
   ''

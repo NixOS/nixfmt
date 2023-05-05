@@ -4,53 +4,53 @@ let
     b = 2;
     c = 3;
   in
-    d
+  d
   ;
   a = let
     c = 1;
   in
-    f
+  f
   ;
 
   a = let
     c = 1;
     # e
   in
-    f
+  f
   ;
   a = let
     c = 1; # d
   in
-    f
+  f
   ;
 
   a = let
     c = 1; # d
     # e
   in
-    f
+  f
   ;
   a = let # b
     c = 1;
   in
-    f
+  f
   ;
   a = let # b
     c = 1;
     # e
   in
-    f
+  f
   ;
   a = let # b
     c = 1; # d
   in
-    f
+  f
   ;
   a = let # b
     c = 1; # d
     # e
   in
-    f
+  f
   ;
 
   a = let
@@ -60,4 +60,4 @@ let
   ] ;
 
 in
-  a
+a

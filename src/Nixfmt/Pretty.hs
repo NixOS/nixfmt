@@ -198,7 +198,7 @@ absorbIn (Term t) | isAbsorbable t = hardspace <> prettyTerm t <> hardspace
 absorbIn x@(If _ _ _ _ _ _)        = group x
 absorbIn x@(With _ _ _ _)          = group x
 absorbIn x@(Let _ _ _ _)           = group x
-absorbIn x                         = line <> nest 2 (group x) <> line
+absorbIn x                         = line <> group x <> line
 
 -- Only absorb "else if"
 absorbElse :: Expression -> Doc

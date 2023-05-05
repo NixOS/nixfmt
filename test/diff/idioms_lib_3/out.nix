@@ -108,9 +108,9 @@ in rec {
       else
         k: v: [ (mkLine k v) ];
     in
-      attrs:
-      libStr.concatStrings
-      (lib.concatLists (libAttr.mapAttrsToList mkLines attrs))
+    attrs:
+    libStr.concatStrings
+    (lib.concatLists (libAttr.mapAttrsToList mkLines attrs))
   ;
 
   # Generate an INI-style config file from an
@@ -155,7 +155,7 @@ in rec {
         '' + toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } sectValues;
       # map input to ini sections
     in
-      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+    mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
   ;
 
   # Generate an INI-style config file from an attrset
@@ -253,7 +253,7 @@ in rec {
         let
           mkKeyValue = mkKeyValueDefault { } " = " k;
         in
-          concatStringsSep "\n" (map (kv: "	" + mkKeyValue kv) (lib.toList v))
+        concatStringsSep "\n" (map (kv: "	" + mkKeyValue kv) (lib.toList v))
       ;
 
       # converts { a.b.c = 5; } to { "a.b".c = 5; } for toINI
@@ -271,13 +271,12 @@ in rec {
             ${head path} = value;
           };
       in
-        attrs:
-        lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs))
+      attrs: lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs))
       ;
 
       toINI_ = toINI { inherit mkKeyValue mkSectionName; };
     in
-      toINI_ (gitFlattenAttrs attrs)
+    toINI_ (gitFlattenAttrs attrs)
   ;
 
   # Generates JSON from an arbitrary (non-function) value.
@@ -339,7 +338,7 @@ in rec {
         else
           transform (depth + 1) v;
     in
-      mapAny 0
+    mapAny 0
   ;
 
   # Pretty print a value, akin to `builtins.trace`.
@@ -407,13 +406,13 @@ in rec {
               # indentation level. Otherwise, '' is appended to the last line.
               lastLine = lib.last escapedLines;
             in
-              "''" + introSpace
-              + concatStringsSep introSpace (lib.init escapedLines) + (if
-                lastLine == ""
-              then
-                outroSpace
-              else
-                introSpace + lastLine) + "''"
+            "''" + introSpace
+            + concatStringsSep introSpace (lib.init escapedLines) + (if
+              lastLine == ""
+            then
+              outroSpace
+            else
+              introSpace + lastLine) + "''"
             ;
           in if
             multiline && length lines > 1
@@ -476,7 +475,7 @@ in rec {
         else
           abort "generators.toPretty: should never happen (v = ${v})";
     in
-      go indent
+    go indent
   ;
 
   # PLIST handling
@@ -540,13 +539,13 @@ in rec {
       attr = let
         attrFilter = name: value: name != "_module" && value != null;
       in
-        ind: x:
-        libStr.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList
-          (name: value:
-            lib.optionals (attrFilter name value) [
-              (key "	${ind}" name)
-              (expr "	${ind}" value)
-            ]) x))
+      ind: x:
+      libStr.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList
+        (name: value:
+          lib.optionals (attrFilter name value) [
+            (key "	${ind}" name)
+            (expr "	${ind}" value)
+          ]) x))
       ;
 
     in ''

@@ -66,7 +66,7 @@ rec {
     let
       reverseApply = x: f: f x;
     in
-      builtins.foldl' reverseApply val functions
+    builtins.foldl' reverseApply val functions
   ;
 
   # note please don’t add a function like `compose = flip pipe`.
@@ -435,12 +435,11 @@ rec {
     let
       unexpected = lib.subtractLists valid given;
     in
-      lib.throwIfNot (unexpected == [ ]) "${msg}: ${
-        builtins.concatStringsSep ", "
-        (builtins.map builtins.toString unexpected)
-      } unexpected; valid ones: ${
-        builtins.concatStringsSep ", " (builtins.map builtins.toString valid)
-      }"
+    lib.throwIfNot (unexpected == [ ]) "${msg}: ${
+      builtins.concatStringsSep ", " (builtins.map builtins.toString unexpected)
+    } unexpected; valid ones: ${
+      builtins.concatStringsSep ", " (builtins.map builtins.toString valid)
+    }"
   ;
 
   info = msg: builtins.trace "INFO: ${msg}";
@@ -511,7 +510,7 @@ rec {
             "15" = "F";
           }.${toString d};
     in
-      lib.concatMapStrings toHexDigit (toBaseDigits 16 i)
+    lib.concatMapStrings toHexDigit (toBaseDigits 16 i)
   ;
 
   /* `toBaseDigits base i` converts the positive integer i to a list of its
@@ -533,9 +532,9 @@ rec {
             r = i - ((i / base) * base);
             q = (i - r) / base;
           in
-            [ r ] ++ go q
+          [ r ] ++ go q
       ;
     in
-      assert (base >= 2); assert (i >= 0); lib.reverseList (go i)
+    assert (base >= 2); assert (i >= 0); lib.reverseList (go i)
   ;
 }
