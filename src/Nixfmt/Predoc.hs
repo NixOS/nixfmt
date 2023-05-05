@@ -39,13 +39,22 @@ import Data.Text as Text (Text, concat, length, pack, replicate)
 -- This means that e.g. a Space followed by an Emptyline results in just an
 -- Emptyline.
 data Spacing
-    = Softbreak
+    =
+    -- | Line break or nothing (soft)
+    Softbreak
+    -- | Line break or nothing
     | Break
+    -- | Always a space
     | Hardspace
+    -- | Line break or space (soft)
     | Softspace
+    -- | Line break or space
     | Space
+    -- | Always a line break
     | Hardline
+    -- | Two line breaks
     | Emptyline
+    -- | n line breaks
     | Newlines Int
     deriving (Show, Eq, Ord)
 
@@ -105,24 +114,31 @@ nest level = pure . Node (Nest level)
 base :: Doc -> Doc
 base = pure . Node Base
 
+-- | Line break or nothing (soft)
 softline' :: Doc
 softline' = [Spacing Softbreak]
 
+-- | Line break or nothing
 line' :: Doc
 line' = [Spacing Break]
 
+-- | Line break or space (soft)
 softline :: Doc
 softline = [Spacing Softspace]
 
+-- | Line break or space
 line :: Doc
 line = [Spacing Space]
 
+-- | Always space
 hardspace :: Doc
 hardspace = [Spacing Hardspace]
 
+-- | Always line break
 hardline :: Doc
 hardline = [Spacing Hardline]
 
+-- | Two line breaks
 emptyline :: Doc
 emptyline = [Spacing Emptyline]
 
