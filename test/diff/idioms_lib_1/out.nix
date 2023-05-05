@@ -6,9 +6,7 @@
     msg:
     # Value to return
     x:
-    if
-      pred
-    then
+    if pred then
       trace msg x
     else
       x;

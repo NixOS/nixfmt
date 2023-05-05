@@ -94,27 +94,21 @@ rec {
 
   # bitwise “and”
   bitAnd = builtins.bitAnd or (import ./zip-int-bits.nix (a: b:
-    if
-      a == 1 && b == 1
-    then
+    if a == 1 && b == 1 then
       1
     else
       0));
 
   # bitwise “or”
   bitOr = builtins.bitOr or (import ./zip-int-bits.nix (a: b:
-    if
-      a == 1 || b == 1
-    then
+    if a == 1 || b == 1 then
       1
     else
       0));
 
   # bitwise “xor”
   bitXor = builtins.bitXor or (import ./zip-int-bits.nix (a: b:
-    if
-      a != b
-    then
+    if a != b then
       1
     else
       0));
@@ -131,9 +125,7 @@ rec {
      Type: boolToString :: bool -> string
   */
   boolToString = b:
-    if
-      b
-    then
+    if b then
       "true"
     else
       "false";
@@ -176,9 +168,7 @@ rec {
     f:
     # Argument to check for null before passing it to `f`
     a:
-    if
-      a == null
-    then
+    if a == null then
       a
     else
       f a;
@@ -216,9 +206,7 @@ rec {
   # Returns the current nixpkgs version suffix as string.
   versionSuffix = let
     suffixFile = ../.version-suffix;
-  in if
-    pathExists suffixFile
-  then
+  in if pathExists suffixFile then
     lib.strings.fileContents suffixFile
   else
     "pre-git";
@@ -234,9 +222,7 @@ rec {
     let
       revisionFile = "${toString ./..}/.git-revision";
       gitRepo = "${toString ./..}/.git";
-    in if
-      lib.pathIsGitRepo gitRepo
-    then
+    in if lib.pathIsGitRepo gitRepo then
       lib.commitIdFromGitRepo gitRepo
     else if lib.pathExists revisionFile then
       lib.fileContents revisionFile
@@ -257,18 +243,14 @@ rec {
 
   # Return minimum of two numbers.
   min = x: y:
-    if
-      x < y
-    then
+    if x < y then
       x
     else
       y;
 
   # Return maximum of two numbers.
   max = x: y:
-    if
-      x > y
-    then
+    if x > y then
       x
     else
       y;
@@ -292,9 +274,7 @@ rec {
      a > b,  compare a b => 1
   */
   compare = a: b:
-    if
-      a < b
-    then
+    if a < b then
       -1
     else if a > b then
       1
@@ -330,12 +310,8 @@ rec {
     a:
     # Second value to compare
     b:
-    if
-      p a
-    then
-      if
-        p b
-      then
+    if p a then
+      if p b then
         yes a b
       else
         -1
@@ -398,9 +374,7 @@ rec {
      Type: bool -> string -> a -> a
   */
   warnIf = cond: msg:
-    if
-      cond
-    then
+    if cond then
       warn msg
     else
       id;
@@ -424,9 +398,7 @@ rec {
          pkgs
   */
   throwIfNot = cond: msg:
-    if
-      cond
-    then
+    if cond then
       x: x
     else
       throw msg;
@@ -481,9 +453,7 @@ rec {
      setFunctionArgs : (a → b) → Map String Bool.
   */
   functionArgs = f:
-    if
-      f ? __functor
-    then
+    if f ? __functor then
       f.__functionArgs or (lib.functionArgs (f.__functor f))
     else
       builtins.functionArgs f;
@@ -506,9 +476,7 @@ rec {
   toHexString = i:
     let
       toHexDigit = d:
-        if
-          d < 10
-        then
+        if d < 10 then
           toString d
         else
           {
@@ -535,9 +503,9 @@ rec {
   toBaseDigits = base: i:
     let
       go = i:
-        if
-          i < base
-        then [ i ] else
+        if i < base then
+          [ i ]
+        else
           let
             r = i - ((i / base) * base);
             q = (i - r) / base;

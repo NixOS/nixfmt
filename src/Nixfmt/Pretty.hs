@@ -187,12 +187,6 @@ absorb left right (Just level) x
 absorbSet :: Expression -> Doc
 absorbSet = absorb line mempty Nothing
 
--- Don't absorb the if body, always force content on new line
-absorbThen :: Expression -> Doc
--- XXX this should be removed, but does not appear to work anyways?
-absorbThen (Term t) | isAbsorbable t = hardspace <> prettyTerm t <> hardspace
-absorbThen x                         = hardline <> nest 2 (group x) <> hardline
-
 -- What is allowed to come on the same line as `in`?
 -- Absorbable terms like sets
 -- if, with, let
@@ -206,12 +200,12 @@ absorbIn x                         = line <> group x <> line
 -- Only absorb "else if"
 absorbElse :: Expression -> Doc
 absorbElse (If if_ cond then_ expr0 else_ expr1)
-    = hardspace <> pretty if_ <> hardspace <> group cond <> hardspace
-      <> pretty then_ <> absorbThen expr0
+    -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
+    = hardspace <> (group (pretty if_ <> nest 2 (line <> pretty cond <> line) <> pretty then_))
+      <> hardline <> nest 2 (group expr0) <> hardline
       <> pretty else_ <> absorbElse expr1
--- XXX Same as for Then
-absorbElse (Term t) | isAbsorbable t = hardspace <> prettyTerm t
-absorbElse x                         = line <> nest 2 (group x)
+absorbElse x
+    = hardline <> nest 2 (group x)
 
 absorbApp :: Expression -> Doc
 absorbApp (Application f x) = softline <> pretty f <> absorbApp x
@@ -245,8 +239,8 @@ instance Pretty Expression where
     pretty (If if_ cond then_ expr0 else_ expr1)
         = base $ group $
             -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
-            pretty if_ <> hardspace <> line' <> nest 2 (group cond) <> hardspace <> line'
-            <> pretty then_ <> absorbThen expr0
+            (group (pretty if_ <> nest 2 (line <> pretty cond <> line) <> pretty then_))
+            <> hardline <> nest 2 (group expr0) <> hardline
             <> pretty else_ <> absorbElse expr1
 
     pretty (Abstraction (IDParameter param) colon body)

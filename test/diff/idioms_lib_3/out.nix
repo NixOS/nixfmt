@@ -36,9 +36,7 @@ in rec {
       err = t: v:
         abort ("generators.mkValueStringDefault: "
           + "${t} not supported: ${toPretty { } v}");
-    in if
-      isInt v
-    then
+    in if isInt v then
       toString v
       # convert derivations to store paths
     else if lib.isDerivation v then
@@ -96,15 +94,12 @@ in rec {
     }:
     let
       mkLine = k: v: mkKeyValue k v + "\n";
-      mkLines = if
-        listsAsDuplicateKeys
-      then
+      mkLines = if listsAsDuplicateKeys then
         k: v:
-        map (mkLine k) (if
-          lib.isList v
-        then
+        map (mkLine k) (if lib.isList v then
           v
-        else [ v ])
+        else
+          [ v ])
       else
         k: v: [ (mkLine k v) ];
     in
@@ -204,9 +199,7 @@ in rec {
       globalSection,
       sections,
     }:
-    (if
-      globalSection == { }
-    then
+    (if globalSection == { } then
       ""
     else
       (toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } globalSection)
@@ -241,9 +234,7 @@ in rec {
           section = head sections;
           subsections = tail sections;
           subsection = concatStringsSep "." subsections;
-        in if
-          containsQuote || subsections == [ ]
-        then
+        in if containsQuote || subsections == [ ] then
           name
         else
           ''${section} "${subsection}"'';
@@ -259,17 +250,17 @@ in rec {
       # converts { a.b.c = 5; } to { "a.b".c = 5; } for toINI
       gitFlattenAttrs = let
         recurse = path: value:
-          if
-            isAttrs value && !lib.isDerivation value
-          then
+          if isAttrs value && !lib.isDerivation value then
             lib.mapAttrsToList (name: value: recurse ([ name ] ++ path) value)
             value
-          else if length path > 1 then {
-            ${concatStringsSep "." (lib.reverseList (tail path))}.${head path} =
-              value;
-          } else {
-            ${head path} = value;
-          };
+          else if length path > 1 then
+            {
+              ${concatStringsSep "." (lib.reverseList (tail path))}.${
+                head path
+              } = value;
+            }
+          else
+            { ${head path} = value; };
       in
       attrs: lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs))
       ;
@@ -305,19 +296,13 @@ in rec {
         "__pretty"
       ];
       stepIntoAttr = evalNext: name:
-        if
-          builtins.elem name specialAttrs
-        then
+        if builtins.elem name specialAttrs then
           id
         else
           evalNext;
       transform = depth:
-        if
-          depthLimit != null && depth > depthLimit
-        then
-          if
-            throwOnDepthLimit
-          then
+        if depthLimit != null && depth > depthLimit then
+          if throwOnDepthLimit then
             throw "Exceeded maximum eval-depth limit of ${
               toString depthLimit
             } while trying to evaluate with `generators.withRecursion'!"
@@ -329,9 +314,7 @@ in rec {
         depth: v:
         let
           evalNext = x: mapAny (depth + 1) (transform (depth + 1) x);
-        in if
-          isAttrs v
-        then
+        in if isAttrs v then
           mapAttrs (stepIntoAttr evalNext) v
         else if isList v then
           map evalNext v
@@ -362,21 +345,19 @@ in rec {
         with builtins;
         let
           isPath = v: typeOf v == "path";
-          introSpace = if
-            multiline
-          then ''
+          introSpace = if multiline then
+            ''
 
-            ${indent}  '' else
+              ${indent}  ''
+          else
             " ";
-          outroSpace = if
-            multiline
-          then ''
+          outroSpace = if multiline then
+            ''
 
-            ${indent}'' else
+              ${indent}''
+          else
             " ";
-        in if
-          isInt v
-        then
+        in if isInt v then
           toString v
           # toString loses precision on floats, so we use toJSON instead. This isn't perfect
           # as the resulting string may not parse back as a float (e.g. 42, 1e-06), but for
@@ -407,16 +388,13 @@ in rec {
               lastLine = lib.last escapedLines;
             in
             "''" + introSpace
-            + concatStringsSep introSpace (lib.init escapedLines) + (if
-              lastLine == ""
-            then
+            + concatStringsSep introSpace (lib.init escapedLines)
+            + (if lastLine == "" then
               outroSpace
             else
               introSpace + lastLine) + "''"
             ;
-          in if
-            multiline && length lines > 1
-          then
+          in if multiline && length lines > 1 then
             multilineResult
           else
             singlelineResult
@@ -429,9 +407,7 @@ in rec {
         else if isPath v then
           toString v
         else if isList v then
-          if
-            v == [ ]
-          then
+          if v == [ ] then
             "[ ]"
           else
             "[" + introSpace
@@ -442,23 +418,19 @@ in rec {
             fna = lib.functionArgs v;
             showFnas = concatStringsSep ", " (libAttr.mapAttrsToList
               (name: hasDefVal:
-                if
-                  hasDefVal
-                then
+                if hasDefVal then
                   name + "?"
                 else
                   name) fna);
-          in if
-            fna == { }
-          then
+          in if fna == { } then
             "<function>"
           else
             "<function, args: {${showFnas}}>"
-        else if isAttrs v then
+        else if
+          isAttrs v
+        then
         # apply pretty values if allowed
-          if
-            allowPrettyValues && v ? __pretty && v ? val
-          then
+          if allowPrettyValues && v ? __pretty && v ? val then
             v.__pretty v.val
           else if v == { } then
             "{ }"
@@ -485,9 +457,7 @@ in rec {
       isFloat = builtins.isFloat or (x: false);
       expr = ind: x:
         with builtins;
-        if
-          x == null
-        then
+        if x == null then
           ""
         else if isBool x then
           bool ind x
@@ -507,9 +477,7 @@ in rec {
       literal = ind: x: ind + x;
 
       bool = ind: x:
-        literal ind (if
-          x
-        then
+        literal ind (if x then
           "<true/>"
         else
           "<false/>");
@@ -563,9 +531,7 @@ in rec {
     with builtins;
     let
       concatItems = lib.strings.concatStringsSep ", ";
-    in if
-      isAttrs v
-    then
+    in if isAttrs v then
       "{ ${
         concatItems (lib.attrsets.mapAttrsToList
           (key: value: "${key} = ${toDhall args value}") v)
@@ -574,17 +540,13 @@ in rec {
       "[ ${concatItems (map (toDhall args) v)} ]"
     else if isInt v then
       "${
-        if
-          v < 0
-        then
+        if v < 0 then
           ""
         else
           "+"
       }${toString v}"
     else if isBool v then
-      (if
-        v
-      then
+      (if v then
         "True"
       else
         "False")

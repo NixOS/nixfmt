@@ -31,6 +31,31 @@
   else # test
   /**/
   c)
+  (if [
+    multiline
+    # tmp
+    condition
+  ] then
+    foo
+  else if [
+    more
+    multi
+    line
+  ] then
+    bar
+  else
+    baz
+  )
+  (if unabsorbable # comment
+    == multiline
+  then
+    foo
+  else if unabsorbable # comment
+    == multiline then
+    bar
+  else
+    baz
+  )
   (if if a then b else c then b else if a then b else if a then b else c)
   (if if a then b else c then b else if a then b else /*x*/ if a then b else c)
   (if
