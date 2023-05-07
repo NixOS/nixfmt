@@ -118,8 +118,7 @@ rec # Foo
     { # Foo
       description # Foo
         = # Foo
-        "Checks whether the contrast between two colors meet the WCAG requirements"
-        ; # Foo
+        "Checks whether the contrast between two colors meet the WCAG requirements"; # Foo
       homepage # Foo
         = # Foo
         "https://gitlab.gnome.org/World/design/contrast"; # Foo

@@ -225,11 +225,9 @@ let
   defaultPrefs = {
     "geo.provider.network.url" = {
       value =
-        "https://location.services.mozilla.com/v1/geolocate?key=%MOZILLA_API_KEY%"
-        ;
+        "https://location.services.mozilla.com/v1/geolocate?key=%MOZILLA_API_KEY%";
       reason =
-        "Use MLS by default for geolocation, since our Google API Keys are not working"
-        ;
+        "Use MLS by default for geolocation, since our Google API Keys are not working";
     };
   };
 
@@ -259,8 +257,7 @@ buildStdenv.mkDerivation ({
     # https://bugzilla.mozilla.org/show_bug.cgi?id=1773259
     name = "rust-cbindgen-0.24.2-compat.patch";
     url =
-      "https://raw.githubusercontent.com/canonical/firefox-snap/5622734942524846fb0eb7108918c8cd8557fde3/patches/fix-ftbfs-newer-cbindgen.patch"
-      ;
+      "https://raw.githubusercontent.com/canonical/firefox-snap/5622734942524846fb0eb7108918c8cd8557fde3/patches/fix-ftbfs-newer-cbindgen.patch";
     hash = "sha256-+wNZhkDB3HSknPRD4N6cQXY7zMT/DzNXx29jQH0Gb1o=";
   }) ] ++ lib.optional (lib.versionOlder version "111")
     ./env_var_for_system_dir-ff86.patch

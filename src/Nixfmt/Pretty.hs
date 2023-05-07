@@ -84,19 +84,21 @@ instance Pretty Binder where
     -- `foo = bar`
     pretty (Assignment selectors assign expr semicolon)
         = base $ group $ hcat selectors <> hardspace
-                 <> nest 2 (pretty assign <> absorbInner expr)
+                 <> nest 2 (pretty assign <> inner)
         where
-          -- Function declaration / If statement / Let binding
-          -- If it is multi-line, force it into a new line with indentation, semicolon on separate line
-          absorbInner expr@(Abstraction _ _ _) = line <> pretty expr <> line' <> pretty semicolon
-          absorbInner expr@(If _ _ _ _ _ _)    = line <> pretty expr <> line' <> pretty semicolon
-          absorbInner expr@(Let _ _ _ _)       = line <> pretty expr <> line' <> pretty semicolon
-          -- Absorbable term (list/attrset)
-          -- force-absorb the term and then the semicolon
-          absorbInner expr@(Term t) | isAbsorbable t = hardspace <> group expr <> softline' <> pretty semicolon
-          -- `foo = bar`, otherwise
-          -- Try to absorb and keep the semicolon attached, spread otherwise
-          absorbInner expr = softline <> group (pretty expr <> softline' <> pretty semicolon)
+          inner =
+            case expr of
+              -- Function declaration / If statement / Let binding
+              -- If it is multi-line, force it into a new line with indentation, semicolon on separate line
+              (Abstraction _ _ _) -> line <> pretty expr <> line' <> pretty semicolon
+              (If _ _ _ _ _ _)    -> line <> pretty expr <> line' <> pretty semicolon
+              (Let _ _ _ _)       -> line <> pretty expr <> line' <> pretty semicolon
+              -- Term
+              -- Absorb and keep the semicolon attached if possible
+              (Term t) -> (if isAbsorbable t then hardspace else softline) <> group expr <> pretty semicolon
+              -- Everything else
+              -- Try to absorb and keep the semicolon attached, spread otherwise
+              _ -> softline <> group (pretty expr <> softline' <> pretty semicolon)
 
 
 -- | Pretty print a term without wrapping it in a group.

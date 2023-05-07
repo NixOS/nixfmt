@@ -232,8 +232,7 @@ rec
       # foo
         =
         # foo
-        "Checks whether the contrast between two colors meet the WCAG requirements"
-        ;
+        "Checks whether the contrast between two colors meet the WCAG requirements";
         # foo
       homepage
       # foo
