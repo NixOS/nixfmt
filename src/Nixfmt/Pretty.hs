@@ -113,10 +113,17 @@ prettyTerm (List (Ann paropen Nothing []) [] parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
 -- Singleton list
+-- Expand unless absorbable term or single line
 prettyTerm (List (Ann paropen Nothing []) [item] parclose)
-        = pretty paropen <> hardspace <> pretty item <> hardspace <> pretty parclose
+        = pretty paropen
+          <> (if isAbsorbable item then
+            (hardspace <> pretty item <> hardspace)
+          else
+            (nest 2 (line <> pretty item <> line))
+          ) <> pretty parclose
 
 -- General list
+-- Always expand
 prettyTerm (List (Ann paropen trailing leading) items parclose)
     = base $ pretty paropen <> pretty trailing <> hardline
         <> nest 2 (pretty leading <> sepBy hardline (map group items)) <> hardline

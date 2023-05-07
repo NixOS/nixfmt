@@ -253,13 +253,15 @@ buildStdenv.mkDerivation ({
     "profilingPhase"
   ];
 
-  patches = lib.optionals (lib.versionOlder version "102.6.0") [ (fetchpatch {
-    # https://bugzilla.mozilla.org/show_bug.cgi?id=1773259
-    name = "rust-cbindgen-0.24.2-compat.patch";
-    url =
-      "https://raw.githubusercontent.com/canonical/firefox-snap/5622734942524846fb0eb7108918c8cd8557fde3/patches/fix-ftbfs-newer-cbindgen.patch";
-    hash = "sha256-+wNZhkDB3HSknPRD4N6cQXY7zMT/DzNXx29jQH0Gb1o=";
-  }) ] ++ lib.optional (lib.versionOlder version "111")
+  patches = lib.optionals (lib.versionOlder version "102.6.0") [
+      (fetchpatch {
+        # https://bugzilla.mozilla.org/show_bug.cgi?id=1773259
+        name = "rust-cbindgen-0.24.2-compat.patch";
+        url =
+          "https://raw.githubusercontent.com/canonical/firefox-snap/5622734942524846fb0eb7108918c8cd8557fde3/patches/fix-ftbfs-newer-cbindgen.patch";
+        hash = "sha256-+wNZhkDB3HSknPRD4N6cQXY7zMT/DzNXx29jQH0Gb1o=";
+      })
+    ] ++ lib.optional (lib.versionOlder version "111")
     ./env_var_for_system_dir-ff86.patch
     ++ lib.optional (lib.versionAtLeast version "111")
     ./env_var_for_system_dir-ff111.patch
@@ -471,11 +473,12 @@ buildStdenv.mkDerivation ({
     xorg.xorgproto
     zip
     zlib
-  ] ++ [ (if (lib.versionAtLeast version "103") then
-    nss_latest
-  else
-    nss_esr) ] ++ lib.optional alsaSupport alsa-lib
-    ++ lib.optional jackSupport libjack2
+  ] ++ [
+      (if (lib.versionAtLeast version "103") then
+        nss_latest
+      else
+        nss_esr)
+    ] ++ lib.optional alsaSupport alsa-lib ++ lib.optional jackSupport libjack2
     ++ lib.optional pulseaudioSupport libpulseaudio # only headers are needed
     ++ lib.optional sndioSupport sndio ++ lib.optional gssSupport libkrb5
     ++ lib.optionals waylandSupport [

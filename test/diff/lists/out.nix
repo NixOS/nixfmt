@@ -1,4 +1,15 @@
 [
+  [ {
+    # multiline
+    foo = "bar";
+    foo2 = "barbar";
+  } ]
+  [
+    (if foo then
+      bar # multiline too
+    else
+      baz)
+  ]
   [ 1 ]
 
   [ 1 ]
@@ -57,4 +68,14 @@
 
   ]
 
+  [ [
+    multi
+    line
+  ] ]
+  [ [ [ singleton ] ] ]
+  [ [ [ { } ] ] ]
+  [ [ [
+    { }
+    multiline
+  ] ] ]
 ]
