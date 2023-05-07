@@ -1,388 +1,592 @@
 {
-  config,
-  lib,
-  pkgs,
-  ...
+  pname,
+  version,
+  meta,
+  updateScript ? null,
+  binaryName ? "firefox",
+  application ? "browser",
+  applicationName ? "Mozilla Firefox",
+  branding ? null,
+  src,
+  unpackPhase ? null,
+  extraPatches ? [ ],
+  extraPostPatch ? "",
+  extraNativeBuildInputs ? [ ],
+  extraConfigureFlags ? [ ],
+  extraBuildInputs ? [ ],
+  extraMakeFlags ? [ ],
+  extraPassthru ? { },
+  tests ? [ ]
 }:
 
-with lib;
+{
+  lib,
+  pkgs,
+  stdenv,
+  fetchpatch,
+  patchelf
+
+  # build time
+  ,
+  autoconf,
+  cargo,
+  dump_syms,
+  makeWrapper,
+  nodejs,
+  perl,
+  pkg-config,
+  pkgsCross # wasm32 rlbox
+  ,
+  python3,
+  runCommand,
+  rustc,
+  rust-cbindgen,
+  rustPlatform,
+  unzip,
+  which,
+  wrapGAppsHook
+
+  # runtime
+  ,
+  bzip2,
+  dbus,
+  dbus-glib,
+  file,
+  fontconfig,
+  freetype,
+  glib,
+  gnum4,
+  gtk3,
+  icu,
+  libGL,
+  libGLU,
+  libevent,
+  libffi,
+  libjpeg,
+  libpng,
+  libstartup_notification,
+  libvpx,
+  libwebp,
+  nasm,
+  nspr,
+  nss_esr,
+  nss_latest,
+  pango,
+  xorg,
+  zip,
+  zlib,
+  pkgsBuildBuild
+
+  # optionals
+
+  ## debugging
+
+  ,
+  debugBuild ? false
+
+    # On 32bit platforms, we disable adding "-g" for easier linking.
+  ,
+  enableDebugSymbols ? !stdenv.is32bit
+
+    ## optional libraries
+
+  ,
+  alsaSupport ? stdenv.isLinux,
+  alsa-lib,
+  ffmpegSupport ? true,
+  gssSupport ? true,
+  libkrb5,
+  jackSupport ? stdenv.isLinux,
+  libjack2,
+  jemallocSupport ? true,
+  jemalloc,
+  ltoSupport ? (stdenv.isLinux && stdenv.is64bit),
+  overrideCC,
+  buildPackages,
+  pgoSupport ? (stdenv.isLinux && stdenv.hostPlatform == stdenv.buildPlatform),
+  xvfb-run,
+  pipewireSupport ? waylandSupport && webrtcSupport,
+  pulseaudioSupport ? stdenv.isLinux,
+  libpulseaudio,
+  sndioSupport ? stdenv.isLinux,
+  sndio,
+  waylandSupport ? true,
+  libxkbcommon,
+  libdrm
+
+  ## privacy-related options
+
+  ,
+  privacySupport ? false
+
+    # WARNING: NEVER set any of the options below to `true` by default.
+    # Set to `!privacySupport` or `false`.
+
+  ,
+  crashreporterSupport ? !privacySupport,
+  curl,
+  geolocationSupport ? !privacySupport,
+  googleAPISupport ? geolocationSupport,
+  mlsAPISupport ? geolocationSupport,
+  webrtcSupport ? !privacySupport
+
+    # digital rights managemewnt
+
+    # This flag controls whether Firefox will show the nagbar, that allows
+    # users at runtime the choice to enable Widevine CDM support when a site
+    # requests it.
+    # Controlling the nagbar and widevine CDM at runtime is possible by setting
+    # `browser.eme.ui.enabled` and `media.gmp-widevinecdm.enabled` accordingly
+  ,
+  drmSupport ? true
+
+    # As stated by Sylvestre Ledru (@sylvestre) on Nov 22, 2017 at
+    # https://github.com/NixOS/nixpkgs/issues/31843#issuecomment-346372756 we
+    # have permission to use the official firefox branding.
+    #
+    # For purposes of documentation the statement of @sylvestre:
+    # > As the person who did part of the work described in the LWN article
+    # > and release manager working for Mozilla, I can confirm the statement
+    # > that I made in
+    # > https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=815006
+    # >
+    # > @garbas shared with me the list of patches applied for the Nix package.
+    # > As they are just for portability and tiny modifications, they don't
+    # > alter the experience of the product. In parallel, Rok also shared the
+    # > build options. They seem good (even if I cannot judge the quality of the
+    # > packaging of the underlying dependencies like sqlite, png, etc).
+    # > Therefor, as long as you keep the patch queue sane and you don't alter
+    # > the experience of Firefox users, you won't have any issues using the
+    # > official branding.
+  ,
+  enableOfficialBranding ? true
+}:
+
+assert stdenv.cc.libc or null != null;
+assert pipewireSupport -> !waylandSupport || !webrtcSupport -> throw
+  "${pname}: pipewireSupport requires both wayland and webrtc support.";
 
 let
+  inherit (lib)
+    enableFeature
+    ;
 
-  inherit (config.boot) kernelPatches;
-  inherit (config.boot.kernel) features randstructSeed;
-  inherit (config.boot.kernelPackages) kernel;
+    # Target the LLVM version that rustc is built with for LTO.
+  llvmPackages0 = rustc.llvmPackages;
+  llvmPackagesBuildBuild0 = pkgsBuildBuild.rustc.llvmPackages;
 
-  kernelModulesConf = pkgs.writeText "nixos.conf" ''
-    ${concatStringsSep "\n" config.boot.kernelModules}
-  '';
-
-in {
-
-  ###### interface
-
-  options = {
-
-    boot.kernel.features = mkOption {
-      default = { };
-      example = literalExpression "{ debug = true; }";
-      internal = true;
-      description = ''
-        This option allows to enable or disable certain kernel features.
-        It's not API, because it's about kernel feature sets, that
-        make sense for specific use cases. Mostly along with programs,
-        which would have separate nixos options.
-        `grep features pkgs/os-specific/linux/kernel/common-config.nix`
-      '';
-    };
-
-    boot.kernelPackages = mkOption {
-      default = pkgs.linuxPackages;
-      type = types.unspecified // { merge = mergeEqualOption; };
-      apply =
-        kernelPackages:
-        kernelPackages.extend (self: super: {
-          kernel = super.kernel.override (originalArgs: {
-            inherit randstructSeed;
-            kernelPatches =
-              (originalArgs.kernelPatches or [ ]) ++ kernelPatches;
-            features = lib.recursiveUpdate super.kernel.features features;
-          });
-        })
-        ;
-        # We don't want to evaluate all of linuxPackages for the manual
-        # - some of it might not even evaluate correctly.
-      defaultText = literalExpression "pkgs.linuxPackages";
-      example = literalExpression "pkgs.linuxKernel.packages.linux_5_10";
-      description = ''
-        This option allows you to override the Linux kernel used by
-        NixOS.  Since things like external kernel module packages are
-        tied to the kernel you're using, it also overrides those.
-        This option is a function that takes Nixpkgs as an argument
-        (as a convenience), and returns an attribute set containing at
-        the very least an attribute <varname>kernel</varname>.
-        Additional attributes may be needed depending on your
-        configuration.  For instance, if you use the NVIDIA X driver,
-        then it also needs to contain an attribute
-        <varname>nvidia_x11</varname>.
-      '';
-    };
-
-    boot.kernelPatches = mkOption {
-      type = types.listOf types.attrs;
-      default = [ ];
-      example = literalExpression "[ pkgs.kernelPatches.ubuntu_fan_4_4 ]";
-      description = "A list of additional patches to apply to the kernel.";
-    };
-
-    boot.kernel.randstructSeed = mkOption {
-      type = types.str;
-      default = "";
-      example = "my secret seed";
-      description = ''
-        Provides a custom seed for the <varname>RANDSTRUCT</varname> security
-        option of the Linux kernel. Note that <varname>RANDSTRUCT</varname> is
-        only enabled in NixOS hardened kernels. Using a custom seed requires
-        building the kernel and dependent packages locally, since this
-        customization happens at build time.
-      '';
-    };
-
-    boot.kernelParams = mkOption {
-      type = types.listOf (types.strMatching ''([^"[:space:]]|"[^"]*")+'' // {
-        name = "kernelParam";
-        description = "string, with spaces inside double quotes";
-      });
-      default = [ ];
-      description = "Parameters added to the kernel command line.";
-    };
-
-    boot.consoleLogLevel = mkOption {
-      type = types.int;
-      default = 4;
-      description = ''
-        The kernel console <literal>loglevel</literal>. All Kernel Messages with a log level smaller
-        than this setting will be printed to the console.
-      '';
-    };
-
-    boot.vesa = mkOption {
-      type = types.bool;
-      default = false;
-      description = ''
-        (Deprecated) This option, if set, activates the VESA 800x600 video
-        mode on boot and disables kernel modesetting. It is equivalent to
-        specifying <literal>[ "vga=0x317" "nomodeset" ]</literal> in the
-        <option>boot.kernelParams</option> option. This option is
-        deprecated as of 2020: Xorg now works better with modesetting, and
-        you might want a different VESA vga setting, anyway.
-      '';
-    };
-
-    boot.extraModulePackages = mkOption {
-      type = types.listOf types.package;
-      default = [ ];
-      example = literalExpression "[ config.boot.kernelPackages.nvidia_x11 ]";
-      description = "A list of additional packages supplying kernel modules.";
-    };
-
-    boot.kernelModules = mkOption {
-      type = types.listOf types.str;
-      default = [ ];
-      description = ''
-        The set of kernel modules to be loaded in the second stage of
-        the boot process.  Note that modules that are needed to
-        mount the root file system should be added to
-        <option>boot.initrd.availableKernelModules</option> or
-        <option>boot.initrd.kernelModules</option>.
-      '';
-    };
-
-    boot.initrd.availableKernelModules = mkOption {
-      type = types.listOf types.str;
-      default = [ ];
-      example = [
-        "sata_nv"
-        "ext3"
-      ];
-      description = ''
-        The set of kernel modules in the initial ramdisk used during the
-        boot process.  This set must include all modules necessary for
-        mounting the root device.  That is, it should include modules
-        for the physical device (e.g., SCSI drivers) and for the file
-        system (e.g., ext3).  The set specified here is automatically
-        closed under the module dependency relation, i.e., all
-        dependencies of the modules list here are included
-        automatically.  The modules listed here are available in the
-        initrd, but are only loaded on demand (e.g., the ext3 module is
-        loaded automatically when an ext3 filesystem is mounted, and
-        modules for PCI devices are loaded when they match the PCI ID
-        of a device in your system).  To force a module to be loaded,
-        include it in <option>boot.initrd.kernelModules</option>.
-      '';
-    };
-
-    boot.initrd.kernelModules = mkOption {
-      type = types.listOf types.str;
-      default = [ ];
-      description = "List of modules that are always loaded by the initrd.";
-    };
-
-    boot.initrd.includeDefaultModules = mkOption {
-      type = types.bool;
-      default = true;
-      description = ''
-        This option, if set, adds a collection of default kernel modules
-        to <option>boot.initrd.availableKernelModules</option> and
-        <option>boot.initrd.kernelModules</option>.
-      '';
-    };
-
-    system.modulesTree = mkOption {
-      type = types.listOf types.path;
-      internal = true;
-      default = [ ];
-      description = ''
-        Tree of kernel modules.  This includes the kernel, plus modules
-        built outside of the kernel.  Combine these into a single tree of
-        symlinks because modprobe only supports one directory.
-      '';
-        # Convert the list of path to only one path.
-      apply = pkgs.aggregateModules;
-    };
-
-    system.requiredKernelConfig = mkOption {
-      default = [ ];
-      example = literalExpression ''
-        with config.lib.kernelConfig; [
-          (isYes "MODULES")
-          (isEnabled "FB_CON_DECOR")
-          (isEnabled "BLK_DEV_INITRD")
-        ]
-      '';
-      internal = true;
-      type = types.listOf types.attrs;
-      description = ''
-        This option allows modules to specify the kernel config options that
-        must be set (or unset) for the module to work. Please use the
-        lib.kernelConfig functions to build list elements.
-      '';
-    };
-
+    # Force the use of lld and other llvm tools for LTO
+  llvmPackages = llvmPackages0.override {
+    bootBintoolsNoLibc = null;
+    bootBintools = null;
+  };
+  llvmPackagesBuildBuild = llvmPackagesBuildBuild0.override {
+    bootBintoolsNoLibc = null;
+    bootBintools = null;
   };
 
-    ###### implementation
-
-  config = mkMerge [
-    (mkIf config.boot.initrd.enable {
-      boot.initrd.availableKernelModules =
-        optionals config.boot.initrd.includeDefaultModules ([
-          # Note: most of these (especially the SATA/PATA modules)
-          # shouldn't be included by default since nixos-generate-config
-          # detects them, but I'm keeping them for now for backwards
-          # compatibility.
-
-          # Some SATA/PATA stuff.
-          "ahci"
-          "sata_nv"
-          "sata_via"
-          "sata_sis"
-          "sata_uli"
-          "ata_piix"
-          "pata_marvell"
-
-          # Standard SCSI stuff.
-          "sd_mod"
-          "sr_mod"
-
-          # SD cards and internal eMMC drives.
-          "mmc_block"
-
-          # Support USB keyboards, in case the boot fails and we only have
-          # a USB keyboard, or for LUKS passphrase prompt.
-          "uhci_hcd"
-          "ehci_hcd"
-          "ehci_pci"
-          "ohci_hcd"
-          "ohci_pci"
-          "xhci_hcd"
-          "xhci_pci"
-          "usbhid"
-          "hid_generic"
-          "hid_lenovo"
-          "hid_apple"
-          "hid_roccat"
-          "hid_logitech_hidpp"
-          "hid_logitech_dj"
-          "hid_microsoft"
-
-        ] ++ optionals pkgs.stdenv.hostPlatform.isx86 [
-          # Misc. x86 keyboard stuff.
-          "pcips2"
-          "atkbd"
-          "i8042"
-
-          # x86 RTC needed by the stage 2 init script.
-          "rtc_cmos"
-        ]);
-
-      boot.initrd.kernelModules =
-        optionals config.boot.initrd.includeDefaultModules [
-          # For LVM.
-          "dm_mod"
-        ];
-    })
-
-    (mkIf (!config.boot.isContainer) {
-      system.build = { inherit kernel; };
-
-      system.modulesTree = [ kernel ] ++ config.boot.extraModulePackages;
-
-        # Implement consoleLogLevel both in early boot and using sysctl
-        # (so you don't need to reboot to have changes take effect).
-      boot.kernelParams = [ "loglevel=${toString config.boot.consoleLogLevel}" ]
-        ++ optionals config.boot.vesa [
-          "vga=0x317"
-          "nomodeset"
-        ];
-
-      boot.kernel.sysctl."kernel.printk" =
-        mkDefault config.boot.consoleLogLevel;
-
-      boot.kernelModules = [
-        "loop"
-        "atkbd"
-      ];
-
-        # The Linux kernel >= 2.6.27 provides firmware.
-      hardware.firmware = [ kernel ];
-
-        # Create /etc/modules-load.d/nixos.conf, which is read by
-        # systemd-modules-load.service to load required kernel modules.
-      environment.etc = {
-        "modules-load.d/nixos.conf".source = kernelModulesConf;
-      };
-
-      systemd.services.systemd-modules-load = {
-        wantedBy = [ "multi-user.target" ];
-        restartTriggers = [ kernelModulesConf ];
-        serviceConfig = { # Ignore failed module loads.  Typically some of the
-          # modules in ‘boot.kernelModules’ are "nice to have but
-          # not required" (e.g. acpi-cpufreq), so we don't want to
-          # barf on those.
-          SuccessExitStatus = "0 1";
-        };
-      };
-
-      lib.kernelConfig = {
-        isYes =
-          option: {
-            assertion = config: config.isYes option;
-            message = "CONFIG_${option} is not yes!";
-            configLine = "CONFIG_${option}=y";
-          }
-          ;
-
-        isNo =
-          option: {
-            assertion = config: config.isNo option;
-            message = "CONFIG_${option} is not no!";
-            configLine = "CONFIG_${option}=n";
-          }
-          ;
-
-        isModule =
-          option: {
-            assertion = config: config.isModule option;
-            message = "CONFIG_${option} is not built as a module!";
-            configLine = "CONFIG_${option}=m";
-          }
-          ;
-
-          ### Usually you will just want to use these two
-          # True if yes or module
-        isEnabled =
-          option: {
-            assertion = config: config.isEnabled option;
-            message = "CONFIG_${option} is not enabled!";
-            configLine = "CONFIG_${option}=y";
-          }
-          ;
-
-          # True if no or omitted
-        isDisabled =
-          option: {
-            assertion = config: config.isDisabled option;
-            message = "CONFIG_${option} is not disabled!";
-            configLine = "CONFIG_${option}=n";
-          }
-          ;
-      };
-
-        # The config options that all modules can depend upon
-      system.requiredKernelConfig = with config.lib.kernelConfig;
-        [
-          # !!! Should this really be needed?
-          (isYes "MODULES")
-          (isYes "BINFMT_ELF")
-        ] ++ (optional (randstructSeed != "") (isYes "GCC_PLUGIN_RANDSTRUCT"));
-
-        # nixpkgs kernels are assumed to have all required features
-      assertions =
-        if config.boot.kernelPackages.kernel ? features then
-          [ ]
+    # LTO requires LLVM bintools including ld.lld and llvm-ar.
+  buildStdenv = overrideCC llvmPackages.stdenv
+    (llvmPackages.stdenv.cc.override {
+      bintools =
+        if ltoSupport then
+          buildPackages.rustc.llvmPackages.bintools
         else
-          let
-            cfg = config.boot.kernelPackages.kernel.config;
-          in
-          map (attrs: {
-            assertion = attrs.assertion cfg;
-            inherit (attrs) message;
-          }) config.system.requiredKernelConfig
+          stdenv.cc.bintools
         ;
+    });
 
-    })
+    # Compile the wasm32 sysroot to build the RLBox Sandbox
+    # https://hacks.mozilla.org/2021/12/webassembly-and-back-again-fine-grained-sandboxing-in-firefox-95/
+    # We only link c++ libs here, our compiler wrapper can find wasi libc and crt itself.
+  wasiSysRoot = runCommand "wasi-sysroot" { } ''
+    mkdir -p $out/lib/wasm32-wasi
+    for lib in ${pkgsCross.wasi32.llvmPackages.libcxx}/lib/* ${pkgsCross.wasi32.llvmPackages.libcxxabi}/lib/*; do
+      ln -s $lib $out/lib/wasm32-wasi
+    done
+  '';
 
+  distributionIni = pkgs.writeText "distribution.ini"
+    (lib.generators.toINI { } {
+      # Some light branding indicating this build uses our distro preferences
+      Global = {
+        id = "nixos";
+        version = "1.0";
+        about = "${applicationName} for NixOS";
+      };
+      Preferences = {
+        # These values are exposed through telemetry
+        "app.distributor" = "nixos";
+        "app.distributor.channel" = "nixpkgs";
+        "app.partner.nixos" = "nixos";
+      };
+    });
+
+  defaultPrefs = {
+    "geo.provider.network.url" = {
+      value =
+        "https://location.services.mozilla.com/v1/geolocate?key=%MOZILLA_API_KEY%"
+        ;
+      reason =
+        "Use MLS by default for geolocation, since our Google API Keys are not working"
+        ;
+    };
+  };
+
+  defaultPrefsFile = pkgs.writeText "nixos-default-prefs.js"
+    (lib.concatStringsSep "\n" (lib.mapAttrsToList (key: value: ''
+      // ${value.reason}
+      pref("${key}", ${builtins.toJSON value.value});
+    '') defaultPrefs));
+
+in
+buildStdenv.mkDerivation ({
+  pname = "${pname}-unwrapped";
+  inherit version;
+
+  inherit src unpackPhase meta;
+
+  outputs = [ "out" ] ++ lib.optionals crashreporterSupport [ "symbols" ];
+
+    # Add another configure-build-profiling run before the final configure phase if we build with pgo
+  preConfigurePhases = lib.optionals pgoSupport [
+    "configurePhase"
+    "buildPhase"
+    "profilingPhase"
   ];
 
-}
+  patches = lib.optionals (lib.versionOlder version "102.6.0") [ (fetchpatch {
+    # https://bugzilla.mozilla.org/show_bug.cgi?id=1773259
+    name = "rust-cbindgen-0.24.2-compat.patch";
+    url =
+      "https://raw.githubusercontent.com/canonical/firefox-snap/5622734942524846fb0eb7108918c8cd8557fde3/patches/fix-ftbfs-newer-cbindgen.patch"
+      ;
+    hash = "sha256-+wNZhkDB3HSknPRD4N6cQXY7zMT/DzNXx29jQH0Gb1o=";
+  }) ] ++ lib.optional (lib.versionOlder version "111")
+    ./env_var_for_system_dir-ff86.patch
+    ++ lib.optional (lib.versionAtLeast version "111")
+    ./env_var_for_system_dir-ff111.patch
+    ++ lib.optional (lib.versionAtLeast version "96")
+    ./no-buildconfig-ffx96.patch ++ extraPatches;
+
+  postPatch = ''
+    rm -rf obj-x86_64-pc-linux-gnu
+    patchShebangs mach build
+  '' + extraPostPatch;
+
+    # Ignore trivial whitespace changes in patches, this fixes compatibility of
+    # ./env_var_for_system_dir.patch with Firefox >=65 without having to track
+    # two patches.
+  patchFlags = [
+    "-p1"
+    "-l"
+  ];
+
+    # if not explicitly set, wrong cc from buildStdenv would be used
+  HOST_CC = "${llvmPackagesBuildBuild.stdenv.cc}/bin/cc";
+  HOST_CXX = "${llvmPackagesBuildBuild.stdenv.cc}/bin/c++";
+
+  nativeBuildInputs = [
+    autoconf
+    cargo
+    gnum4
+    llvmPackagesBuildBuild.bintools
+    makeWrapper
+    nodejs
+    perl
+    pkg-config
+    python3
+    rust-cbindgen
+    rustPlatform.bindgenHook
+    rustc
+    unzip
+    which
+    wrapGAppsHook
+  ] ++ lib.optionals crashreporterSupport [
+    dump_syms
+    patchelf
+  ] ++ lib.optionals pgoSupport [ xvfb-run ] ++ extraNativeBuildInputs;
+
+  setOutputFlags =
+    false; # `./mach configure` doesn't understand `--*dir=` flags.
+
+  preConfigure = ''
+    # remove distributed configuration files
+    rm -f configure js/src/configure .mozconfig*
+
+    # Runs autoconf through ./mach configure in configurePhase
+    configureScript="$(realpath ./mach) configure"
+
+    # Set predictable directories for build and state
+    export MOZ_OBJDIR=$(pwd)/mozobj
+    export MOZBUILD_STATE_PATH=$(pwd)/mozbuild
+
+    # Don't try to send libnotify notifications during build
+    export MOZ_NOSPAM=1
+
+    # Set consistent remoting name to ensure wmclass matches with desktop file
+    export MOZ_APP_REMOTINGNAME="${binaryName}"
+
+    # AS=as in the environment causes build failure
+    # https://bugzilla.mozilla.org/show_bug.cgi?id=1497286
+    unset AS
+
+    # Use our own python
+    export MACH_BUILD_PYTHON_NATIVE_PACKAGE_SOURCE=system
+
+    # RBox WASM Sandboxing
+    export WASM_CC=${pkgsCross.wasi32.stdenv.cc}/bin/${pkgsCross.wasi32.stdenv.cc.targetPrefix}cc
+    export WASM_CXX=${pkgsCross.wasi32.stdenv.cc}/bin/${pkgsCross.wasi32.stdenv.cc.targetPrefix}c++
+  '' + lib.optionalString pgoSupport ''
+    if [ -e "$TMPDIR/merged.profdata" ]; then
+      echo "Configuring with profiling data"
+      for i in "''${!configureFlagsArray[@]}"; do
+        if [[ ''${configureFlagsArray[i]} = "--enable-profile-generate=cross" ]]; then
+          unset 'configureFlagsArray[i]'
+        fi
+      done
+      configureFlagsArray+=(
+        "--enable-profile-use=cross"
+        "--with-pgo-profile-path="$TMPDIR/merged.profdata""
+        "--with-pgo-jarlog="$TMPDIR/jarlog""
+      )
+    else
+      echo "Configuring to generate profiling data"
+      configureFlagsArray+=(
+        "--enable-profile-generate=cross"
+      )
+    fi
+  '' + lib.optionalString googleAPISupport ''
+    # Google API key used by Chromium and Firefox.
+    # Note: These are for NixOS/nixpkgs use ONLY. For your own distribution,
+    # please get your own set of keys at https://www.chromium.org/developers/how-tos/api-keys/.
+    echo "AIzaSyDGi15Zwl11UNe6Y-5XW_upsfyw31qwZPI" > $TMPDIR/google-api-key
+    # 60.5+ & 66+ did split the google API key arguments: https://bugzilla.mozilla.org/show_bug.cgi?id=1531176
+    configureFlagsArray+=("--with-google-location-service-api-keyfile=$TMPDIR/google-api-key")
+    configureFlagsArray+=("--with-google-safebrowsing-api-keyfile=$TMPDIR/google-api-key")
+  '' + lib.optionalString mlsAPISupport ''
+    # Mozilla Location services API key
+    # Note: These are for NixOS/nixpkgs use ONLY. For your own distribution,
+    # please get your own set of keys at https://location.services.mozilla.com/api.
+    echo "dfd7836c-d458-4917-98bb-421c82d3c8a0" > $TMPDIR/mls-api-key
+    configureFlagsArray+=("--with-mozilla-api-keyfile=$TMPDIR/mls-api-key")
+  '' + lib.optionalString (enableOfficialBranding && !stdenv.is32bit) ''
+    export MOZILLA_OFFICIAL=1
+  '';
+
+    # firefox has a different definition of configurePlatforms from nixpkgs, see configureFlags
+  configurePlatforms = [ ];
+
+  configureFlags = [
+    "--disable-tests"
+    "--disable-updater"
+    "--enable-application=${application}"
+    "--enable-default-toolkit=cairo-gtk3${
+      lib.optionalString waylandSupport "-wayland"
+    }"
+    "--enable-system-pixman"
+    "--with-distribution-id=org.nixos"
+    "--with-libclang-path=${llvmPackagesBuildBuild.libclang.lib}/lib"
+    "--with-system-ffi"
+    "--with-system-icu"
+    "--with-system-jpeg"
+    "--with-system-libevent"
+    "--with-system-libvpx"
+    "--with-system-nspr"
+    "--with-system-nss"
+    "--with-system-png" # needs APNG support
+    "--with-system-webp"
+    "--with-system-zlib"
+    "--with-wasi-sysroot=${wasiSysRoot}"
+    # for firefox, host is buildPlatform, target is hostPlatform
+    "--host=${buildStdenv.buildPlatform.config}"
+    "--target=${buildStdenv.hostPlatform.config}"
+  ]
+  # LTO is done using clang and lld on Linux.
+    ++ lib.optionals ltoSupport [
+      "--enable-lto=cross" # Cross-Language LTO
+      "--enable-linker=lld"
+    ]
+    # elf-hack is broken when using clang+lld:
+    # https://bugzilla.mozilla.org/show_bug.cgi?id=1482204
+    ++ lib.optional (ltoSupport
+      && (buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64))
+    "--disable-elf-hack" ++ lib.optional (!drmSupport) "--disable-eme" ++ [
+      (enableFeature alsaSupport "alsa")
+      (enableFeature crashreporterSupport "crashreporter")
+      (enableFeature ffmpegSupport "ffmpeg")
+      (enableFeature geolocationSupport "necko-wifi")
+      (enableFeature gssSupport "negotiateauth")
+      (enableFeature jackSupport "jack")
+      (enableFeature jemallocSupport "jemalloc")
+      (enableFeature pulseaudioSupport "pulseaudio")
+      (enableFeature sndioSupport "sndio")
+      (enableFeature webrtcSupport "webrtc")
+      (enableFeature debugBuild "debug")
+      (if debugBuild then
+        "--enable-profiling"
+      else
+        "--enable-optimize")
+      # --enable-release adds -ffunction-sections & LTO that require a big amount
+      # of RAM, and the 32-bit memory space cannot handle that linking
+      (enableFeature (!debugBuild && !stdenv.is32bit) "release")
+      (enableFeature enableDebugSymbols "debug-symbols")
+    ] ++ lib.optionals enableDebugSymbols [
+      "--disable-strip"
+      "--disable-install-strip"
+    ] ++ lib.optional enableOfficialBranding "--enable-official-branding"
+    ++ lib.optional (branding != null) "--with-branding=${branding}"
+    ++ extraConfigureFlags;
+
+  buildInputs = [
+    bzip2
+    dbus
+    dbus-glib
+    file
+    fontconfig
+    freetype
+    glib
+    gtk3
+    icu
+    libffi
+    libGL
+    libGLU
+    libevent
+    libjpeg
+    libpng
+    libstartup_notification
+    libvpx
+    libwebp
+    nasm
+    nspr
+    pango
+    perl
+    xorg.libX11
+    xorg.libXcursor
+    xorg.libXdamage
+    xorg.libXext
+    xorg.libXft
+    xorg.libXi
+    xorg.libXrender
+    xorg.libXt
+    xorg.libXtst
+    xorg.pixman
+    xorg.xorgproto
+    zip
+    zlib
+  ] ++ [ (if (lib.versionAtLeast version "103") then
+    nss_latest
+  else
+    nss_esr) ] ++ lib.optional alsaSupport alsa-lib
+    ++ lib.optional jackSupport libjack2
+    ++ lib.optional pulseaudioSupport libpulseaudio # only headers are needed
+    ++ lib.optional sndioSupport sndio ++ lib.optional gssSupport libkrb5
+    ++ lib.optionals waylandSupport [
+      libxkbcommon
+      libdrm
+    ] ++ lib.optional jemallocSupport jemalloc ++ extraBuildInputs;
+
+  profilingPhase = lib.optionalString pgoSupport ''
+    # Package up Firefox for profiling
+    ./mach package
+
+    # Run profiling
+    (
+      export HOME=$TMPDIR
+      export LLVM_PROFDATA=llvm-profdata
+      export JARLOG_FILE="$TMPDIR/jarlog"
+
+      xvfb-run -w 10 -s "-screen 0 1920x1080x24" \
+        ./mach python ./build/pgo/profileserver.py
+    )
+
+    # Copy profiling data to a place we can easily reference
+    cp ./merged.profdata $TMPDIR/merged.profdata
+
+    # Clean build dir
+    ./mach clobber
+  '';
+
+  preBuild = ''
+    cd mozobj
+  '';
+
+  postBuild = ''
+    cd ..
+  '';
+
+  makeFlags = extraMakeFlags;
+  separateDebugInfo = enableDebugSymbols;
+  enableParallelBuilding = true;
+
+    # tests were disabled in configureFlags
+  doCheck = false;
+
+    # Generate build symbols once after the final build
+    # https://firefox-source-docs.mozilla.org/crash-reporting/uploading_symbol.html
+  preInstall = lib.optionalString crashreporterSupport ''
+    ./mach buildsymbols
+    mkdir -p $symbols/
+    cp mozobj/dist/*.crashreporter-symbols.zip $symbols/
+  '' + ''
+    cd mozobj
+  '';
+
+  postInstall = ''
+    # Install distribution customizations
+    install -Dvm644 ${distributionIni} $out/lib/${binaryName}/distribution/distribution.ini
+    install -Dvm644 ${defaultPrefsFile} $out/lib/${binaryName}/browser/defaults/preferences/nixos-default-prefs.js
+
+  '' + lib.optionalString buildStdenv.isLinux ''
+    # Remove SDK cruft. FIXME: move to a separate output?
+    rm -rf $out/share/idl $out/include $out/lib/${binaryName}-devel-*
+
+    # Needed to find Mozilla runtime
+    gappsWrapperArgs+=(--argv0 "$out/bin/.${binaryName}-wrapped")
+  '';
+
+  postFixup = lib.optionalString crashreporterSupport ''
+    patchelf --add-rpath "${
+      lib.makeLibraryPath [ curl ]
+    }" $out/lib/${binaryName}/crashreporter
+  '';
+
+  doInstallCheck = true;
+  installCheckPhase = ''
+    # Some basic testing
+    "$out/bin/${binaryName}" --version
+  '';
+
+  passthru = {
+    inherit updateScript;
+    inherit version;
+    inherit alsaSupport;
+    inherit binaryName;
+    inherit jackSupport;
+    inherit pipewireSupport;
+    inherit sndioSupport;
+    inherit nspr;
+    inherit ffmpegSupport;
+    inherit gssSupport;
+    inherit tests;
+    inherit gtk3;
+    inherit wasiSysRoot;
+  } // extraPassthru;
+
+  hardeningDisable = [ "format" ]; # -Werror=format-security
+
+    # the build system verifies checksums of the bundled rust sources
+    # ./third_party/rust is be patched by our libtool fixup code in stdenv
+    # unfortunately we can't just set this to `false` when we do not want it.
+    # See https://github.com/NixOS/nixpkgs/issues/77289 for more details
+    # Ideally we would figure out how to tell the build system to not
+    # care about changed hashes as we are already doing that when we
+    # fetch the sources. Any further modifications of the source tree
+    # is on purpose by some of our tool (or by accident and a bug?).
+  dontFixLibtool = true;
+
+    # on aarch64 this is also required
+  dontUpdateAutotoolsGnuConfigScripts = true;
+
+  requiredSystemFeatures = [ "big-parallel" ];
+})
