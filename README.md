@@ -47,7 +47,7 @@ Haskell dependencies will be built by Cabal.
 
 ## Usage
 
-* `nixfmt < input.nix` – reads Nix code form `stdin`, formats it, and outputs to `stdout`
+* `nixfmt < input.nix` – reads Nix code from `stdin`, formats it, and outputs to `stdout`
 * `nixfmt file.nix` – format the file in place
 
 
