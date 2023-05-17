@@ -17,7 +17,8 @@ let
     ${concatStringsSep "\n" config.boot.kernelModules}
   '';
 
-in {
+in
+{
 
   ###### interface
 

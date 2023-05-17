@@ -208,16 +208,6 @@ absorb left right (Just level) x
 absorbSet :: Expression -> Doc
 absorbSet = absorb line mempty Nothing
 
--- What is allowed to come on the same line as `in`?
--- Absorbable terms like sets
--- if, with, let
-absorbIn :: Expression -> Doc
-absorbIn (Term t) | isAbsorbable t = hardspace <> prettyTerm t <> hardspace
-absorbIn x@(If _ _ _ _ _ _)        = group x
-absorbIn x@(With _ _ _ _)          = group x
-absorbIn x@(Let _ _ _ _)           = group x
-absorbIn x                         = line <> group x <> line
-
 -- Only absorb "else if"
 absorbElse :: Expression -> Doc
 absorbElse (If if_ cond then_ expr0 else_ expr1)
@@ -245,7 +235,7 @@ instance Pretty Expression where
                 (Ann in_ inTrailing inLeading) expr)
         = base $ group letPart <> line <> inPart
         where letPart = pretty let_ <> pretty letTrailing <> hardline <> letBody
-              inPart = pretty in_ <> hardspace <> absorbIn expr
+              inPart = pretty in_ <> line <> group expr <> line
               letBody = nest 2 $
                   pretty letLeading
                   <> sepBy hardline binders

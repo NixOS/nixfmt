@@ -22,7 +22,8 @@ let
 
   inherit (lib) isFunction;
 
-in rec {
+in
+rec {
 
   ## -- HELPER FUNCTIONS & DEFAULTS --
 
@@ -39,7 +40,8 @@ in rec {
         abort ("generators.mkValueStringDefault: "
           + "${t} not supported: ${toPretty { } v}")
         ;
-    in if isInt v then
+    in
+    if isInt v then
       toString v
       # convert derivations to store paths
     else if lib.isDerivation v then
@@ -252,7 +254,8 @@ in rec {
           section = head sections;
           subsections = tail sections;
           subsection = concatStringsSep "." subsections;
-        in if containsQuote || subsections == [ ] then
+        in
+        if containsQuote || subsections == [ ] then
           name
         else
           ''${section} "${subsection}"''
@@ -346,12 +349,14 @@ in rec {
         depth: v:
         let
           evalNext = x: mapAny (depth + 1) (transform (depth + 1) x);
-        in if isAttrs v then
+        in
+        if isAttrs v then
           mapAttrs (stepIntoAttr evalNext) v
         else if isList v then
           map evalNext v
         else
-          transform (depth + 1) v;
+          transform (depth + 1) v
+        ;
     in
     mapAny 0
     ;
@@ -395,7 +400,8 @@ in rec {
             else
               " "
             ;
-        in if isInt v then
+        in
+        if isInt v then
           toString v
           # toString loses precision on floats, so we use toJSON instead. This isn't perfect
           # as the resulting string may not parse back as a float (e.g. 42, 1e-06), but for
@@ -433,7 +439,8 @@ in rec {
               else
                 introSpace + lastLine) + "''"
               ;
-          in if multiline && length lines > 1 then
+          in
+          if multiline && length lines > 1 then
             multilineResult
           else
             singlelineResult
@@ -461,7 +468,8 @@ in rec {
                   name + "?"
                 else
                   name) fna);
-          in if fna == { } then
+          in
+          if fna == { } then
             "<function>"
           else
             "<function, args: {${showFnas}}>"
@@ -566,7 +574,8 @@ in rec {
             ]) x))
         ;
 
-    in ''
+    in
+    ''
       <?xml version="1.0" encoding="UTF-8"?>
       <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
       <plist version="1.0">
@@ -583,7 +592,8 @@ in rec {
     with builtins;
     let
       concatItems = lib.strings.concatStringsSep ", ";
-    in if isAttrs v then
+    in
+    if isAttrs v then
       "{ ${
         concatItems (lib.attrsets.mapAttrsToList
           (key: value: "${key} = ${toDhall args value}") v)

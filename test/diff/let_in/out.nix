@@ -64,7 +64,8 @@ let
 
   a =
     let
-    in [
+    in
+    [
       1
       2
     ]
