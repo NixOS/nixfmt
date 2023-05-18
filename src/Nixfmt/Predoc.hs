@@ -15,6 +15,7 @@ module Nixfmt.Predoc
     , hcat
     , base
     , group
+    , group'
     , nest
     , softline'
     , line'
@@ -60,8 +61,14 @@ data Spacing
 
 data DocAnn
     -- | Node Group docs indicates either all or none of the Spaces and Breaks
-    -- in docs should be converted to line breaks.
-    = Group
+    -- in docs should be converted to line breaks. This does not affect softlines,
+    -- those will be expanded only as necessary and with a lower priority.
+    --
+    -- The boolean argument determines how to handle whitespace directly before the
+    -- group or at the start of the group. By default (False), it gets pulled out
+    -- in front of the group, which is what you want in most cases. If set to True,
+    -- whitespace before the group will be pulled in instead.
+    = Group Bool
     -- | Node (Nest n) doc indicates all line starts in doc should be indented
     -- by n more spaces than the surrounding Base.
     | Nest Int
@@ -100,8 +107,15 @@ text :: Text -> Doc
 text "" = []
 text t  = [Text t]
 
+-- | Group document elements together (see Node Group documentation)
+-- Any whitespace at the start of the group will get pulled out in front of it.
 group :: Pretty a => a -> Doc
-group = pure . Node Group . pretty
+group = pure . Node (Group False) . pretty
+
+-- | Group document elements together (see Node Group documentation)
+-- Any whitespace directly before the group will be pulled into it.
+group' :: Pretty a => a -> Doc
+group' = pure . Node (Group True) . pretty
 
 -- | @nest n doc@ sets the indentation for lines in @doc@ to @n@ more than the
 -- indentation of the part before it. This is based on the actual indentation of
@@ -200,8 +214,12 @@ mergeLines (x : xs)                     = x : mergeLines xs
 
 moveLinesIn :: Doc -> Doc
 moveLinesIn [] = []
+-- Move space before Nest in
 moveLinesIn (Spacing l : Node (Nest level) xs : ys) =
-    Node (Nest level) (Spacing l : moveLinesIn xs) : moveLinesIn ys
+    Node (Nest level) (moveLinesIn (Spacing l : xs)) : moveLinesIn ys
+-- Move space before (Group True) in
+moveLinesIn (Spacing l : Node (Group True) xs : ys) =
+    Node (Group False) (moveLinesIn (Spacing l : xs)) : moveLinesIn ys
 
 moveLinesIn (Node ann xs : ys) =
     Node ann (moveLinesIn xs) : moveLinesIn ys
@@ -255,16 +273,17 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
           go c (Text t : xs)            = go (c - textWidth t) xs
           go c (Spacing Hardspace : xs) = go (c - 1) xs
           go c (Spacing _ : _)          = maxWidth - c <= targetWidth
-          go c (Node Group ys : xs)     =
+          go c (Node (Group _) ys : xs)     =
               case fits (c - firstLineWidth xs) ys of
                    Nothing -> go c (ys ++ xs)
                    Just t  -> go (c - textWidth t) xs
 
           go c (Node _ ys : xs)         = go c (ys ++ xs)
 
--- |
+-- | A document element with target indentation
 data Chunk = Chunk Int DocE
 
+-- | Create `n` newlines and `i` spaces
 indent :: Int -> Int -> Text
 indent n i = Text.replicate n "\n" <> Text.replicate i " "
 
@@ -275,12 +294,17 @@ unChunk (Chunk _ doc) = doc
 -- cc   Current Column
 -- ci   Current Indentation
 -- ti   Target Indentation
+--        an indent only changes the target indentation at first.
+--        Only for the tokens starting on the next line the current
+--        indentation will match the target indentation.
 layoutGreedy :: Int -> Doc -> Text
-layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node Group doc]
-    where go _ _ [] = []
+layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node (Group False) doc]
+    where go :: Int -> Int -> [Chunk] -> [Text]
+          go _ _ [] = []
           go cc ci (Chunk ti x : xs) = case x of
             Text t               -> t : go (cc + textWidth t) ci xs
 
+            -- This code treats whitespace as "expanded"
             Spacing Break        -> indent 1 ti : go ti ti xs
             Spacing Space        -> indent 1 ti : go ti ti xs
             Spacing Hardspace    -> " "         : go (cc + 1) ci xs
@@ -300,7 +324,11 @@ layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node Group doc]
 
             Node (Nest l) ys     -> go cc ci $ map (Chunk (ti + l)) ys ++ xs
             Node Base ys         -> go cc ci $ map (Chunk ci) ys ++ xs
-            Node Group ys        ->
+            Node (Group _) ys    ->
+                -- Does the group (plus whatever comes after it on that line) fit in one line?
+                -- This is where treating whitespace as "compact" happens
                 case fits (tw - cc - firstLineWidth (map unChunk xs)) ys of
+                     -- Dissolve the group by mapping its members to the target indentation
+                     -- This also implies that whitespace in there will now be rendered "expanded"
                      Nothing     -> go cc ci $ map (Chunk ti) ys ++ xs
                      Just t      -> t : go (cc + textWidth t) ci xs

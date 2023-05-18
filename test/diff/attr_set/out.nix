@@ -78,4 +78,46 @@
       # f
 
   }
+  {
+    x =
+      {
+        foo = 1;
+        bar = 2;
+          # multiline
+      }.${x};
+    y = # more multiline
+      {
+        foo = 1;
+        bar = 2;
+          # multiline
+      }.${x};
+    z = functionCall {
+      # multi
+      #line
+    } [
+      # several
+      items
+    ];
+    a =
+      [
+        some
+        flags # multiline
+      ] ++ [ short ] ++ [
+        more
+        stuff # multiline
+      ] ++ (if foo then
+        [ bar ]
+      else
+        [ baz ]) ++ [ ] ++ (optionals condition [
+          more
+          items
+        ])
+      ;
+    b = with pkgs; [
+      a
+      lot
+      of
+      packages
+    ];
+  }
 ]

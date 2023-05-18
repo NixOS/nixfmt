@@ -834,9 +834,7 @@ in
           let
             c = cfg.config;
             writePhpArray =
-              a:
-              "[${concatMapStringsSep "," (val: ''"${toString val}"'') a}]"
-              ;
+              a: "[${concatMapStringsSep "," (val: ''"${toString val}"'') a}]";
             requiresReadSecretFunction =
               c.dbpassFile != null || c.objectstore.s3.enable;
             objectstoreConfig =
@@ -887,9 +885,7 @@ in
               ;
 
             nextcloudGreaterOrEqualThan =
-              req:
-              versionAtLeast cfg.package.version req
-              ;
+              req: versionAtLeast cfg.package.version req;
 
             overrideConfig = pkgs.writeText "nextcloud-config.php" ''
               <?php

@@ -17,7 +17,7 @@ import qualified Data.Text as Text
   (dropEnd, empty, init, isInfixOf, last, null, strip, takeWhile)
 
 import Nixfmt.Predoc
-  (Doc, Pretty, base, emptyline, group, hardline, hardspace, hcat, line, line',
+  (Doc, Pretty, base, emptyline, group, group', hardline, hardspace, hcat, line, line',
   nest, newline, pretty, sepBy, softline, softline', text, textWidth)
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), File(..), Leaf, ParamAttr(..),
@@ -78,8 +78,11 @@ instance Pretty Binder where
 
     -- `inherit (foo) bar` statement
     pretty (Inherit inherit source ids semicolon)
-        = base $ group (pretty inherit <> hardspace
-                 <> nest 2 ((pretty source) <> line <> sepBy line ids <> line' <> pretty semicolon))
+        = base $ group (pretty inherit <> hardspace <> nest 2 (
+            (group' (line <> pretty source)) <> line
+                <> sepBy line ids
+                <> line' <> pretty semicolon
+        ))
 
     -- `foo = bar`
     pretty (Assignment selectors assign expr semicolon)
@@ -88,17 +91,22 @@ instance Pretty Binder where
         where
           inner =
             case expr of
-              -- Function declaration / If statement / Let binding
-              -- If it is multi-line, force it into a new line with indentation, semicolon on separate line
-              (Abstraction _ _ _) -> line <> pretty expr <> line' <> pretty semicolon
-              (If _ _ _ _ _ _)    -> line <> pretty expr <> line' <> pretty semicolon
-              (Let _ _ _ _)       -> line <> pretty expr <> line' <> pretty semicolon
-              -- Term
-              -- Absorb and keep the semicolon attached if possible
-              (Term t) -> (if isAbsorbable t then hardspace else softline) <> group expr <> pretty semicolon
-              -- Everything else
+              -- Absorbable term. Always start on the same line, keep semicolon attatched
+              (Term t) | isAbsorbable t -> hardspace <> group expr <> pretty semicolon
+              -- Non-absorbable term
+              -- If it is multi-line, force it to start on a new line with indentation
+              (Term _) -> group' (line <> pretty expr) <> pretty semicolon
+              -- Function calls and with expressions
               -- Try to absorb and keep the semicolon attached, spread otherwise
-              _ -> softline <> group (pretty expr <> softline' <> pretty semicolon)
+              (Application _ _) -> group (softline <> pretty expr <> softline' <> pretty semicolon)
+              (With _ _ _ _) -> group (softline <> pretty expr <> softline' <> pretty semicolon)
+              -- Special case `//` operator to treat like an absorbable term
+              (Operation _ (Ann TUpdate _ _) _) -> group (softline <> pretty expr <> softline' <> pretty semicolon)
+              -- Everything else:
+              -- If it fits on one line, it fits
+              -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
+              -- Otherwise, start on new line, expand fully (including the semicolon)
+              _ -> group (line <> pretty expr <> line' <> pretty semicolon)
 
 
 -- | Pretty print a term without wrapping it in a group.

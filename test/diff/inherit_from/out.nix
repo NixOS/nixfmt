@@ -15,10 +15,11 @@
       ;
   }
   {
-    inherit ({
-      foo = "1";
-      bar = "2"; # force multiline
-    })
+    inherit
+      ({
+        foo = "1";
+        bar = "2"; # force multiline
+      })
       foo
       bar
       ;
@@ -67,177 +68,201 @@
       ;
   }
   {
-    inherit (c # d
-    )
+    inherit
+      (c # d
+      )
       f
       h
       ;
   }
   {
-    inherit (c # d
-    )
-      f
-      h # i
-      ;
-  }
-  {
-    inherit (c # d
-    )
-      f # g
-      h
-      ;
-  }
-  {
-    inherit (c # d
-    )
-      f # g
-      h # i
-      ;
-  }
-  {
-    inherit (c # d
-    ) # e
-      f
-      h
-      ;
-  }
-  {
-    inherit (c # d
-    ) # e
+    inherit
+      (c # d
+      )
       f
       h # i
       ;
   }
   {
-    inherit (c # d
-    ) # e
+    inherit
+      (c # d
+      )
       f # g
       h
       ;
   }
   {
-    inherit (c # d
-    ) # e
-      f # g
-      h # i
-      ;
-  }
-  {
-    inherit ( # b
-      c)
-      f
-      h
-      ;
-  }
-  {
-    inherit ( # b
-      c)
-      f
-      h # i
-      ;
-  }
-  {
-    inherit ( # b
-      c)
-      f # g
-      h
-      ;
-  }
-  {
-    inherit ( # b
-      c)
+    inherit
+      (c # d
+      )
       f # g
       h # i
       ;
   }
   {
-    inherit ( # b
-      c) # e
+    inherit
+      (c # d
+      ) # e
       f
       h
       ;
   }
   {
-    inherit ( # b
-      c) # e
-      f
-      h # i
-      ;
-  }
-  {
-    inherit ( # b
-      c) # e
-      f # g
-      h
-      ;
-  }
-  {
-    inherit ( # b
-      c) # e
-      f # g
-      h # i
-      ;
-  }
-  {
-    inherit ( # b
-      c # d
-    )
-      f
-      h
-      ;
-  }
-  {
-    inherit ( # b
-      c # d
-    )
+    inherit
+      (c # d
+      ) # e
       f
       h # i
       ;
   }
   {
-    inherit ( # b
-      c # d
-    )
+    inherit
+      (c # d
+      ) # e
       f # g
       h
       ;
   }
   {
-    inherit ( # b
-      c # d
-    )
+    inherit
+      (c # d
+      ) # e
       f # g
       h # i
       ;
   }
   {
-    inherit ( # b
-      c # d
-    ) # e
+    inherit
+      ( # b
+        c)
       f
       h
       ;
   }
   {
-    inherit ( # b
-      c # d
-    ) # e
+    inherit
+      ( # b
+        c)
       f
       h # i
       ;
   }
   {
-    inherit ( # b
-      c # d
-    ) # e
+    inherit
+      ( # b
+        c)
       f # g
       h
       ;
   }
   {
-    inherit ( # b
-      c # d
-    ) # e
+    inherit
+      ( # b
+        c)
+      f # g
+      h # i
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c) # e
+      f
+      h
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c) # e
+      f
+      h # i
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c) # e
+      f # g
+      h
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c) # e
+      f # g
+      h # i
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c # d
+      )
+      f
+      h
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c # d
+      )
+      f
+      h # i
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c # d
+      )
+      f # g
+      h
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c # d
+      )
+      f # g
+      h # i
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c # d
+      ) # e
+      f
+      h
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c # d
+      ) # e
+      f
+      h # i
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c # d
+      ) # e
+      f # g
+      h
+      ;
+  }
+  {
+    inherit
+      ( # b
+        c # d
+      ) # e
       f # g
       h # i
       ;

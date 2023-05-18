@@ -177,7 +177,8 @@ in
 
                         ++
 
-                        kernelPatches;
+                        kernelPatches
+                        ;
 
                       features
 

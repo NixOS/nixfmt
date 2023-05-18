@@ -6,8 +6,9 @@
     ;
 
     # https://github.com/kamadorueda/alejandra/issues/372
-  inherit (pkgs.haskell.lib)
-  # doJailbreak - remove package bounds from build-depends of a package
+  inherit
+    (pkgs.haskell.lib)
+    # doJailbreak - remove package bounds from build-depends of a package
     doJailbreak
     # dontCheck - skip tests
     dontCheck
