@@ -114,7 +114,13 @@ prettyTerm :: Term -> Doc
 prettyTerm (Token t) = pretty t
 prettyTerm (String s) = pretty s
 prettyTerm (Path p) = pretty p
-prettyTerm (Selection term selectors) = pretty term <> hcat selectors
+-- Selection (`foo.bar.baz`) case distinction on the first element (`foo`):
+-- If it is an ident, keep it all together
+prettyTerm (Selection term@(Token _) selectors) = pretty term <> hcat selectors
+-- If it is a parenthesized expression, maybe add a line break
+prettyTerm (Selection term@(Parenthesized _ _ _) selectors) = pretty term <> softline' <> hcat selectors
+-- Otherwise, very likely add a line break
+prettyTerm (Selection term selectors) = pretty term <> line' <> hcat selectors
 
 -- Empty list
 prettyTerm (List (Ann paropen Nothing []) [] parclose)

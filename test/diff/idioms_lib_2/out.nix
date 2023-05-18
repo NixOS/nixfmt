@@ -550,7 +550,8 @@ rec {
             "13" = "D";
             "14" = "E";
             "15" = "F";
-          }.${toString d}
+          }
+          .${toString d}
         ;
     in
     lib.concatMapStrings toHexDigit (toBaseDigits 16 i)

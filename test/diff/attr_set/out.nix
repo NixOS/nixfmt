@@ -84,13 +84,15 @@
         foo = 1;
         bar = 2;
           # multiline
-      }.${x};
+      }
+      .${x};
     y = # more multiline
       {
         foo = 1;
         bar = 2;
           # multiline
-      }.${x};
+      }
+      .${x};
     z = functionCall {
       # multi
       #line
