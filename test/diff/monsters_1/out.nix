@@ -1,5 +1,5 @@
 {
-# foo
+  # foo
   stdenv
   # foo
   ,
@@ -60,9 +60,8 @@
   # foo
   ,
   # foo
-  wrapGAppsHook4
-  # foo
-  ,
+  wrapGAppsHook4,
+# foo
 }:
 # foo
 stdenv.mkDerivation
@@ -72,19 +71,19 @@ rec
 {
   # foo
   pname
-  # foo
+    # foo
     =
     # foo
     "contrast";
-    # foo
-  version
   # foo
+  version
+    # foo
     =
     # foo
     "0.0.5";
-    # foo
-  src
   # foo
+  src
+    # foo
     =
     # foo
     fetchFromGitLab
@@ -92,45 +91,45 @@ rec
     {
       # foo
       domain
-      # foo
+        # foo
         =
         # foo
         "gitlab.gnome.org";
-        # foo
-      group
       # foo
+      group
+        # foo
         =
         # foo
         "World";
-        # foo
-      owner
       # foo
+      owner
+        # foo
         =
         # foo
         "design";
-        # foo
-      repo
       # foo
+      repo
+        # foo
         =
         # foo
         "contrast";
-        # foo
-      rev
       # foo
+      rev
+        # foo
         =
         # foo
         version;
-        # foo
-      sha256
       # foo
+      sha256
+        # foo
         =
         # foo
         "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0=";
-        # foo
+      # foo
     };
-    # foo
-  cargoDeps
   # foo
+  cargoDeps
+    # foo
     =
     # foo
     rustPlatform.fetchCargoTarball
@@ -138,26 +137,26 @@ rec
     {
       # foo
       inherit
-      # foo
+        # foo
         src
         ;
-        # foo
-      name
       # foo
+      name
+        # foo
         =
         # foo
         "${pname}-${version}";
-        # foo
-      hash
       # foo
+      hash
+        # foo
         =
         # foo
         "sha256-W4FyqwJpimf0isQRCq9TegpTQPQfsumx40AFQCFG5VQ=";
-        # foo
+      # foo
     };
-    # foo
-  nativeBuildInputs
   # foo
+  nativeBuildInputs
+    # foo
     =
     # foo
     [
@@ -188,9 +187,9 @@ rec
 
       # foo
     ];
-    # foo
-  buildInputs
   # foo
+  buildInputs
+    # foo
     =
     # foo
     [
@@ -206,9 +205,9 @@ rec
       pango
       # foo
     ];
-    # foo
-  postPatch
   # foo
+  postPatch
+    # foo
     =
     # foo
     ''
@@ -217,41 +216,41 @@ rec
       substituteInPlace build-aux/meson_post_install.py \
         --replace "gtk-update-icon-cache" "gtk4-update-icon-cache"
     '';
-    # foo
-  meta
   # foo
+  meta
+    # foo
     =
     # foo
     with
-    # foo
+      # foo
       lib;
     # foo
     {
       # foo
       description
-      # foo
+        # foo
         =
         # foo
         "Checks whether the contrast between two colors meet the WCAG requirements";
-        # foo
-      homepage
       # foo
+      homepage
+        # foo
         =
         # foo
         "https://gitlab.gnome.org/World/design/contrast";
-        # foo
-      license
       # foo
+      license
+        # foo
         =
         # foo
         licenses.gpl3Plus;
-        # foo
-      maintainers
       # foo
+      maintainers
+        # foo
         =
         # foo
         with
-        # foo
+          # foo
           maintainers;
         # foo
         [
@@ -259,13 +258,13 @@ rec
           jtojnar
           # foo
         ];
-        # foo
-      platforms
       # foo
+      platforms
+        # foo
         =
         # foo
         platforms.unix;
-        # foo
+      # foo
     };
-    # foo
+  # foo
 }

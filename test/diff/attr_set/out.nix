@@ -60,7 +60,6 @@
     c = 1;
 
     e = 1;
-
   }
 
   rec
@@ -71,26 +70,25 @@
 
     c = 1;
 
-      # d
+    # d
 
     e = 1;
 
-      # f
-
+    # f
   }
   {
     x =
       {
         foo = 1;
         bar = 2;
-          # multiline
+        # multiline
       }
       .${x};
     y = # more multiline
       {
         foo = 1;
         bar = 2;
-          # multiline
+        # multiline
       }
       .${x};
     z = functionCall

@@ -84,11 +84,11 @@
   ,
   debugBuild ? false
 
-    # On 32bit platforms, we disable adding "-g" for easier linking.
+  # On 32bit platforms, we disable adding "-g" for easier linking.
   ,
   enableDebugSymbols ? !stdenv.is32bit
 
-    ## optional libraries
+  ## optional libraries
 
   ,
   alsaSupport ? stdenv.isLinux,
@@ -119,8 +119,8 @@
   ,
   privacySupport ? false
 
-    # WARNING: NEVER set any of the options below to `true` by default.
-    # Set to `!privacySupport` or `false`.
+  # WARNING: NEVER set any of the options below to `true` by default.
+  # Set to `!privacySupport` or `false`.
 
   ,
   crashreporterSupport ? !privacySupport,
@@ -130,34 +130,34 @@
   mlsAPISupport ? geolocationSupport,
   webrtcSupport ? !privacySupport
 
-    # digital rights managemewnt
+  # digital rights managemewnt
 
-    # This flag controls whether Firefox will show the nagbar, that allows
-    # users at runtime the choice to enable Widevine CDM support when a site
-    # requests it.
-    # Controlling the nagbar and widevine CDM at runtime is possible by setting
-    # `browser.eme.ui.enabled` and `media.gmp-widevinecdm.enabled` accordingly
+  # This flag controls whether Firefox will show the nagbar, that allows
+  # users at runtime the choice to enable Widevine CDM support when a site
+  # requests it.
+  # Controlling the nagbar and widevine CDM at runtime is possible by setting
+  # `browser.eme.ui.enabled` and `media.gmp-widevinecdm.enabled` accordingly
   ,
   drmSupport ? true
 
-    # As stated by Sylvestre Ledru (@sylvestre) on Nov 22, 2017 at
-    # https://github.com/NixOS/nixpkgs/issues/31843#issuecomment-346372756 we
-    # have permission to use the official firefox branding.
-    #
-    # For purposes of documentation the statement of @sylvestre:
-    # > As the person who did part of the work described in the LWN article
-    # > and release manager working for Mozilla, I can confirm the statement
-    # > that I made in
-    # > https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=815006
-    # >
-    # > @garbas shared with me the list of patches applied for the Nix package.
-    # > As they are just for portability and tiny modifications, they don't
-    # > alter the experience of the product. In parallel, Rok also shared the
-    # > build options. They seem good (even if I cannot judge the quality of the
-    # > packaging of the underlying dependencies like sqlite, png, etc).
-    # > Therefor, as long as you keep the patch queue sane and you don't alter
-    # > the experience of Firefox users, you won't have any issues using the
-    # > official branding.
+  # As stated by Sylvestre Ledru (@sylvestre) on Nov 22, 2017 at
+  # https://github.com/NixOS/nixpkgs/issues/31843#issuecomment-346372756 we
+  # have permission to use the official firefox branding.
+  #
+  # For purposes of documentation the statement of @sylvestre:
+  # > As the person who did part of the work described in the LWN article
+  # > and release manager working for Mozilla, I can confirm the statement
+  # > that I made in
+  # > https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=815006
+  # >
+  # > @garbas shared with me the list of patches applied for the Nix package.
+  # > As they are just for portability and tiny modifications, they don't
+  # > alter the experience of the product. In parallel, Rok also shared the
+  # > build options. They seem good (even if I cannot judge the quality of the
+  # > packaging of the underlying dependencies like sqlite, png, etc).
+  # > Therefor, as long as you keep the patch queue sane and you don't alter
+  # > the experience of Firefox users, you won't have any issues using the
+  # > official branding.
   ,
   enableOfficialBranding ? true
 }:
@@ -169,15 +169,13 @@ assert pipewireSupport
     "${pname}: pipewireSupport requires both wayland and webrtc support.";
 
 let
-  inherit (lib)
-    enableFeature
-    ;
+  inherit (lib) enableFeature;
 
-    # Target the LLVM version that rustc is built with for LTO.
+  # Target the LLVM version that rustc is built with for LTO.
   llvmPackages0 = rustc.llvmPackages;
   llvmPackagesBuildBuild0 = pkgsBuildBuild.rustc.llvmPackages;
 
-    # Force the use of lld and other llvm tools for LTO
+  # Force the use of lld and other llvm tools for LTO
   llvmPackages = llvmPackages0.override {
     bootBintoolsNoLibc = null;
     bootBintools = null;
@@ -187,7 +185,7 @@ let
     bootBintools = null;
   };
 
-    # LTO requires LLVM bintools including ld.lld and llvm-ar.
+  # LTO requires LLVM bintools including ld.lld and llvm-ar.
   buildStdenv = overrideCC llvmPackages.stdenv (
     llvmPackages.stdenv.cc.override {
       bintools =
@@ -199,9 +197,9 @@ let
     }
   );
 
-    # Compile the wasm32 sysroot to build the RLBox Sandbox
-    # https://hacks.mozilla.org/2021/12/webassembly-and-back-again-fine-grained-sandboxing-in-firefox-95/
-    # We only link c++ libs here, our compiler wrapper can find wasi libc and crt itself.
+  # Compile the wasm32 sysroot to build the RLBox Sandbox
+  # https://hacks.mozilla.org/2021/12/webassembly-and-back-again-fine-grained-sandboxing-in-firefox-95/
+  # We only link c++ libs here, our compiler wrapper can find wasi libc and crt itself.
   wasiSysRoot = runCommand "wasi-sysroot" { } ''
     mkdir -p $out/lib/wasm32-wasi
     for lib in ${pkgsCross.wasi32.llvmPackages.libcxx}/lib/* ${pkgsCross.wasi32.llvmPackages.libcxxabi}/lib/*; do
@@ -247,19 +245,17 @@ let
       defaultPrefs
     )
   );
-
 in
+
 buildStdenv.mkDerivation ({
   pname = "${pname}-unwrapped";
   inherit version;
 
   inherit src unpackPhase meta;
 
-  outputs =
-    [ "out" ] ++ lib.optionals crashreporterSupport [ "symbols" ]
-    ;
+  outputs = [ "out" ] ++ lib.optionals crashreporterSupport [ "symbols" ];
 
-    # Add another configure-build-profiling run before the final configure phase if we build with pgo
+  # Add another configure-build-profiling run before the final configure phase if we build with pgo
   preConfigurePhases = lib.optionals pgoSupport [
     "configurePhase"
     "buildPhase"
@@ -296,15 +292,15 @@ buildStdenv.mkDerivation ({
     + extraPostPatch
     ;
 
-    # Ignore trivial whitespace changes in patches, this fixes compatibility of
-    # ./env_var_for_system_dir.patch with Firefox >=65 without having to track
-    # two patches.
+  # Ignore trivial whitespace changes in patches, this fixes compatibility of
+  # ./env_var_for_system_dir.patch with Firefox >=65 without having to track
+  # two patches.
   patchFlags = [
     "-p1"
     "-l"
   ];
 
-    # if not explicitly set, wrong cc from buildStdenv would be used
+  # if not explicitly set, wrong cc from buildStdenv would be used
   HOST_CC = "${llvmPackagesBuildBuild.stdenv.cc}/bin/cc";
   HOST_CXX = "${llvmPackagesBuildBuild.stdenv.cc}/bin/c++";
 
@@ -407,7 +403,7 @@ buildStdenv.mkDerivation ({
     ''
     ;
 
-    # firefox has a different definition of configurePlatforms from nixpkgs, see configureFlags
+  # firefox has a different definition of configurePlatforms from nixpkgs, see configureFlags
   configurePlatforms = [ ];
 
   configureFlags =
@@ -441,8 +437,7 @@ buildStdenv.mkDerivation ({
       "--enable-lto=cross" # Cross-Language LTO
       "--enable-linker=lld"
     ]
-    # elf-hack is broken when using clang+lld:
-    # https://bugzilla.mozilla.org/show_bug.cgi?id=1482204
+    # LTO is done using clang and lld on Linux.
     ++ lib.optional
       (
         ltoSupport
@@ -451,7 +446,9 @@ buildStdenv.mkDerivation ({
         )
       )
       "--disable-elf-hack"
+    # LTO is done using clang and lld on Linux.
     ++ lib.optional (!drmSupport) "--disable-eme"
+    # LTO is done using clang and lld on Linux.
     ++ [
       (enableFeature alsaSupport "alsa")
       (enableFeature crashreporterSupport "crashreporter")
@@ -475,12 +472,16 @@ buildStdenv.mkDerivation ({
       (enableFeature (!debugBuild && !stdenv.is32bit) "release")
       (enableFeature enableDebugSymbols "debug-symbols")
     ]
+    # LTO is done using clang and lld on Linux.
     ++ lib.optionals enableDebugSymbols [
       "--disable-strip"
       "--disable-install-strip"
     ]
+    # LTO is done using clang and lld on Linux.
     ++ lib.optional enableOfficialBranding "--enable-official-branding"
+    # LTO is done using clang and lld on Linux.
     ++ lib.optional (branding != null) "--with-branding=${branding}"
+    # LTO is done using clang and lld on Linux.
     ++ extraConfigureFlags
     ;
 
@@ -576,11 +577,11 @@ buildStdenv.mkDerivation ({
   separateDebugInfo = enableDebugSymbols;
   enableParallelBuilding = true;
 
-    # tests were disabled in configureFlags
+  # tests were disabled in configureFlags
   doCheck = false;
 
-    # Generate build symbols once after the final build
-    # https://firefox-source-docs.mozilla.org/crash-reporting/uploading_symbol.html
+  # Generate build symbols once after the final build
+  # https://firefox-source-docs.mozilla.org/crash-reporting/uploading_symbol.html
   preInstall =
     lib.optionalString crashreporterSupport ''
       ./mach buildsymbols
@@ -638,17 +639,17 @@ buildStdenv.mkDerivation ({
 
   hardeningDisable = [ "format" ]; # -Werror=format-security
 
-    # the build system verifies checksums of the bundled rust sources
-    # ./third_party/rust is be patched by our libtool fixup code in stdenv
-    # unfortunately we can't just set this to `false` when we do not want it.
-    # See https://github.com/NixOS/nixpkgs/issues/77289 for more details
-    # Ideally we would figure out how to tell the build system to not
-    # care about changed hashes as we are already doing that when we
-    # fetch the sources. Any further modifications of the source tree
-    # is on purpose by some of our tool (or by accident and a bug?).
+  # the build system verifies checksums of the bundled rust sources
+  # ./third_party/rust is be patched by our libtool fixup code in stdenv
+  # unfortunately we can't just set this to `false` when we do not want it.
+  # See https://github.com/NixOS/nixpkgs/issues/77289 for more details
+  # Ideally we would figure out how to tell the build system to not
+  # care about changed hashes as we are already doing that when we
+  # fetch the sources. Any further modifications of the source tree
+  # is on purpose by some of our tool (or by accident and a bug?).
   dontFixLibtool = true;
 
-    # on aarch64 this is also required
+  # on aarch64 this is also required
   dontUpdateAutotoolsGnuConfigScripts = true;
 
   requiredSystemFeatures = [ "big-parallel" ];

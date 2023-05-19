@@ -42,14 +42,14 @@
     name2 = function arg
       {
         asdf = 1;
-          # multiline
+        # multiline
       }
       argument;
 
     name3 = function arg
       {
         asdf = 1;
-          # multiline
+        # multiline
       }
       { qwer = 12345; }
       argument;
@@ -91,7 +91,8 @@
         utils,
       }:
       # For each supported platform,
-      utils.lib.eachDefaultSystem (system: { })
+      utils.lib.eachDefaultSystem
+      (system: { })
       ;
   }
   {

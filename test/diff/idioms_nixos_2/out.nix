@@ -34,10 +34,21 @@ let
           else
             [ cfg.phpPackage.extensions.openssl ]
         )
+        # use OpenSSL 1.1 for RC4 Nextcloud encryption if user
+        # has acknowledged the brokenness of the ciphers (RC4).
+        # TODO: remove when https://github.com/nextcloud/server/issues/32003 is fixed.
         ++ optional cfg.enableImagemagick imagick
-          # Optionally enabled depending on caching settings
+        # use OpenSSL 1.1 for RC4 Nextcloud encryption if user
+        # has acknowledged the brokenness of the ciphers (RC4).
+        # TODO: remove when https://github.com/nextcloud/server/issues/32003 is fixed.
         ++ optional cfg.caching.apcu apcu
+        # use OpenSSL 1.1 for RC4 Nextcloud encryption if user
+        # has acknowledged the brokenness of the ciphers (RC4).
+        # TODO: remove when https://github.com/nextcloud/server/issues/32003 is fixed.
         ++ optional cfg.caching.redis redis
+        # use OpenSSL 1.1 for RC4 Nextcloud encryption if user
+        # has acknowledged the brokenness of the ciphers (RC4).
+        # TODO: remove when https://github.com/nextcloud/server/issues/32003 is fixed.
         ++ optional cfg.caching.memcached memcached
       )
       ++ cfg.phpExtraExtensions all
@@ -70,7 +81,6 @@ let
   '';
 
   inherit (config.system) stateVersion;
-
 in
 {
 
@@ -387,7 +397,6 @@ in
           is used to also support MariaDB version >= 10.6.
         '';
       };
-
     };
 
     config = {
@@ -773,7 +782,6 @@ in
                 `services.nextcloud.package`.
               ''
               ;
-
           in
           (optional (cfg.poolConfig != null) ''
             Using config.services.nextcloud.poolConfig is deprecated and will become unsupported in a future release.
@@ -1069,9 +1077,9 @@ in
                   installFlags = concatStringsSep " \\\n    " (
                     mapAttrsToList (k: v: "${k} ${toString v}") {
                       "--database" = ''"${c.dbtype}"'';
-                        # The following attributes are optional depending on the type of
-                        # database.  Those that evaluate to null on the left hand side
-                        # will be omitted.
+                      # The following attributes are optional depending on the type of
+                      # database.  Those that evaluate to null on the left hand side
+                      # will be omitted.
                       ${
                         if c.dbname != null then
                           "--database-name"
@@ -1120,7 +1128,6 @@ in
                 )
                 ([ cfg.hostName ] ++ cfg.config.extraTrustedDomains)
               );
-
             in
             {
               wantedBy = [ "multi-user.target" ];
@@ -1193,8 +1200,8 @@ in
               '';
               serviceConfig.Type = "oneshot";
               serviceConfig.User = "nextcloud";
-                # On Nextcloud ≥ 26, it is not necessary to patch the database files to prevent
-                # an automatic creation of the database user.
+              # On Nextcloud ≥ 26, it is not necessary to patch the database files to prevent
+              # an automatic creation of the database user.
               environment.NC_setup_create_db_user =
                 lib.mkIf (nextcloudGreaterOrEqualThan "26") "false";
             }

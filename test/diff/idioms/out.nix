@@ -9,7 +9,7 @@
 
   {
     meta = with lib;
-    # comment
+      # comment
       {
         a = 1;
         b = 2;

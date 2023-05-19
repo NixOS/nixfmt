@@ -28,13 +28,12 @@
   }
   {
     a = with b;
-    # comment
+      # comment
       1;
   }
   {
-    a = with b;
-      1;
-      # comment
+    a = with b; 1;
+    # comment
   }
   (with a; with b; with c; { a = 1; })
   (

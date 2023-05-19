@@ -69,7 +69,7 @@ rec {
     ;
 
   a
-  # b
+    # b
     =
     # c
     1
@@ -78,5 +78,4 @@ rec {
 
   p =
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa { } a;
-
 }

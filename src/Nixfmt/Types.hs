@@ -4,18 +4,21 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveFoldable, OverloadedStrings #-}
 
 module Nixfmt.Types where
 
 import Prelude hiding (String)
 
+import Control.Monad.State (StateT)
+import Data.Foldable (toList)
+import Data.Function (on)
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import qualified Text.Megaparsec as MP (ParseErrorBundle, Parsec)
 
 -- | A @megaparsec@ @ParsecT@ specified for use with @nixfmt@.
-type Parser = MP.Parsec Void Text
+type Parser = StateT Trivia (MP.Parsec Void Text)
 
 -- | A @megaparsec@ @ParseErrorBundle@ specified for use with @nixfmt@.
 type ParseErrorBundle = MP.ParseErrorBundle Text Void
@@ -31,19 +34,34 @@ type Trivia = [Trivium]
 newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
 
 data Ann a
-    = Ann a (Maybe TrailingComment) Trivia
+    = Ann Trivia a (Maybe TrailingComment)
     deriving (Show)
 
--- | Equality of annotated syntax is defines as equality of their corresponding
+-- | Equality of annotated syntax is defined as equality of their corresponding
 -- semantics, thus ignoring the annotations.
 instance Eq a => Eq (Ann a) where
-    Ann x _ _ == Ann y _ _ = x == y
+    Ann _ x _ == Ann _ y _ = x == y
+
+data Item a
+    -- | An item with a list of line comments that apply to it. There is no
+    -- empty line between the comments and the stuff it applies to.
+    = CommentedItem Trivia a
+    -- | A list of line comments not associated with any item. Followed by an
+    -- empty line unless they're the last comments in a set or list.
+    | DetachedComments Trivia
+    deriving (Foldable, Show)
+
+newtype Items a = Items { unItems :: [Item a] }
+    deriving (Show)
+
+instance Eq a => Eq (Items a) where
+    (==) = (==) `on` concatMap toList . unItems
 
 type Leaf = Ann Token
 
 data StringPart
     = TextPart Text
-    | Interpolation Leaf Expression Token
+    | Interpolation (Whole Expression)
     deriving (Eq, Show)
 
 type Path = Ann [StringPart]
@@ -69,8 +87,8 @@ data Term
     = Token Leaf
     | String String
     | Path Path
-    | List Leaf [Term] Leaf
-    | Set (Maybe Leaf) Leaf [Binder] Leaf
+    | List Leaf (Items Term) Leaf
+    | Set (Maybe Leaf) Leaf (Items Binder) Leaf
     | Selection Term [Selector]
     | Parenthesized Leaf Expression Leaf
     deriving (Eq, Show)
@@ -89,7 +107,7 @@ data Parameter
 data Expression
     = Term Term
     | With Leaf Expression Leaf Expression
-    | Let Leaf [Binder] Leaf Expression
+    | Let Leaf (Items Binder) Leaf Expression
     | Assert Leaf Expression Leaf Expression
     | If Leaf Expression Leaf Expression Leaf Expression
     | Abstraction Parameter Leaf Expression
@@ -101,9 +119,13 @@ data Expression
     | Inversion Leaf Expression
     deriving (Eq, Show)
 
-data File
-    = File Leaf Expression
+-- | A Whole a is an a including final trivia. It's assumed the a stores the
+-- initial trivia.
+data Whole a
+    = Whole a Trivia
     deriving (Eq, Show)
+
+type File = Whole Expression
 
 data Token
     = Integer    Int

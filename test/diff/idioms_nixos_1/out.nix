@@ -16,8 +16,8 @@ let
   kernelModulesConf = pkgs.writeText "nixos.conf" ''
     ${concatStringsSep "\n" config.boot.kernelModules}
   '';
-
 in
+
 {
 
   ###### interface
@@ -55,8 +55,8 @@ in
           }
         )
         ;
-        # We don't want to evaluate all of linuxPackages for the manual
-        # - some of it might not even evaluate correctly.
+      # We don't want to evaluate all of linuxPackages for the manual
+      # - some of it might not even evaluate correctly.
       defaultText = literalExpression "pkgs.linuxPackages";
       example = literalExpression "pkgs.linuxKernel.packages.linux_5_10";
       description = ''
@@ -194,7 +194,7 @@ in
         built outside of the kernel.  Combine these into a single tree of
         symlinks because modprobe only supports one directory.
       '';
-        # Convert the list of path to only one path.
+      # Convert the list of path to only one path.
       apply = pkgs.aggregateModules;
     };
 
@@ -215,10 +215,9 @@ in
         lib.kernelConfig functions to build list elements.
       '';
     };
-
   };
 
-    ###### implementation
+  ###### implementation
 
   config = mkMerge [
     (mkIf config.boot.initrd.enable {
@@ -263,7 +262,6 @@ in
             "hid_logitech_hidpp"
             "hid_logitech_dj"
             "hid_microsoft"
-
           ]
           ++ optionals pkgs.stdenv.hostPlatform.isx86 [
             # Misc. x86 keyboard stuff.
@@ -286,12 +284,10 @@ in
     (mkIf (!config.boot.isContainer) {
       system.build = { inherit kernel; };
 
-      system.modulesTree =
-        [ kernel ] ++ config.boot.extraModulePackages
-        ;
+      system.modulesTree = [ kernel ] ++ config.boot.extraModulePackages;
 
-        # Implement consoleLogLevel both in early boot and using sysctl
-        # (so you don't need to reboot to have changes take effect).
+      # Implement consoleLogLevel both in early boot and using sysctl
+      # (so you don't need to reboot to have changes take effect).
       boot.kernelParams =
         [ "loglevel=${toString config.boot.consoleLogLevel}" ]
         ++ optionals config.boot.vesa [
@@ -308,11 +304,11 @@ in
         "atkbd"
       ];
 
-        # The Linux kernel >= 2.6.27 provides firmware.
+      # The Linux kernel >= 2.6.27 provides firmware.
       hardware.firmware = [ kernel ];
 
-        # Create /etc/modules-load.d/nixos.conf, which is read by
-        # systemd-modules-load.service to load required kernel modules.
+      # Create /etc/modules-load.d/nixos.conf, which is read by
+      # systemd-modules-load.service to load required kernel modules.
       environment.etc = {
         "modules-load.d/nixos.conf".source = kernelModulesConf;
       };
@@ -353,8 +349,8 @@ in
           }
           ;
 
-          ### Usually you will just want to use these two
-          # True if yes or module
+        ### Usually you will just want to use these two
+        # True if yes or module
         isEnabled =
           option: {
             assertion = config: config.isEnabled option;
@@ -363,7 +359,7 @@ in
           }
           ;
 
-          # True if no or omitted
+        # True if no or omitted
         isDisabled =
           option: {
             assertion = config: config.isDisabled option;
@@ -373,7 +369,7 @@ in
           ;
       };
 
-        # The config options that all modules can depend upon
+      # The config options that all modules can depend upon
       system.requiredKernelConfig = with config.lib.kernelConfig;
         [
           # !!! Should this really be needed?
@@ -382,7 +378,7 @@ in
         ]
         ++ (optional (randstructSeed != "") (isYes "GCC_PLUGIN_RANDSTRUCT"));
 
-        # nixpkgs kernels are assumed to have all required features
+      # nixpkgs kernels are assumed to have all required features
       assertions =
         if config.boot.kernelPackages.kernel ? features then
           [ ]
@@ -397,9 +393,6 @@ in
           })
           config.system.requiredKernelConfig
         ;
-
     })
-
   ];
-
 }

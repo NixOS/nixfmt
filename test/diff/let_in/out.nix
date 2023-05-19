@@ -17,8 +17,7 @@ let
   a =
     let
       c = 1;
-      # e
-    in
+    in # e
     f
     ;
   a =
@@ -31,8 +30,7 @@ let
   a =
     let
       c = 1; # d
-      # e
-    in
+    in # e
     f
     ;
   a =
@@ -44,8 +42,7 @@ let
   a =
     let # b
       c = 1;
-      # e
-    in
+    in # e
     f
     ;
   a =
@@ -57,8 +54,7 @@ let
   a =
     let # b
       c = 1; # d
-      # e
-    in
+    in # e
     f
     ;
 
@@ -70,6 +66,6 @@ let
       2
     ]
     ;
-
 in
+
 a
