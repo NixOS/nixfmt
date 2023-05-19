@@ -257,15 +257,16 @@ in
           "hid_logitech_dj"
           "hid_microsoft"
 
-        ] ++ optionals pkgs.stdenv.hostPlatform.isx86 [
-          # Misc. x86 keyboard stuff.
-          "pcips2"
-          "atkbd"
-          "i8042"
+        ]
+          ++ optionals pkgs.stdenv.hostPlatform.isx86 [
+            # Misc. x86 keyboard stuff.
+            "pcips2"
+            "atkbd"
+            "i8042"
 
-          # x86 RTC needed by the stage 2 init script.
-          "rtc_cmos"
-        ]);
+            # x86 RTC needed by the stage 2 init script.
+            "rtc_cmos"
+          ]);
 
       boot.initrd.kernelModules =
         optionals config.boot.initrd.includeDefaultModules [
@@ -370,7 +371,8 @@ in
           # !!! Should this really be needed?
           (isYes "MODULES")
           (isYes "BINFMT_ELF")
-        ] ++ (optional (randstructSeed != "") (isYes "GCC_PLUGIN_RANDSTRUCT"));
+        ]
+        ++ (optional (randstructSeed != "") (isYes "GCC_PLUGIN_RANDSTRUCT"));
 
         # nixpkgs kernels are assumed to have all required features
       assertions =

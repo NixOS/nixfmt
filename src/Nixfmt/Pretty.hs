@@ -279,9 +279,23 @@ instance Pretty Expression where
 
     pretty (Application f x) = group $ pretty f <> absorbApp x
 
-    pretty (Operation a op b)
-        = pretty a <> softline
-          <> pretty op <> hardspace <> pretty b
+    -- '//' operator
+    pretty operation@(Operation a op@(Ann TUpdate _ _) b)
+        = pretty a <> softline <> pretty op <> hardspace <> pretty b
+    -- all other operators
+    pretty operation@(Operation _ op _)
+        = let
+            -- Walk the operation tree and put a list of things on the same level
+            flatten (Operation a op' b) | op' == op = (flatten a) ++ (flatten b)
+            flatten x = [x]
+            flattened = flatten operation
+
+            -- Some children need nesting
+            absorbOperation (Term t) | isAbsorbable t = pretty t
+            absorbOperation x@(Operation _ _ _) = nest 2 (pretty x)
+            absorbOperation x = base $ nest 2 (pretty x)
+          in
+            group $ sepBy (line <> pretty op <> hardspace) (map absorbOperation flattened)
 
     pretty (MemberCheck expr qmark sel)
         = pretty expr <> softline

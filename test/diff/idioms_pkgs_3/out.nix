@@ -163,8 +163,10 @@
 }:
 
 assert stdenv.cc.libc or null != null;
-assert pipewireSupport -> !waylandSupport || !webrtcSupport -> throw
-  "${pname}: pipewireSupport requires both wayland and webrtc support.";
+assert pipewireSupport
+  -> !waylandSupport || !webrtcSupport
+  -> throw
+    "${pname}: pipewireSupport requires both wayland and webrtc support.";
 
 let
   inherit (lib)
@@ -257,26 +259,29 @@ buildStdenv.mkDerivation ({
 
   patches =
     lib.optionals (lib.versionOlder version "102.6.0") [
-      (fetchpatch {
-        # https://bugzilla.mozilla.org/show_bug.cgi?id=1773259
-        name = "rust-cbindgen-0.24.2-compat.patch";
-        url =
-          "https://raw.githubusercontent.com/canonical/firefox-snap/5622734942524846fb0eb7108918c8cd8557fde3/patches/fix-ftbfs-newer-cbindgen.patch";
-        hash = "sha256-+wNZhkDB3HSknPRD4N6cQXY7zMT/DzNXx29jQH0Gb1o=";
-      })
-    ] ++ lib.optional (lib.versionOlder version "111")
-    ./env_var_for_system_dir-ff86.patch
+        (fetchpatch {
+          # https://bugzilla.mozilla.org/show_bug.cgi?id=1773259
+          name = "rust-cbindgen-0.24.2-compat.patch";
+          url =
+            "https://raw.githubusercontent.com/canonical/firefox-snap/5622734942524846fb0eb7108918c8cd8557fde3/patches/fix-ftbfs-newer-cbindgen.patch";
+          hash = "sha256-+wNZhkDB3HSknPRD4N6cQXY7zMT/DzNXx29jQH0Gb1o=";
+        })
+      ]
+    ++ lib.optional (lib.versionOlder version "111")
+      ./env_var_for_system_dir-ff86.patch
     ++ lib.optional (lib.versionAtLeast version "111")
-    ./env_var_for_system_dir-ff111.patch
+      ./env_var_for_system_dir-ff111.patch
     ++ lib.optional (lib.versionAtLeast version "96")
-    ./no-buildconfig-ffx96.patch ++ extraPatches
+      ./no-buildconfig-ffx96.patch
+    ++ extraPatches
     ;
 
   postPatch =
     ''
       rm -rf obj-x86_64-pc-linux-gnu
       patchShebangs mach build
-    '' + extraPostPatch
+    ''
+    + extraPostPatch
     ;
 
     # Ignore trivial whitespace changes in patches, this fixes compatibility of
@@ -308,10 +313,13 @@ buildStdenv.mkDerivation ({
       unzip
       which
       wrapGAppsHook
-    ] ++ lib.optionals crashreporterSupport [
+    ]
+    ++ lib.optionals crashreporterSupport [
       dump_syms
       patchelf
-    ] ++ lib.optionals pgoSupport [ xvfb-run ] ++ extraNativeBuildInputs
+    ]
+    ++ lib.optionals pgoSupport [ xvfb-run ]
+    ++ extraNativeBuildInputs
     ;
 
   setOutputFlags =
@@ -345,7 +353,8 @@ buildStdenv.mkDerivation ({
       # RBox WASM Sandboxing
       export WASM_CC=${pkgsCross.wasi32.stdenv.cc}/bin/${pkgsCross.wasi32.stdenv.cc.targetPrefix}cc
       export WASM_CXX=${pkgsCross.wasi32.stdenv.cc}/bin/${pkgsCross.wasi32.stdenv.cc.targetPrefix}c++
-    '' + lib.optionalString pgoSupport ''
+    ''
+    + lib.optionalString pgoSupport ''
       if [ -e "$TMPDIR/merged.profdata" ]; then
         echo "Configuring with profiling data"
         for i in "''${!configureFlagsArray[@]}"; do
@@ -364,7 +373,8 @@ buildStdenv.mkDerivation ({
           "--enable-profile-generate=cross"
         )
       fi
-    '' + lib.optionalString googleAPISupport ''
+    ''
+    + lib.optionalString googleAPISupport ''
       # Google API key used by Chromium and Firefox.
       # Note: These are for NixOS/nixpkgs use ONLY. For your own distribution,
       # please get your own set of keys at https://www.chromium.org/developers/how-tos/api-keys/.
@@ -372,13 +382,15 @@ buildStdenv.mkDerivation ({
       # 60.5+ & 66+ did split the google API key arguments: https://bugzilla.mozilla.org/show_bug.cgi?id=1531176
       configureFlagsArray+=("--with-google-location-service-api-keyfile=$TMPDIR/google-api-key")
       configureFlagsArray+=("--with-google-safebrowsing-api-keyfile=$TMPDIR/google-api-key")
-    '' + lib.optionalString mlsAPISupport ''
+    ''
+    + lib.optionalString mlsAPISupport ''
       # Mozilla Location services API key
       # Note: These are for NixOS/nixpkgs use ONLY. For your own distribution,
       # please get your own set of keys at https://location.services.mozilla.com/api.
       echo "dfd7836c-d458-4917-98bb-421c82d3c8a0" > $TMPDIR/mls-api-key
       configureFlagsArray+=("--with-mozilla-api-keyfile=$TMPDIR/mls-api-key")
-    '' + lib.optionalString (enableOfficialBranding && !stdenv.is32bit) ''
+    ''
+    + lib.optionalString (enableOfficialBranding && !stdenv.is32bit) ''
       export MOZILLA_OFFICIAL=1
     ''
     ;
@@ -421,7 +433,9 @@ buildStdenv.mkDerivation ({
     # https://bugzilla.mozilla.org/show_bug.cgi?id=1482204
     ++ lib.optional (ltoSupport
       && (buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64))
-    "--disable-elf-hack" ++ lib.optional (!drmSupport) "--disable-eme" ++ [
+      "--disable-elf-hack"
+    ++ lib.optional (!drmSupport) "--disable-eme"
+    ++ [
       (enableFeature alsaSupport "alsa")
       (enableFeature crashreporterSupport "crashreporter")
       (enableFeature ffmpegSupport "ffmpeg")
@@ -441,10 +455,12 @@ buildStdenv.mkDerivation ({
       # of RAM, and the 32-bit memory space cannot handle that linking
       (enableFeature (!debugBuild && !stdenv.is32bit) "release")
       (enableFeature enableDebugSymbols "debug-symbols")
-    ] ++ lib.optionals enableDebugSymbols [
+    ]
+    ++ lib.optionals enableDebugSymbols [
       "--disable-strip"
       "--disable-install-strip"
-    ] ++ lib.optional enableOfficialBranding "--enable-official-branding"
+    ]
+    ++ lib.optional enableOfficialBranding "--enable-official-branding"
     ++ lib.optional (branding != null) "--with-branding=${branding}"
     ++ extraConfigureFlags
     ;
@@ -486,18 +502,24 @@ buildStdenv.mkDerivation ({
       xorg.xorgproto
       zip
       zlib
-    ] ++ [
+    ]
+    ++ [
       (if (lib.versionAtLeast version "103") then
         nss_latest
       else
         nss_esr)
-    ] ++ lib.optional alsaSupport alsa-lib ++ lib.optional jackSupport libjack2
+    ]
+    ++ lib.optional alsaSupport alsa-lib
+    ++ lib.optional jackSupport libjack2
     ++ lib.optional pulseaudioSupport libpulseaudio # only headers are needed
-    ++ lib.optional sndioSupport sndio ++ lib.optional gssSupport libkrb5
+    ++ lib.optional sndioSupport sndio
+    ++ lib.optional gssSupport libkrb5
     ++ lib.optionals waylandSupport [
       libxkbcommon
       libdrm
-    ] ++ lib.optional jemallocSupport jemalloc ++ extraBuildInputs
+    ]
+    ++ lib.optional jemallocSupport jemalloc
+    ++ extraBuildInputs
     ;
 
   profilingPhase = lib.optionalString pgoSupport ''
@@ -543,7 +565,8 @@ buildStdenv.mkDerivation ({
       ./mach buildsymbols
       mkdir -p $symbols/
       cp mozobj/dist/*.crashreporter-symbols.zip $symbols/
-    '' + ''
+    ''
+    + ''
       cd mozobj
     ''
     ;
@@ -554,7 +577,8 @@ buildStdenv.mkDerivation ({
       install -Dvm644 ${distributionIni} $out/lib/${binaryName}/distribution/distribution.ini
       install -Dvm644 ${defaultPrefsFile} $out/lib/${binaryName}/browser/defaults/preferences/nixos-default-prefs.js
 
-    '' + lib.optionalString buildStdenv.isLinux ''
+    ''
+    + lib.optionalString buildStdenv.isLinux ''
       # Remove SDK cruft. FIXME: move to a separate output?
       rm -rf $out/share/idl $out/include $out/lib/${binaryName}-devel-*
 

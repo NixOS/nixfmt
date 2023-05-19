@@ -32,8 +32,9 @@ let
         else
           [ cfg.phpPackage.extensions.openssl ])
         ++ optional cfg.enableImagemagick imagick
-        # Optionally enabled depending on caching settings
-        ++ optional cfg.caching.apcu apcu ++ optional cfg.caching.redis redis
+          # Optionally enabled depending on caching settings
+        ++ optional cfg.caching.apcu apcu
+        ++ optional cfg.caching.redis redis
         ++ optional cfg.caching.memcached memcached)
       ++ cfg.phpExtraExtensions all
       ; # Enabled by user
@@ -756,7 +757,8 @@ in
         (optional (cfg.poolConfig != null) ''
           Using config.services.nextcloud.poolConfig is deprecated and will become unsupported in a future release.
           Please migrate your configuration to config.services.nextcloud.poolSettings.
-        '') ++ (optional (versionOlder cfg.package.version "23")
+        '')
+        ++ (optional (versionOlder cfg.package.version "23")
           (upgradeWarning 22 "22.05"))
         ++ (optional (versionOlder cfg.package.version "24")
           (upgradeWarning 23 "22.05"))

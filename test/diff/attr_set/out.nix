@@ -104,16 +104,21 @@
       [
         some
         flags # multiline
-      ] ++ [ short ] ++ [
+      ]
+      ++ [ short ]
+      ++ [
         more
         stuff # multiline
-      ] ++ (if foo then
+      ]
+      ++ (if foo then
         [ bar ]
       else
-        [ baz ]) ++ [ ] ++ (optionals condition [
-          more
-          items
-        ])
+        [ baz ])
+      ++ [ ]
+      ++ (optionals condition [
+        more
+        items
+      ])
       ;
     b = with pkgs; [
       a

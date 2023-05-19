@@ -162,7 +162,8 @@ rec {
         sectName: sectValues:
         ''
           [${mkSectionName sectName}]
-        '' + toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } sectValues
+        ''
+        + toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } sectValues
         ;
         # map input to ini sections
     in
@@ -424,7 +425,8 @@ rec {
               "'''"
             ];
             singlelineResult =
-              ''"'' + concatStringsSep "\\n" (map escapeSingleline lines)
+              ''"''
+              + concatStringsSep "\\n" (map escapeSingleline lines)
               + ''"''
               ;
             multilineResult =
@@ -434,12 +436,14 @@ rec {
                   # indentation level. Otherwise, '' is appended to the last line.
                 lastLine = lib.last escapedLines;
               in
-              "''" + introSpace
+              "''"
+              + introSpace
               + concatStringsSep introSpace (lib.init escapedLines)
               + (if lastLine == "" then
                 outroSpace
               else
-                introSpace + lastLine) + "''"
+                introSpace + lastLine)
+              + "''"
               ;
           in
           if multiline && length lines > 1 then
@@ -458,9 +462,11 @@ rec {
           if v == [ ] then
             "[ ]"
           else
-            "[" + introSpace
+            "["
+            + introSpace
             + libStr.concatMapStringsSep introSpace (go (indent + "  ")) v
-            + outroSpace + "]"
+            + outroSpace
+            + "]"
         else if isFunction v then
           let
             fna = lib.functionArgs v;
@@ -486,13 +492,17 @@ rec {
           else if v ? type && v.type == "derivation" then
             "<derivation ${v.name or "???"}>"
           else
-            "{" + introSpace + libStr.concatStringsSep introSpace
-            (libAttr.mapAttrsToList (name: value:
-              "${libStr.escapeNixIdentifier name} = ${
-                builtins.addErrorContext
-                "while evaluating an attribute `${name}`"
-                (go (indent + "  ") value)
-              };") v) + outroSpace + "}"
+            "{"
+            + introSpace
+            + libStr.concatStringsSep introSpace (libAttr.mapAttrsToList
+              (name: value:
+                "${libStr.escapeNixIdentifier name} = ${
+                  builtins.addErrorContext
+                  "while evaluating an attribute `${name}`"
+                  (go (indent + "  ") value)
+                };") v)
+            + outroSpace
+            + "}"
         else
           abort "generators.toPretty: should never happen (v = ${v})"
         ;
