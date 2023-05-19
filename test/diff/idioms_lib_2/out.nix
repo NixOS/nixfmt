@@ -265,7 +265,8 @@ rec {
     ;
 
   nixpkgsVersion = builtins.trace
-    "`lib.nixpkgsVersion` is deprecated, use `lib.version` instead!" version;
+    "`lib.nixpkgsVersion` is deprecated, use `lib.version` instead!"
+    version;
 
     /* Determine whether the function is being called from inside a Nix
        shell.
@@ -418,8 +419,10 @@ rec {
       ]
     then
       msg:
-      builtins.trace "[1;31mwarning: ${msg}[0m" (abort
-        "NIX_ABORT_ON_WARN=true; warnings are treated as unrecoverable errors.")
+      builtins.trace "[1;31mwarning: ${msg}[0m" (
+        abort
+        "NIX_ABORT_ON_WARN=true; warnings are treated as unrecoverable errors."
+      )
     else
       msg: builtins.trace "[1;31mwarning: ${msg}[0m"
     ;

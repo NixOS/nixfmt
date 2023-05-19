@@ -188,15 +188,16 @@ let
   };
 
     # LTO requires LLVM bintools including ld.lld and llvm-ar.
-  buildStdenv = overrideCC llvmPackages.stdenv
-    (llvmPackages.stdenv.cc.override {
+  buildStdenv = overrideCC llvmPackages.stdenv (
+    llvmPackages.stdenv.cc.override {
       bintools =
         if ltoSupport then
           buildPackages.rustc.llvmPackages.bintools
         else
           stdenv.cc.bintools
         ;
-    });
+    }
+  );
 
     # Compile the wasm32 sysroot to build the RLBox Sandbox
     # https://hacks.mozilla.org/2021/12/webassembly-and-back-again-fine-grained-sandboxing-in-firefox-95/
@@ -208,8 +209,8 @@ let
     done
   '';
 
-  distributionIni = pkgs.writeText "distribution.ini"
-    (lib.generators.toINI { } {
+  distributionIni = pkgs.writeText "distribution.ini" (
+    lib.generators.toINI { } {
       # Some light branding indicating this build uses our distro preferences
       Global = {
         id = "nixos";
@@ -222,7 +223,8 @@ let
         "app.distributor.channel" = "nixpkgs";
         "app.partner.nixos" = "nixos";
       };
-    });
+    }
+  );
 
   defaultPrefs = {
     "geo.provider.network.url" = {
@@ -233,13 +235,18 @@ let
     };
   };
 
-  defaultPrefsFile = pkgs.writeText "nixos-default-prefs.js"
-    (lib.concatStringsSep "\n" (lib.mapAttrsToList (
-      key: value: ''
-        // ${value.reason}
-        pref("${key}", ${builtins.toJSON value.value});
-      ''
-    ) defaultPrefs));
+  defaultPrefsFile = pkgs.writeText "nixos-default-prefs.js" (
+    lib.concatStringsSep "\n" (
+      lib.mapAttrsToList
+      (
+        key: value: ''
+          // ${value.reason}
+          pref("${key}", ${builtins.toJSON value.value});
+        ''
+      )
+      defaultPrefs
+    )
+  );
 
 in
 buildStdenv.mkDerivation ({
@@ -269,11 +276,14 @@ buildStdenv.mkDerivation ({
           hash = "sha256-+wNZhkDB3HSknPRD4N6cQXY7zMT/DzNXx29jQH0Gb1o=";
         })
       ]
-    ++ lib.optional (lib.versionOlder version "111")
+    ++ lib.optional
+      (lib.versionOlder version "111")
       ./env_var_for_system_dir-ff86.patch
-    ++ lib.optional (lib.versionAtLeast version "111")
+    ++ lib.optional
+      (lib.versionAtLeast version "111")
       ./env_var_for_system_dir-ff111.patch
-    ++ lib.optional (lib.versionAtLeast version "96")
+    ++ lib.optional
+      (lib.versionAtLeast version "96")
       ./no-buildconfig-ffx96.patch
     ++ extraPatches
     ;
@@ -433,12 +443,14 @@ buildStdenv.mkDerivation ({
     ]
     # elf-hack is broken when using clang+lld:
     # https://bugzilla.mozilla.org/show_bug.cgi?id=1482204
-    ++ lib.optional (
-      ltoSupport
-      && (
-        buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64
+    ++ lib.optional
+      (
+        ltoSupport
+        && (
+          buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64
+        )
       )
-    ) "--disable-elf-hack"
+      "--disable-elf-hack"
     ++ lib.optional (!drmSupport) "--disable-eme"
     ++ [
       (enableFeature alsaSupport "alsa")

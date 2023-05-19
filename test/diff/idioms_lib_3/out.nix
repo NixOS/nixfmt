@@ -119,8 +119,9 @@ rec {
         ;
     in
     attrs:
-    libStr.concatStrings
-    (lib.concatLists (libAttr.mapAttrsToList mkLines attrs))
+    libStr.concatStrings (
+      lib.concatLists (libAttr.mapAttrsToList mkLines attrs)
+    )
     ;
 
     # Generate an INI-style config file from an
@@ -147,10 +148,12 @@ rec {
     # apply transformations (e.g. escapes) to section names
       mkSectionName ? (
         name:
-        libStr.escape [
+        libStr.escape
+        [
           "["
           "]"
-        ] name
+        ]
+        name
       ),
       # format a setting line from key and value
       mkKeyValue ? mkKeyValueDefault { } "=",
@@ -211,10 +214,12 @@ rec {
     # apply transformations (e.g. escapes) to section names
       mkSectionName ? (
         name:
-        libStr.escape [
+        libStr.escape
+        [
           "["
           "]"
-        ] name
+        ]
+        name
       ),
       # format a setting line from key and value
       mkKeyValue ? mkKeyValueDefault { } "=",
@@ -232,7 +237,8 @@ rec {
         (toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } globalSection)
         + "\n"
     )
-    + (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; }
+    + (toINI
+      { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; }
       sections)
     ;
 
@@ -287,7 +293,8 @@ rec {
           recurse =
             path: value:
             if isAttrs value && !lib.isDerivation value then
-              lib.mapAttrsToList (name: value: recurse ([ name ] ++ path) value)
+              lib.mapAttrsToList
+              (name: value: recurse ([ name ] ++ path) value)
               value
             else if length path > 1 then
               {
@@ -427,13 +434,15 @@ rec {
               ''"''
               "\${"
             ];
-            escapeMultiline = libStr.replaceStrings [
-              "\${"
-              "''"
-            ] [
-              "''\${"
-              "'''"
-            ];
+            escapeMultiline = libStr.replaceStrings
+              [
+                "\${"
+                "''"
+              ]
+              [
+                "''\${"
+                "'''"
+              ];
             singlelineResult =
               ''"''
               + concatStringsSep "\\n" (map escapeSingleline lines)
@@ -482,13 +491,17 @@ rec {
         else if isFunction v then
           let
             fna = lib.functionArgs v;
-            showFnas = concatStringsSep ", " (libAttr.mapAttrsToList (
-              name: hasDefVal:
-              if hasDefVal then
-                name + "?"
-              else
-                name
-            ) fna);
+            showFnas = concatStringsSep ", " (
+              libAttr.mapAttrsToList
+              (
+                name: hasDefVal:
+                if hasDefVal then
+                  name + "?"
+                else
+                  name
+              )
+              fna
+            );
           in
           if fna == { } then
             "<function>"
@@ -507,14 +520,18 @@ rec {
           else
             "{"
             + introSpace
-            + libStr.concatStringsSep introSpace (libAttr.mapAttrsToList (
-              name: value:
-              "${libStr.escapeNixIdentifier name} = ${
-                builtins.addErrorContext
-                "while evaluating an attribute `${name}`"
-                (go (indent + "  ") value)
-              };"
-            ) v)
+            + libStr.concatStringsSep introSpace (
+              libAttr.mapAttrsToList
+              (
+                name: value:
+                "${libStr.escapeNixIdentifier name} = ${
+                  builtins.addErrorContext
+                  "while evaluating an attribute `${name}`"
+                  (go (indent + "  ") value)
+                };"
+              )
+              v
+            )
             + outroSpace
             + "}"
         else
@@ -594,13 +611,19 @@ rec {
           attrFilter = name: value: name != "_module" && value != null;
         in
         ind: x:
-        libStr.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList (
-          name: value:
-          lib.optionals (attrFilter name value) [
-            (key "	${ind}" name)
-            (expr "	${ind}" value)
-          ]
-        ) x))
+        libStr.concatStringsSep "\n" (
+          lib.flatten (
+            lib.mapAttrsToList
+            (
+              name: value:
+              lib.optionals (attrFilter name value) [
+                (key "	${ind}" name)
+                (expr "	${ind}" value)
+              ]
+            )
+            x
+          )
+        )
         ;
 
     in
@@ -624,9 +647,11 @@ rec {
     in
     if isAttrs v then
       "{ ${
-        concatItems (lib.attrsets.mapAttrsToList (
-          key: value: "${key} = ${toDhall args value}"
-        ) v)
+        concatItems (
+          lib.attrsets.mapAttrsToList
+          (key: value: "${key} = ${toDhall args value}")
+          v
+        )
       } }"
     else if isList v then
       "[ ${concatItems (map (toDhall args) v)} ]"

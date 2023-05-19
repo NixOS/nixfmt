@@ -8,6 +8,7 @@
 
 module Nixfmt.Pretty where
 
+import Debug.Trace
 import Prelude hiding (String)
 
 import Data.Char (isSpace)
@@ -79,7 +80,7 @@ instance Pretty Binder where
     -- `inherit (foo) bar` statement
     pretty (Inherit inherit source ids semicolon)
         = base $ group (pretty inherit <> hardspace <> nest 2 (
-            (group' (line <> pretty source)) <> line
+            (group' True False (line <> pretty source)) <> line
                 <> sepBy line ids
                 <> line' <> pretty semicolon
         ))
@@ -95,7 +96,7 @@ instance Pretty Binder where
               (Term t) | isAbsorbable t -> hardspace <> group expr <> pretty semicolon
               -- Non-absorbable term
               -- If it is multi-line, force it to start on a new line with indentation
-              (Term _) -> group' (line <> pretty expr) <> pretty semicolon
+              (Term _) -> group' True False (line <> pretty expr) <> pretty semicolon
               -- Function calls and with expressions
               -- Try to absorb and keep the semicolon attached, spread otherwise
               (Application _ _) -> group (softline <> pretty expr <> softline' <> pretty semicolon)
@@ -243,11 +244,6 @@ absorbElse (If if_ cond then_ expr0 else_ expr1)
 absorbElse x
     = hardline <> nest 2 (group x)
 
-absorbApp :: Expression -> Doc
-absorbApp (Application f x) = softline <> pretty f <> absorbApp x
-absorbApp (Term t) | isAbsorbable t = hardspace <> group (prettyTerm t)
-absorbApp x = softline <> pretty x
-
 instance Pretty Expression where
     pretty (Term t) = pretty t
 
@@ -288,25 +284,51 @@ instance Pretty Expression where
     pretty (Abstraction param colon body)
         = pretty param <> pretty colon <> absorbSet body
 
-    pretty (Application f x) = group $ pretty f <> absorbApp x
+    -- Function application
+    -- Some example mapping of Nix code to Doc (using parentheses as groups, but omitting the outermost group
+    -- and groups around the expressions for conciseness):
+    -- `f a` -> (f line*) a
+    -- `f g a` -> (f line g line*) a
+    -- `f g h a` -> ((f line g) line h line*) a
+    -- `f g h i a` -> (((f line g) line h) line i line*) a
+    -- As you can see, it separates the elements by `line` whitespace. However, there are two tricks to make it look good:
+    -- Firstly, for each function call (imagine the fully parenthesised Nix code), we group it. Due to the greedy expansion
+    -- of groups this means that it will place as many function calls on the first line as possible, but then all the remaining
+    -- ones on a separate line each.
+    -- Secondly, the `line` between the second-to-last and last argument (marked with asterisk above) is moved into its preceding
+    -- group. This allows the last argument to be multi-line without forcing the preceding arguments to be multiline.
+    pretty (Application f a)
+        = let            
+            absorbApp (Application f' a') = (group $ absorbApp f') <> line <> (group a')
+            absorbApp expr = pretty expr
+
+            absorbLast (Term t) | isAbsorbable t
+              = prettyTerm t
+            absorbLast (Term (Parenthesized open expr close))
+              = base $ group $ pretty open <> line' <> nest 2 (group expr) <> line' <> pretty close
+            absorbLast arg = group arg
+          in
+            group $
+              (group' False True $ (absorbApp f) <> line) <> (absorbLast a)
 
     -- '//' operator
-    pretty operation@(Operation a op@(Ann TUpdate _ _) b)
+    pretty (Operation a op@(Ann TUpdate _ _) b)
         = pretty a <> softline <> pretty op <> hardspace <> pretty b
     -- all other operators
     pretty operation@(Operation _ op _)
         = let
             -- Walk the operation tree and put a list of things on the same level
+            flatten :: Expression -> [Expression]
             flatten (Operation a op' b) | op' == op = (flatten a) ++ (flatten b)
             flatten x = [x]
-            flattened = flatten operation
 
             -- Some children need nesting
+            absorbOperation :: Expression -> Doc
             absorbOperation (Term t) | isAbsorbable t = pretty t
             absorbOperation x@(Operation _ _ _) = nest 2 (pretty x)
             absorbOperation x = base $ nest 2 (pretty x)
           in
-            group $ sepBy (line <> pretty op <> hardspace) (map absorbOperation flattened)
+            group $ (sepBy (line <> pretty op <> hardspace) . map absorbOperation . flatten) operation
 
     pretty (MemberCheck expr qmark sel)
         = pretty expr <> softline

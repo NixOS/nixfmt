@@ -163,7 +163,8 @@ in
 
                   super.kernel.override
 
-                  (originalArgs:
+                  (
+                    originalArgs:
 
                     {
 
@@ -199,7 +200,8 @@ in
 
                         features;
 
-                    });
+                    }
+                  );
 
               }
             )

@@ -64,11 +64,11 @@ data DocAnn
     -- in docs should be converted to line breaks. This does not affect softlines,
     -- those will be expanded only as necessary and with a lower priority.
     --
-    -- The boolean argument determines how to handle whitespace directly before the
-    -- group or at the start of the group. By default (False), it gets pulled out
-    -- in front of the group, which is what you want in most cases. If set to True,
-    -- whitespace before the group will be pulled in instead.
-    = Group Bool
+    -- The boolean arguments determine how to handle whitespace directly before/after the
+    -- group or at the start/end of the group. By default (False), it gets pulled out the
+    -- group, which is what you want in most cases. If set to True,
+    -- whitespace before/after the group will be pulled in instead.
+    = Group Bool Bool
     -- | Node (Nest n) doc indicates all line starts in doc should be indented
     -- by n more spaces than the surrounding Base.
     | Nest Int
@@ -110,12 +110,15 @@ text t  = [Text t]
 -- | Group document elements together (see Node Group documentation)
 -- Any whitespace at the start of the group will get pulled out in front of it.
 group :: Pretty a => a -> Doc
-group = pure . Node (Group False) . pretty
+group = pure . Node (Group False False) . pretty
 
 -- | Group document elements together (see Node Group documentation)
--- Any whitespace directly before the group will be pulled into it.
-group' :: Pretty a => a -> Doc
-group' = pure . Node (Group True) . pretty
+-- Any whitespace directly before and/or after the group will be pulled into it.
+-- Use with caution, and only in situations where you control the surroundings of
+-- that group. Especially, never use as a top-level element of a `pretty` instance,
+-- or you'll get some *very* confusing bugs …
+group' :: Pretty a => Bool -> Bool -> a -> Doc
+group' pre post = pure . Node (Group pre post) . pretty
 
 -- | @nest n doc@ sets the indentation for lines in @doc@ to @n@ more than the
 -- indentation of the part before it. This is based on the actual indentation of
@@ -216,10 +219,13 @@ moveLinesIn :: Doc -> Doc
 moveLinesIn [] = []
 -- Move space before Nest in
 moveLinesIn (Spacing l : Node (Nest level) xs : ys) =
-    Node (Nest level) (moveLinesIn (Spacing l : xs)) : moveLinesIn ys
--- Move space before (Group True) in
-moveLinesIn (Spacing l : Node (Group True) xs : ys) =
-    Node (Group False) (moveLinesIn (Spacing l : xs)) : moveLinesIn ys
+    moveLinesIn ((Node (Nest level) (Spacing l : xs)) : ys)
+-- Move space before (Group True _) in
+moveLinesIn (Spacing l : Node ann@(Group True _) xs : ys) =
+    moveLinesIn ((Node ann (Spacing l : xs)) : ys)
+-- Move space after (Group _ True) in
+moveLinesIn (Node ann@(Group _ True) xs : Spacing l : ys) =
+    moveLinesIn ((Node ann (xs ++ [Spacing l])) : ys)
 
 moveLinesIn (Node ann xs : ys) =
     Node ann (moveLinesIn xs) : moveLinesIn ys
@@ -273,7 +279,7 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
           go c (Text t : xs)            = go (c - textWidth t) xs
           go c (Spacing Hardspace : xs) = go (c - 1) xs
           go c (Spacing _ : _)          = maxWidth - c <= targetWidth
-          go c (Node (Group _) ys : xs)     =
+          go c (Node (Group _ _) ys : xs)     =
               case fits (c - firstLineWidth xs) ys of
                    Nothing -> go c (ys ++ xs)
                    Just t  -> go (c - textWidth t) xs
@@ -298,7 +304,7 @@ unChunk (Chunk _ doc) = doc
 --        Only for the tokens starting on the next line the current
 --        indentation will match the target indentation.
 layoutGreedy :: Int -> Doc -> Text
-layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node (Group False) doc]
+layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node (Group False False) doc]
     where go :: Int -> Int -> [Chunk] -> [Text]
           go _ _ [] = []
           go cc ci (Chunk ti x : xs) = case x of
@@ -324,7 +330,7 @@ layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node (Group False) doc]
 
             Node (Nest l) ys     -> go cc ci $ map (Chunk (ti + l)) ys ++ xs
             Node Base ys         -> go cc ci $ map (Chunk ci) ys ++ xs
-            Node (Group _) ys    ->
+            Node (Group _ _) ys    ->
                 -- Does the group (plus whatever comes after it on that line) fit in one line?
                 -- This is where treating whitespace as "compact" happens
                 case fits (tw - cc - firstLineWidth (map unChunk xs)) ys of

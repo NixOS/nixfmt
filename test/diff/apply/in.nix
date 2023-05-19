@@ -49,11 +49,13 @@
 
     name2 = function arg {
         asdf = 1;
+        # multiline
       }
       argument;
 
     name3 = function arg {
         asdf = 1;
+        # multiline
       } {
         qwer = 12345;
       }
@@ -96,5 +98,33 @@
       { utils }:
       # For each supported platform,
       utils.lib.eachDefaultSystem (system: {});
+  }
+  {
+    escapeSingleline = libStr.escape [
+      "\\"
+      ''"''
+      "\${"
+    ];
+    escapeMultiline =
+      libStr.replaceStrings
+      [
+        "\${"
+        "''"
+      ]
+      [
+        "''\${"
+        "'''"
+      ];
+    test = foo
+      [ # multiline
+      1 2 3
+      ]
+      []
+      {}
+      []
+      [ 1 2 3 # multiline
+      ];
+   looooooooong = (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys aaaaaaaa; } sections);
+   looooooooong' = toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys aaaaaaaa; } sections;
   }
 ]
