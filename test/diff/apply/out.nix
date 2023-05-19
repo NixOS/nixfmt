@@ -7,16 +7,16 @@
     ))
   ''
     otherModules=${
-      pkgs.writeText "other-modules.json" (l.toJSON (l.mapAttrs
-        (pname: subOutputs:
-          let
-            pkg = subOutputs.packages."${pname}".overrideAttrs (old: {
-              buildScript = "true";
-              installMethod = "copy";
-            });
-          in
-          "${pkg}/lib/node_modules/${pname}/node_modules"
-        ) outputs.subPackages))
+      pkgs.writeText "other-modules.json" (l.toJSON (l.mapAttrs (
+        pname: subOutputs:
+        let
+          pkg = subOutputs.packages."${pname}".overrideAttrs (old: {
+            buildScript = "true";
+            installMethod = "copy";
+          });
+        in
+        "${pkg}/lib/node_modules/${pname}/node_modules"
+      ) outputs.subPackages))
     }
   ''
   {

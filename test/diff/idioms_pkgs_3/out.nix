@@ -234,10 +234,12 @@ let
   };
 
   defaultPrefsFile = pkgs.writeText "nixos-default-prefs.js"
-    (lib.concatStringsSep "\n" (lib.mapAttrsToList (key: value: ''
-      // ${value.reason}
-      pref("${key}", ${builtins.toJSON value.value});
-    '') defaultPrefs));
+    (lib.concatStringsSep "\n" (lib.mapAttrsToList (
+      key: value: ''
+        // ${value.reason}
+        pref("${key}", ${builtins.toJSON value.value});
+      ''
+    ) defaultPrefs));
 
 in
 buildStdenv.mkDerivation ({
@@ -431,9 +433,12 @@ buildStdenv.mkDerivation ({
     ]
     # elf-hack is broken when using clang+lld:
     # https://bugzilla.mozilla.org/show_bug.cgi?id=1482204
-    ++ lib.optional (ltoSupport
-      && (buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64))
-      "--disable-elf-hack"
+    ++ lib.optional (
+      ltoSupport
+      && (
+        buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64
+      )
+    ) "--disable-elf-hack"
     ++ lib.optional (!drmSupport) "--disable-eme"
     ++ [
       (enableFeature alsaSupport "alsa")
@@ -447,10 +452,12 @@ buildStdenv.mkDerivation ({
       (enableFeature sndioSupport "sndio")
       (enableFeature webrtcSupport "webrtc")
       (enableFeature debugBuild "debug")
-      (if debugBuild then
-        "--enable-profiling"
-      else
-        "--enable-optimize")
+      (
+        if debugBuild then
+          "--enable-profiling"
+        else
+          "--enable-optimize"
+      )
       # --enable-release adds -ffunction-sections & LTO that require a big amount
       # of RAM, and the 32-bit memory space cannot handle that linking
       (enableFeature (!debugBuild && !stdenv.is32bit) "release")
@@ -504,10 +511,12 @@ buildStdenv.mkDerivation ({
       zlib
     ]
     ++ [
-      (if (lib.versionAtLeast version "103") then
-        nss_latest
-      else
-        nss_esr)
+      (
+        if (lib.versionAtLeast version "103") then
+          nss_latest
+        else
+          nss_esr
+      )
     ]
     ++ lib.optional alsaSupport alsa-lib
     ++ lib.optional jackSupport libjack2

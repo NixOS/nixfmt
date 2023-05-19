@@ -154,9 +154,20 @@ prettyTerm (Set krec (Ann paropen trailing leading) binders parclose)
         <> nest 2 (pretty leading <> sepBy hardline binders) <> line
         <> pretty parclose
 
+-- Parentheses
 prettyTerm (Parenthesized (Ann paropen trailing leading) expr parclose)
     = base $ pretty paropen <> pretty trailing
-        <> nest 2 (pretty leading <> group expr) <> pretty parclose
+        <> nest 2 (pretty leading <> absorbedLine <> group expr <> absorbedLine) <> pretty parclose
+  where
+    absorbedLine =
+      case expr of
+        -- Start on the same line for these
+        (Term t) | isAbsorbable t -> mempty
+        (Application _ _) -> mempty
+        (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t -> mempty
+
+        -- Start on a new line for the others
+        _ -> line'
 
 instance Pretty Term where
     pretty l@(List _ _ _) = group $ prettyTerm l

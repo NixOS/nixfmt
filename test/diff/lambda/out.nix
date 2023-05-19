@@ -1,40 +1,59 @@
 [
-  (a: b: # c
-    d)
-  ({ }:
+  (
+    a: b: # c
+    d
+  )
+  (
+    { }:
     b: # c
-    d)
-  (a:
+    d
+  )
+  (
+    a:
     { }: # c
-    d)
+    d
+  )
   (a: d)
-  (a: # c
-    d)
-  (a # b
+  (
+    a: # c
+    d
+  )
+  (
+    a # b
     :
-    d)
-  (a # b
+    d
+  )
+  (
+    a # b
     : # c
-    d)
+    d
+  )
   (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
-  (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:
-    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
-  ({
+  (
+    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:
+    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  )
+  (
+    {
       pkgs ? import ./.. { },
       locationsXml,
     }:
-    null)
+    null
+  )
   (a: b: c: { }: a: b: c: a)
 
-  ({
+  (
+    {
       pkgs,
       ...
     }:
     {
       # Stuff
-    })
+    }
+  )
 
-  ({
+  (
+    {
       pkgs,
       ...
     }:
@@ -43,7 +62,8 @@
     pkgs
   )
 
-  (a:
+  (
+    a:
     {
       b,
       ...
@@ -51,9 +71,11 @@
     c:
     {
       # Stuff
-    })
+    }
+  )
 
-  (a:
+  (
+    a:
     {
       b,
       c,
@@ -62,5 +84,6 @@
     d:
     {
       # Stuff
-    })
+    }
+  )
 ]

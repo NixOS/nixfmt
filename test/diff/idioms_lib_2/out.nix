@@ -106,27 +106,33 @@ rec {
 
     # bitwise “and”
   bitAnd =
-    builtins.bitAnd or (import ./zip-int-bits.nix (a: b:
+    builtins.bitAnd or (import ./zip-int-bits.nix (
+      a: b:
       if a == 1 && b == 1 then
         1
       else
-        0));
+        0
+    ));
 
     # bitwise “or”
   bitOr =
-    builtins.bitOr or (import ./zip-int-bits.nix (a: b:
+    builtins.bitOr or (import ./zip-int-bits.nix (
+      a: b:
       if a == 1 || b == 1 then
         1
       else
-        0));
+        0
+    ));
 
     # bitwise “xor”
   bitXor =
-    builtins.bitXor or (import ./zip-int-bits.nix (a: b:
+    builtins.bitXor or (import ./zip-int-bits.nix (
+      a: b:
       if a != b then
         1
       else
-        0));
+        0
+    ));
 
     # bitwise “not”
   bitNot = builtins.sub (-1);

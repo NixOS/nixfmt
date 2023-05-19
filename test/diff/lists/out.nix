@@ -5,10 +5,12 @@
     foo2 = "barbar";
   } ]
   [
-    (if foo then
-      bar # multiline too
-    else
-      baz)
+    (
+      if foo then
+        bar # multiline too
+      else
+        baz
+    )
   ]
   [ 1 ]
 

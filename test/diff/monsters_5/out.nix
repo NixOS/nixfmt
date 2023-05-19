@@ -18,14 +18,18 @@ let
 
   inherit
 
-    (config.boot)
+    (
+      config.boot
+    )
 
     kernelPatches
     ;
 
   inherit
 
-    (config.boot.kernel)
+    (
+      config.boot.kernel
+    )
 
     features
 
@@ -34,7 +38,9 @@ let
 
   inherit
 
-    (config.boot.kernelPackages)
+    (
+      config.boot.kernelPackages
+    )
 
     kernel
     ;
@@ -144,7 +150,8 @@ in
 
             kernelPackages.extend
 
-            (self:
+            (
+              self:
 
               super:
 
@@ -169,11 +176,13 @@ in
 
                         =
 
-                        (originalArgs.kernelPatches
+                        (
+                          originalArgs.kernelPatches
 
                           or
 
-                          [ ])
+                          [ ]
+                        )
 
                         ++
 
@@ -192,7 +201,8 @@ in
 
                     });
 
-              })
+              }
+            )
             ;
 
             # We don't want to evaluate all of linuxPackages for the manual

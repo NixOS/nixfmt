@@ -1,9 +1,10 @@
 [
-  ([
-    1
-    2
-    3
-  ]
+  (
+    [
+      1
+      2
+      3
+    ]
     ++ [
       4
       5
@@ -13,29 +14,35 @@
       7
       8
       9
-    ])
+    ]
+  )
 
-  ([
-    some
-    flags # multiline
-  ]
+  (
+    [
+      some
+      flags # multiline
+    ]
     ++ [ short ]
     ++ [
       more
       stuff # multiline
     ]
-    ++ (if foo then
-      [ bar ]
-    else
-      [ baz ])
+    ++ (
+      if foo then
+        [ bar ]
+      else
+        [ baz ]
+    )
     ++ [ ]
     ++ (optionals condition [
       more
       items
-    ]))
+    ])
+  )
 
   # Test precedence
-  (aaaaaaaaaaaaaaa
+  (
+    aaaaaaaaaaaaaaa
     + bbbbbbbbbbbbbbbbbbbb
     + ccccccccccccccccccccccccccc
     + ddddddddddddddddddddddd * eeeeeeeeeeeeeeeeeeeeeeee
@@ -43,12 +50,14 @@
       * gggggggggggggggggggggggg
         ++ hhhhhhhhhhhhhhhhhhhhhhhhhhh
         ++ iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii
-      * jjjjjjjjjjjjjjjjjjjjj)
+      * jjjjjjjjjjjjjjjjjjjjj
+  )
 
   # Logical precedence
-  (assert pipewireSupport
-    -> !waylandSupport || !webrtcSupport
-    -> pipewireSupport;
+  (
+    assert pipewireSupport
+      -> !waylandSupport || !webrtcSupport
+      -> pipewireSupport;
     if
       aaaaaaaaaaaaaa && bbbbbbbbbbbb
       || cccccccccccccccccccc && ddddddddddddddddd
@@ -63,19 +72,24 @@
     then
       [ ]
     else
-      { })
+      { }
+  )
 
   # Indentation
-  ([
-    #multiline
-    zip
-    zlib
-  ]
+  (
+    [
+      #multiline
+      zip
+      zlib
+    ]
     ++ [
-      (if (lib.versionAtLeast version "103") then
-        nss_latest
-      else
-        nss_esr)
-    ])
+      (
+        if (lib.versionAtLeast version "103") then
+          nss_latest
+        else
+          nss_esr
+      )
+    ]
+  )
 
 ]

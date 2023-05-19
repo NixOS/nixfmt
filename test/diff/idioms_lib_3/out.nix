@@ -37,8 +37,10 @@ rec {
     let
       err =
         t: v:
-        abort ("generators.mkValueStringDefault: "
-          + "${t} not supported: ${toPretty { } v}")
+        abort (
+          "generators.mkValueStringDefault: "
+          + "${t} not supported: ${toPretty { } v}"
+        )
         ;
     in
     if isInt v then
@@ -106,10 +108,12 @@ rec {
       mkLines =
         if listsAsDuplicateKeys then
           k: v:
-          map (mkLine k) (if lib.isList v then
-            v
-          else
-            [ v ])
+          map (mkLine k) (
+            if lib.isList v then
+              v
+            else
+              [ v ]
+          )
         else
           k: v: [ (mkLine k v) ]
         ;
@@ -141,11 +145,13 @@ rec {
   toINI =
     {
     # apply transformations (e.g. escapes) to section names
-      mkSectionName ? (name:
+      mkSectionName ? (
+        name:
         libStr.escape [
           "["
           "]"
-        ] name),
+        ] name
+      ),
       # format a setting line from key and value
       mkKeyValue ? mkKeyValueDefault { } "=",
       # allow lists as values for duplicate keys
@@ -203,11 +209,13 @@ rec {
   toINIWithGlobalSection =
     {
     # apply transformations (e.g. escapes) to section names
-      mkSectionName ? (name:
+      mkSectionName ? (
+        name:
         libStr.escape [
           "["
           "]"
-        ] name),
+        ] name
+      ),
       # format a setting line from key and value
       mkKeyValue ? mkKeyValueDefault { } "=",
       # allow lists as values for duplicate keys
@@ -217,11 +225,13 @@ rec {
       globalSection,
       sections,
     }:
-    (if globalSection == { } then
-      ""
-    else
-      (toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } globalSection)
-      + "\n")
+    (
+      if globalSection == { } then
+        ""
+      else
+        (toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } globalSection)
+        + "\n"
+    )
     + (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; }
       sections)
     ;
@@ -439,10 +449,12 @@ rec {
               "''"
               + introSpace
               + concatStringsSep introSpace (lib.init escapedLines)
-              + (if lastLine == "" then
-                outroSpace
-              else
-                introSpace + lastLine)
+              + (
+                if lastLine == "" then
+                  outroSpace
+                else
+                  introSpace + lastLine
+              )
               + "''"
               ;
           in
@@ -470,12 +482,13 @@ rec {
         else if isFunction v then
           let
             fna = lib.functionArgs v;
-            showFnas = concatStringsSep ", " (libAttr.mapAttrsToList
-              (name: hasDefVal:
-                if hasDefVal then
-                  name + "?"
-                else
-                  name) fna);
+            showFnas = concatStringsSep ", " (libAttr.mapAttrsToList (
+              name: hasDefVal:
+              if hasDefVal then
+                name + "?"
+              else
+                name
+            ) fna);
           in
           if fna == { } then
             "<function>"
@@ -494,13 +507,14 @@ rec {
           else
             "{"
             + introSpace
-            + libStr.concatStringsSep introSpace (libAttr.mapAttrsToList
-              (name: value:
-                "${libStr.escapeNixIdentifier name} = ${
-                  builtins.addErrorContext
-                  "while evaluating an attribute `${name}`"
-                  (go (indent + "  ") value)
-                };") v)
+            + libStr.concatStringsSep introSpace (libAttr.mapAttrsToList (
+              name: value:
+              "${libStr.escapeNixIdentifier name} = ${
+                builtins.addErrorContext
+                "while evaluating an attribute `${name}`"
+                (go (indent + "  ") value)
+              };"
+            ) v)
             + outroSpace
             + "}"
         else
@@ -541,10 +555,12 @@ rec {
 
       bool =
         ind: x:
-        literal ind (if x then
-          "<true/>"
-        else
-          "<false/>")
+        literal ind (
+          if x then
+            "<true/>"
+          else
+            "<false/>"
+        )
         ;
       int = ind: x: literal ind "<integer>${toString x}</integer>";
       str = ind: x: literal ind "<string>${x}</string>";
@@ -578,12 +594,13 @@ rec {
           attrFilter = name: value: name != "_module" && value != null;
         in
         ind: x:
-        libStr.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList
-          (name: value:
-            lib.optionals (attrFilter name value) [
-              (key "	${ind}" name)
-              (expr "	${ind}" value)
-            ]) x))
+        libStr.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList (
+          name: value:
+          lib.optionals (attrFilter name value) [
+            (key "	${ind}" name)
+            (expr "	${ind}" value)
+          ]
+        ) x))
         ;
 
     in
@@ -607,8 +624,9 @@ rec {
     in
     if isAttrs v then
       "{ ${
-        concatItems (lib.attrsets.mapAttrsToList
-          (key: value: "${key} = ${toDhall args value}") v)
+        concatItems (lib.attrsets.mapAttrsToList (
+          key: value: "${key} = ${toDhall args value}"
+        ) v)
       } }"
     else if isList v then
       "[ ${concatItems (map (toDhall args) v)} ]"
@@ -620,10 +638,12 @@ rec {
           "+"
       }${toString v}"
     else if isBool v then
-      (if v then
-        "True"
-      else
-        "False")
+      (
+        if v then
+          "True"
+        else
+          "False"
+      )
     else if isFunction v then
       abort "generators.toDhall: cannot convert a function to Dhall"
     else if v == null then

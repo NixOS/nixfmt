@@ -110,10 +110,12 @@
         more
         stuff # multiline
       ]
-      ++ (if foo then
-        [ bar ]
-      else
-        [ baz ])
+      ++ (
+        if foo then
+          [ bar ]
+        else
+          [ baz ]
+      )
       ++ [ ]
       ++ (optionals condition [
         more
