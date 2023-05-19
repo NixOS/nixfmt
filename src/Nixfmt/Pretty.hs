@@ -8,7 +8,6 @@
 
 module Nixfmt.Pretty where
 
-import Debug.Trace
 import Prelude hiding (String)
 
 import Data.Char (isSpace)
@@ -205,19 +204,40 @@ toLeading Nothing = []
 toLeading (Just (TrailingComment c)) = [LineComment (" " <> c)]
 
 instance Pretty ParamAttr where
+    -- Simple parameter, move comment around
+    -- Move comments around when switching from leading comma to trailing comma style:
+    -- `, name # foo` → `name, #foo`
+    pretty (ParamAttr (Ann trivia name (Just comment)) Nothing (Just (Ann trivia' comma Nothing)))
+            = pretty (ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann trivia' comma (Just comment))))
+
+    -- Simple parameter, move comment around and add trailing comma
+    -- Same as above, but also add trailing comma
+    pretty (ParamAttr (Ann trivia name (Just comment)) Nothing Nothing)
+            = pretty (ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann [] TComma (Just comment))))
+
     -- Simple parameter
+    -- Still need to handle missing trailing comma here, because the special cases above are not exhaustive
     pretty (ParamAttr name Nothing maybeComma)
         = pretty name <> (fromMaybe (text ",") (fmap pretty maybeComma)) <> softline
 
     -- With ? default
-    pretty (ParamAttr name (Just (qmark, def)) comma)
+    pretty (ParamAttr name (Just (qmark, def)) maybeComma)
         = group (pretty name <> hardspace <> pretty qmark
             <> absorb softline mempty (Just 2) def)
-            <> pretty comma <> softline
+            <> (fromMaybe (text ",") (fmap pretty maybeComma)) <> softline
 
-    -- ...
+    -- `...`
     pretty (ParamEllipsis ellipsis)
         = pretty ellipsis
+
+-- When a `, name` entry has some line comments before it, they are actually attached to the comment
+-- of the preceding item. Move them to the next one
+moveParamComments :: [ParamAttr] -> [ParamAttr]
+moveParamComments
+    ((ParamAttr name maybeDefault (Just (Ann trivia comma Nothing))) : (ParamAttr (Ann [] name' Nothing) maybeDefault' maybeComma') : xs)
+    = (ParamAttr name maybeDefault (Just (Ann [] comma Nothing))) : moveParamComments ((ParamAttr (Ann trivia name' Nothing) maybeDefault' maybeComma') : xs)
+moveParamComments (x : xs) = x : moveParamComments xs
+moveParamComments [] = []
 
 instance Pretty Parameter where
     -- param:
@@ -230,7 +250,7 @@ instance Pretty Parameter where
     -- { stuff }:
     pretty (SetParameter bopen attrs bclose)
         = groupWithStart bopen $ hardline
-                  <> nest 2 (sepBy hardline attrs) <> hardline
+                  <> nest 2 (((sepBy hardline) . moveParamComments) attrs) <> hardline
                   <> pretty bclose
 
     pretty (ContextParameter param1 at param2)

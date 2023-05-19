@@ -29,8 +29,7 @@
   , # Foo
   rustPlatform # Foo
   , # Foo
-  wrapGAppsHook4 # Foo
-  ,
+  wrapGAppsHook4, # Foo
 }: # Foo
 stdenv.mkDerivation # Foo
 rec # Foo

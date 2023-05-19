@@ -94,6 +94,7 @@ data Term
     deriving (Eq, Show)
 
 data ParamAttr
+    -- name, Maybe question mark and default, maybe comma
     = ParamAttr Leaf (Maybe (Leaf, Expression)) (Maybe Leaf)
     | ParamEllipsis Leaf
     deriving (Eq, Show)

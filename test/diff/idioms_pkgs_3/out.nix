@@ -16,7 +16,7 @@
   extraBuildInputs ? [ ],
   extraMakeFlags ? [ ],
   extraPassthru ? { },
-  tests ? [ ]
+  tests ? [ ],
 }:
 
 {
@@ -24,10 +24,9 @@
   pkgs,
   stdenv,
   fetchpatch,
-  patchelf
+  patchelf,
 
   # build time
-  ,
   autoconf,
   cargo,
   dump_syms,
@@ -35,8 +34,7 @@
   nodejs,
   perl,
   pkg-config,
-  pkgsCross # wasm32 rlbox
-  ,
+  pkgsCross, # wasm32 rlbox
   python3,
   runCommand,
   rustc,
@@ -44,10 +42,9 @@
   rustPlatform,
   unzip,
   which,
-  wrapGAppsHook
+  wrapGAppsHook,
 
   # runtime
-  ,
   bzip2,
   dbus,
   dbus-glib,
@@ -75,22 +72,19 @@
   xorg,
   zip,
   zlib,
-  pkgsBuildBuild
+  pkgsBuildBuild,
 
   # optionals
 
   ## debugging
 
-  ,
-  debugBuild ? false
+  debugBuild ? false,
 
   # On 32bit platforms, we disable adding "-g" for easier linking.
-  ,
-  enableDebugSymbols ? !stdenv.is32bit
+  enableDebugSymbols ? !stdenv.is32bit,
 
   ## optional libraries
 
-  ,
   alsaSupport ? stdenv.isLinux,
   alsa-lib,
   ffmpegSupport ? true,
@@ -112,23 +106,21 @@
   sndio,
   waylandSupport ? true,
   libxkbcommon,
-  libdrm
+  libdrm,
 
   ## privacy-related options
 
-  ,
-  privacySupport ? false
+  privacySupport ? false,
 
   # WARNING: NEVER set any of the options below to `true` by default.
   # Set to `!privacySupport` or `false`.
 
-  ,
   crashreporterSupport ? !privacySupport,
   curl,
   geolocationSupport ? !privacySupport,
   googleAPISupport ? geolocationSupport,
   mlsAPISupport ? geolocationSupport,
-  webrtcSupport ? !privacySupport
+  webrtcSupport ? !privacySupport,
 
   # digital rights managemewnt
 
@@ -137,8 +129,7 @@
   # requests it.
   # Controlling the nagbar and widevine CDM at runtime is possible by setting
   # `browser.eme.ui.enabled` and `media.gmp-widevinecdm.enabled` accordingly
-  ,
-  drmSupport ? true
+  drmSupport ? true,
 
   # As stated by Sylvestre Ledru (@sylvestre) on Nov 22, 2017 at
   # https://github.com/NixOS/nixpkgs/issues/31843#issuecomment-346372756 we
@@ -158,8 +149,7 @@
   # > Therefor, as long as you keep the patch queue sane and you don't alter
   # > the experience of Firefox users, you won't have any issues using the
   # > official branding.
-  ,
-  enableOfficialBranding ? true
+  enableOfficialBranding ? true,
 }:
 
 assert stdenv.cc.libc or null != null;

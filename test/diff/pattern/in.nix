@@ -1,4 +1,13 @@
 [
+  ({ foo,
+    bar,
+    # Some comment
+    baz,
+    }: {})
+  ({ foo,
+    bar, # Some comment
+    baz # More comment
+    }: {})
   ({ foo
     , bar
     # Some comment
