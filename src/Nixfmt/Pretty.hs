@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings, RankNTypes #-}
 
 module Nixfmt.Pretty where
 
@@ -16,6 +16,7 @@ import Data.Text (Text, isPrefixOf, isSuffixOf, stripPrefix)
 import qualified Data.Text as Text
   (dropEnd, empty, init, isInfixOf, last, null, strip, takeWhile)
 
+-- import Debug.Trace (traceShowId)
 import Nixfmt.Predoc
   (Doc, Pretty, base, emptyline, group, group', hardline, hardspace, hcat, line, line',
   nest, newline, pretty, sepBy, softline, softline', text, textWidth)
@@ -23,7 +24,7 @@ import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
   StringPart(..), Term(..), Token(..), TrailingComment(..), Trivia, Trivium(..),
-  Whole(..), tokenText)
+  Whole(..), tokenText, mapFirstToken')
 import Nixfmt.Util (commonIndentation, isSpaces, replaceMultiple)
 
 prettyCommentLine :: Text -> Doc
@@ -260,7 +261,7 @@ isAbsorbable :: Term -> Bool
 isAbsorbable (String (Ann _ parts@(_:_:_) _))
     = not $ isSimpleString parts
 isAbsorbable (Set _ _ (Items (_:_)) _)                                   = True
-isAbsorbable (List (Ann [] _ Nothing) (Items [CommentedItem [] item]) _) = True
+isAbsorbable (List (Ann [] _ Nothing) (Items [CommentedItem [] _]) _)    = True
 isAbsorbable (Parenthesized (Ann [] _ Nothing) (Term t) _)               = isAbsorbable t
 isAbsorbable (List _ (Items (_:_:_)) _)                                  = True
 isAbsorbable _                                                           = False
@@ -299,12 +300,35 @@ instance Pretty Expression where
           <> absorbSet expr1
 
     -- Let bindings are always fully expanded (no single-line form)
-    pretty (Let let_ binders in_ expr)
+    -- We also take the comments around the `in` (trailing, leading and detached binder comments)
+    -- and move them down to the first token of the body
+    pretty (Let let_ binders (Ann leading in_ trailing) expr)
         = base $ letPart <> hardline <> inPart
         where
+          -- Convert the TrailingComment to a Trivium, if present
+          convertTrailing Nothing = []
+          convertTrailing (Just (TrailingComment t)) = [(LineComment (" " <> t))]
+
+          -- Extract detached comments at the bottom.
+          -- This uses a custom variant of span/spanJust/spanMaybe.
+          -- Note that this is a foldr which walks from the bottom, but the lists
+          -- are constructed in a way that they end up correct again.
+          (binderComments, bindersWithoutComments)
+            = foldr
+                (\item -> \(start, rest) ->
+                    case item of
+                        (DetachedComments inner) | null rest -> (inner : start, rest)
+                        _ -> (start, item : rest)
+                )
+                ([], [])
+                (unItems binders)
+
           letPart = groupWithStart let_ $ hardline <> letBody
-          inPart = groupWithStart in_ $ hardline <> pretty expr <> hardline
-          letBody = nest 2 $ prettyItems hardline binders
+          letBody = nest 2 $ prettyItems hardline (Items bindersWithoutComments)
+          inPart = groupWithStart (Ann [] in_ Nothing) $ hardline
+              -- Take our trailing and inject it between `in` and body
+              <> pretty (concat binderComments ++ leading ++ convertTrailing trailing)
+              <> pretty expr <> hardline
 
     pretty (Assert assert cond semicolon expr)
         = base (pretty assert <> hardspace
@@ -341,7 +365,7 @@ instance Pretty Expression where
     -- Secondly, the `line` between the second-to-last and last argument (marked with asterisk above) is moved into its preceding
     -- group. This allows the last argument to be multi-line without forcing the preceding arguments to be multiline.
     pretty (Application f a)
-        = let            
+        = let
             absorbApp (Application f' a') = (group $ absorbApp f') <> line <> (group a')
             absorbApp expr = pretty expr
 
@@ -350,9 +374,12 @@ instance Pretty Expression where
             absorbLast (Term (Parenthesized open expr close))
               = base $ group $ pretty open <> line' <> nest 2 (group expr) <> line' <> pretty close
             absorbLast arg = group arg
+
+            -- Extract comment before the first function and move it out, to prevent functions being force-expanded
+            (fWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) f
           in
-            group $
-              (group' False True $ (absorbApp f) <> line) <> (absorbLast a)
+            pretty comment <> (group $
+              (group' False True $ absorbApp fWithoutComment <> line) <> absorbLast a)
 
     -- '//' operator
     pretty (Operation a op@(Ann _ TUpdate _) b)

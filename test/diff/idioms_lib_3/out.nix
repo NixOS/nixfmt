@@ -173,8 +173,8 @@ rec {
         ''
         + toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } sectValues
         ;
-      # map input to ini sections
     in
+    # map input to ini sections
     mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
     ;
 

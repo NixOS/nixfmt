@@ -1,4 +1,13 @@
 [
+  (
+    # Function call with comment
+    mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+  )
+  # Function call with comment
+  (mapAttrsToStringsSep "\n" mkSection attrsOfAttrs)
+  [
+    (mapAttrsToStringsSep [force long] "\n" mkSection attrsOfAttrs)
+  ]
   (a
   b)
   (

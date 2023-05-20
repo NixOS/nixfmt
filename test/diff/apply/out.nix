@@ -1,4 +1,19 @@
 [
+  (
+    # Function call with comment
+    mapAttrsToStringsSep "\n" mkSection attrsOfAttrs)
+  # Function call with comment
+  (mapAttrsToStringsSep "\n" mkSection attrsOfAttrs)
+  [
+    (mapAttrsToStringsSep
+      [
+        force
+        long
+      ]
+      "\n"
+      mkSection
+      attrsOfAttrs)
+  ]
   (a b)
   ((a b) (a b)
     (a # b
@@ -91,8 +106,7 @@
         utils,
       }:
       # For each supported platform,
-      utils.lib.eachDefaultSystem
-      (system: { })
+      utils.lib.eachDefaultSystem (system: { })
       ;
   }
   {

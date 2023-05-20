@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE DeriveFoldable, OverloadedStrings #-}
+{-# LANGUAGE DeriveFoldable, OverloadedStrings, RankNTypes #-}
 
 module Nixfmt.Types where
 
@@ -127,6 +127,71 @@ data Whole a
     deriving (Eq, Show)
 
 type File = Whole Expression
+
+-- Implemented by all AST-related types whose values are guaranteed to contain at least one (annotated) token
+class LanguageElement a where
+    -- Map the first token of that expression, no matter how deep it sits
+    -- in the AST. This is useful for modifying comments
+    mapFirstToken :: (forall b. Ann b -> Ann b) -> a -> a
+    mapFirstToken f a = fst (mapFirstToken' (\x -> (f x, ())) a)
+
+    -- Same as mapFirstToken, but the mapping function also yields a value that may be
+    -- returned. This is useful for getting/extracting values
+    mapFirstToken' :: (forall b. Ann b -> (Ann b, c)) -> a -> (a, c)
+
+instance LanguageElement Parameter where
+    mapFirstToken' f (IDParameter name)
+        = let (name', ret) = f name in (IDParameter name', ret)
+    mapFirstToken' f (SetParameter open items close)
+        = let (open', ret) = f open in (SetParameter open' items close, ret)
+    mapFirstToken' f (ContextParameter first at second)
+        = let (first', ret) = mapFirstToken' f first in ((ContextParameter first' at second), ret)
+
+instance LanguageElement Term where
+    mapFirstToken' f (Token leaf)
+        = let (leaf', ret) = (f leaf) in (Token leaf', ret)
+    mapFirstToken' f (String string)
+        = let (string', ret) = (f string) in (String string', ret)
+    mapFirstToken' f (Path path)
+        = let (path', ret) = (f path) in (Path path', ret)
+    mapFirstToken' f (List open items close)
+        = let (open', ret) = (f open) in (List open' items close, ret)
+    mapFirstToken' f (Set (Just rec) open items close)
+        = let (rec', ret) = (f rec) in (Set (Just rec') open items close, ret)
+    mapFirstToken' f (Set Nothing open items close)
+        = let (open', ret) = (f open) in (Set Nothing open' items close, ret)
+    mapFirstToken' f (Selection term selector)
+        = let (term', ret) = (mapFirstToken' f term) in (Selection term' selector, ret)
+    mapFirstToken' f (Parenthesized open expr close)
+        = let (open', ret) = (f open) in (Parenthesized open' expr close, ret)
+
+instance LanguageElement Expression where
+    mapFirstToken' f (Term term)
+        = let (term', ret) = (mapFirstToken' f term) in (Term term', ret)
+    mapFirstToken' f (With with expr0 semicolon expr1)
+        = let (with', ret) = (f with) in (With with' expr0 semicolon expr1, ret)
+    mapFirstToken' f (Let let_ items in_ body)
+        = let (let_', ret) = (f let_) in (Let let_' items in_ body, ret)
+    mapFirstToken' f (Assert assert cond semicolon body)
+        = let (assert', ret) = (f assert) in (Assert assert' cond semicolon body, ret)
+    mapFirstToken' f (If if_ expr0 then_ expr1 else_ expr2)
+        = let (if_', ret) = (f if_) in (If if_' expr0 then_ expr1 else_ expr2, ret)
+    mapFirstToken' f (Abstraction param colon body)
+        = let (param', ret) = (mapFirstToken' f param) in (Abstraction param' colon body, ret)
+    mapFirstToken' f (Application g a)
+        = let (g', ret) = (mapFirstToken' f g) in (Application g' a, ret)
+    mapFirstToken' f (Operation left op right)
+        = let (left', ret) = (mapFirstToken' f left) in (Operation left' op right, ret)
+    mapFirstToken' f (MemberCheck name dot selectors)
+        = let (name', ret) = (mapFirstToken' f name) in (MemberCheck name' dot selectors, ret)
+    mapFirstToken' f (Negation not_ expr)
+        = let (not_', ret) = (f not_) in (Negation not_' expr, ret)
+    mapFirstToken' f (Inversion tilde expr)
+        = let (tilde', ret) = (f tilde) in (Inversion tilde' expr, ret)
+
+instance LanguageElement a => LanguageElement (Whole a) where
+    mapFirstToken' f (Whole a trivia)
+        = let (a', ret) = (mapFirstToken' f a) in (Whole a' trivia, ret)
 
 data Token
     = Integer    Int
