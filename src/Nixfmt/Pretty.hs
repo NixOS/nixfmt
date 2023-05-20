@@ -190,11 +190,20 @@ prettyTerm (Parenthesized paropen expr parclose)
       case expr of
         -- Start on the same line for these
         (Term t) | isAbsorbable t -> mempty
+        -- Also absorb function calls (even though this rarely looks weird)
         (Application _ _) -> mempty
+        -- Absorb function declarations but only those with simple parameter
         (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t -> mempty
-
+        -- Operations are fine too, except if their left hand side is an absorbable term.
+        -- In that case, we need to start on a new line, otherwise the starting and closing
+        -- bracket/brace would not end up on the same indentation as those of the RHS
+        (Operation left _ _) | startsWithAbsorbableTerm left -> line'
+        (Operation _ _ _) -> mempty
         -- Start on a new line for the others
         _ -> line'
+    startsWithAbsorbableTerm (Term t) | isAbsorbable t = True
+    startsWithAbsorbableTerm (Operation left _ _) = startsWithAbsorbableTerm left
+    startsWithAbsorbableTerm _ = False
 
 instance Pretty Term where
     pretty l@List{} = group $ prettyTerm l
@@ -352,12 +361,12 @@ instance Pretty Expression where
         = pretty param <> pretty colon <> absorbSet body
 
     -- Function application
-    -- Some example mapping of Nix code to Doc (using parentheses as groups, but omitting the outermost group
+    -- Some example mapping of Nix code to Doc (using brackets as groups, but omitting the outermost group
     -- and groups around the expressions for conciseness):
-    -- `f a` -> (f line*) a
-    -- `f g a` -> (f line g line*) a
-    -- `f g h a` -> ((f line g) line h line*) a
-    -- `f g h i a` -> (((f line g) line h) line i line*) a
+    -- `f a` -> [f line*] a
+    -- `f g a` -> [f line g line*] a
+    -- `f g h a` -> [[f line g] line h line*] a
+    -- `f g h i a` -> [[[f line g] line h] line i line*] a
     -- As you can see, it separates the elements by `line` whitespace. However, there are two tricks to make it look good:
     -- Firstly, for each function call (imagine the fully parenthesised Nix code), we group it. Due to the greedy expansion
     -- of groups this means that it will place as many function calls on the first line as possible, but then all the remaining
@@ -393,12 +402,14 @@ instance Pretty Expression where
             flatten x = [x]
 
             -- Some children need nesting
-            absorbOperation :: Expression -> Doc
-            absorbOperation (Term t) | isAbsorbable t = pretty t
-            absorbOperation x@(Operation _ _ _) = nest 2 (pretty x)
-            absorbOperation x = base $ nest 2 (pretty x)
+            -- Also pass in the index because we need to special case the first element
+            absorbOperation :: (Int, Expression) -> Doc
+            absorbOperation (_, (Term t)) | isAbsorbable t = pretty t
+            absorbOperation (0, x@(Operation _ _ _)) = pretty x
+            absorbOperation (_, x@(Operation _ _ _)) = nest 2 (pretty x)
+            absorbOperation (_, x) = base $ nest 2 (pretty x)
           in
-            group $ (sepBy (line <> pretty op <> hardspace) . map absorbOperation . flatten) operation
+            group $ (sepBy (line <> pretty op <> hardspace) . map absorbOperation . (zip [0..]) . flatten) operation
 
     pretty (MemberCheck expr qmark sel)
         = pretty expr <> softline

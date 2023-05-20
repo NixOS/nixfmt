@@ -1,5 +1,62 @@
 [
   (
+    if
+      (cpu.family == "arm" && cpu.bits == 32)
+      || (cpu.family == "sparc" && cpu.bits == 32)
+      || (cpu.family == "m68k" && cpu.bits == 32)
+      || (cpu.family == "x86" && cpu.bits == 32)
+    then
+      execFormats.aout
+    else
+      execFormats.elf
+  )
+  (
+    [
+      aaaaaaaaaaaaa
+      aaaaaaaaaaaaa
+    ]
+    + [
+      bbbbbbbbbbbbbb
+      bbbbbbbbbbbbbbb
+    ]
+      * [
+        ccccccccccccccc
+        ccccccccccccccccccc
+      ]
+  )
+  (
+    [
+      aaaaaaaaaaaaa
+      aaaaaaaaaaaaa
+    ]
+    * [
+      bbbbbbbbbbbbbb
+      bbbbbbbbbbbbbbb
+    ]
+    + [
+      ccccccccccccccc
+      ccccccccccccccccccc
+    ]
+  )
+
+  (
+    [
+      1
+      2
+      3
+    ]
+    / [
+      4
+      5
+      6
+    ]
+    / [
+      7
+      8
+      9
+    ]
+  )
+  (
     [
       1
       2
@@ -41,8 +98,7 @@
   )
 
   # Test precedence
-  (
-    aaaaaaaaaaaaaaa
+  (aaaaaaaaaaaaaaa
     + bbbbbbbbbbbbbbbbbbbb
     + ccccccccccccccccccccccccccc
     + ddddddddddddddddddddddd * eeeeeeeeeeeeeeeeeeeeeeee
@@ -50,8 +106,7 @@
       * gggggggggggggggggggggggg
         ++ hhhhhhhhhhhhhhhhhhhhhhhhhhh
         ++ iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii
-      * jjjjjjjjjjjjjjjjjjjjj
-  )
+      * jjjjjjjjjjjjjjjjjjjjj)
 
   # Logical precedence
   (
