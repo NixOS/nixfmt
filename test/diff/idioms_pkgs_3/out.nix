@@ -254,14 +254,14 @@ buildStdenv.mkDerivation ({
 
   patches =
     lib.optionals (lib.versionOlder version "102.6.0") [
-        (fetchpatch {
-          # https://bugzilla.mozilla.org/show_bug.cgi?id=1773259
-          name = "rust-cbindgen-0.24.2-compat.patch";
-          url =
-            "https://raw.githubusercontent.com/canonical/firefox-snap/5622734942524846fb0eb7108918c8cd8557fde3/patches/fix-ftbfs-newer-cbindgen.patch";
-          hash = "sha256-+wNZhkDB3HSknPRD4N6cQXY7zMT/DzNXx29jQH0Gb1o=";
-        })
-      ]
+      (fetchpatch {
+        # https://bugzilla.mozilla.org/show_bug.cgi?id=1773259
+        name = "rust-cbindgen-0.24.2-compat.patch";
+        url =
+          "https://raw.githubusercontent.com/canonical/firefox-snap/5622734942524846fb0eb7108918c8cd8557fde3/patches/fix-ftbfs-newer-cbindgen.patch";
+        hash = "sha256-+wNZhkDB3HSknPRD4N6cQXY7zMT/DzNXx29jQH0Gb1o=";
+      })
+    ]
     ++ lib.optional
       (lib.versionOlder version "111")
       ./env_var_for_system_dir-ff86.patch
@@ -427,16 +427,15 @@ buildStdenv.mkDerivation ({
       "--enable-lto=cross" # Cross-Language LTO
       "--enable-linker=lld"
     ]
-    # LTO is done using clang and lld on Linux.
+    # elf-hack is broken when using clang+lld:
+    # https://bugzilla.mozilla.org/show_bug.cgi?id=1482204
     ++ lib.optional
       (ltoSupport
         && (buildStdenv.isAarch32
           || buildStdenv.isi686
           || buildStdenv.isx86_64))
       "--disable-elf-hack"
-    # LTO is done using clang and lld on Linux.
     ++ lib.optional (!drmSupport) "--disable-eme"
-    # LTO is done using clang and lld on Linux.
     ++ [
       (enableFeature alsaSupport "alsa")
       (enableFeature crashreporterSupport "crashreporter")
@@ -460,16 +459,12 @@ buildStdenv.mkDerivation ({
       (enableFeature (!debugBuild && !stdenv.is32bit) "release")
       (enableFeature enableDebugSymbols "debug-symbols")
     ]
-    # LTO is done using clang and lld on Linux.
     ++ lib.optionals enableDebugSymbols [
       "--disable-strip"
       "--disable-install-strip"
     ]
-    # LTO is done using clang and lld on Linux.
     ++ lib.optional enableOfficialBranding "--enable-official-branding"
-    # LTO is done using clang and lld on Linux.
     ++ lib.optional (branding != null) "--with-branding=${branding}"
-    # LTO is done using clang and lld on Linux.
     ++ extraConfigureFlags
     ;
 

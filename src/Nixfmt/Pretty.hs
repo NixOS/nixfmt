@@ -36,7 +36,9 @@ toLineComment :: Text -> Trivium
 toLineComment c = LineComment $ fromMaybe (" " <> c) $ stripPrefix "*" c
 
 -- Make sure a group is not expanded because the token that starts it has
--- leading comments.
+-- leading comments. This will render both arguments as a group, but
+-- if the first argument has some leading comments they will be put before
+-- the group
 groupWithStart :: Pretty a => Ann a -> Doc -> Doc
 groupWithStart (Ann leading a trailing) b
     = pretty leading <> group (pretty a <> pretty trailing <> b)
@@ -347,7 +349,7 @@ instance Pretty Expression where
     pretty (If if_ cond then_ expr0 else_ expr1)
         = base $ group $
             -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
-            (group (pretty if_ <> nest 2 (line <> pretty cond <> line) <> pretty then_))
+            (groupWithStart if_ (nest 2 (line <> pretty cond <> line) <> pretty then_))
             <> hardline <> nest 2 (group expr0) <> hardline
             <> pretty else_ <> absorbElse expr1
 
@@ -396,20 +398,29 @@ instance Pretty Expression where
     -- all other operators
     pretty operation@(Operation _ op _)
         = let
-            -- Walk the operation tree and put a list of things on the same level
-            flatten :: Expression -> [Expression]
-            flatten (Operation a op' b) | op' == op = (flatten a) ++ (flatten b)
-            flatten x = [x]
+            -- Walk the operation tree and put a list of things on the same level.
+            -- We still need to keep the operators around because they might have comments attached to them.
+            -- An operator is put together with its succeeding expression. Only the first operand has none.
+            flatten :: Maybe Leaf -> Expression -> [(Maybe Leaf, Expression)]
+            flatten opL (Operation a opR b) | opR == op = (flatten opL a) ++ (flatten (Just opR) b)
+            flatten opL x = [(opL, x)]
 
             -- Some children need nesting
-            -- Also pass in the index because we need to special case the first element
-            absorbOperation :: (Int, Expression) -> Doc
-            absorbOperation (_, (Term t)) | isAbsorbable t = pretty t
-            absorbOperation (0, x@(Operation _ _ _)) = pretty x
-            absorbOperation (_, x@(Operation _ _ _)) = nest 2 (pretty x)
-            absorbOperation (_, x) = base $ nest 2 (pretty x)
+            absorbOperation :: Expression -> Doc
+            absorbOperation (Term t) | isAbsorbable t = pretty t
+            absorbOperation x = nest 2 (pretty x)
+
+            prettyOperation :: (Maybe Leaf, Expression) -> Doc
+            -- First element
+            prettyOperation (Nothing, expr) = pretty expr
+            -- The others
+            prettyOperation ((Just op'), expr) = line <> pretty op' <> hardspace <> absorbOperation expr
+
+            -- Extract comment before the first operand and move it out, to prevent force-expanding the expression
+            (operationWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) operation
           in
-            group $ (sepBy (line <> pretty op <> hardspace) . map absorbOperation . (zip [0..]) . flatten) operation
+            pretty comment <> (group $
+                (concat . map prettyOperation . (flatten Nothing)) operationWithoutComment)
 
     pretty (MemberCheck expr qmark sel)
         = pretty expr <> softline

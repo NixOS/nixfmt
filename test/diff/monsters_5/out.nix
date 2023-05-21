@@ -186,7 +186,7 @@ in
 
                         ++
 
-                        kernelPatches
+                          kernelPatches
                         ;
 
                       features

@@ -1,5 +1,44 @@
 [
   (
+    # Filter out git
+    baseName == ".gitignore"
+    || (type == "directory" && baseName == ".git")
+    || (type == "directory"
+      && (baseName == "target"
+        || baseName == "_site"
+        || baseName == ".sass-cache"
+        || baseName == ".jekyll-metadata"
+        || baseName == "build-artifacts"))
+    || (type == "symlink" && lib.hasPrefix "result" baseName)
+    || (type == "directory" && (baseName == ".idea" || baseName == ".vscode"))
+    || lib.hasSuffix ".iml" baseName
+    # some other comment
+    || baseName == "Cargo.nix"
+    || lib.hasSuffix "~" baseName
+    || builtins.match "^\\.sw[a-z]$$" baseName != null
+    || # a third comment
+      builtins.match "^\\..*\\.sw[a-z]$$" baseName != null
+    || lib.hasSuffix ".tmp" baseName
+    ||
+      # fourth comment
+      lib.hasSuffix ".bak" baseName
+    ||
+      # fifth comment
+      baseName == "tests.nix")
+  (
+    # Don't bother wrapping unless we actually have plugins, since the wrapper will stop automatic downloading
+    # of plugins, which might be counterintuitive if someone just wants a vanilla Terraform.
+    if actualPlugins == [ ] then
+      terraform.overrideAttrs (orig: { passthru = orig.passthru // passthru; })
+    else
+      lib.appendToName "with-plugins" (
+        stdenv.mkDerivation {
+          inherit (terraform) meta pname version;
+          nativeBuildInputs = [ makeWrapper ];
+        }
+      )
+  )
+  (
     if
       (cpu.family == "arm" && cpu.bits == 32)
       || (cpu.family == "sparc" && cpu.bits == 32)
@@ -144,6 +183,27 @@
         else
           nss_esr
       )
+    ]
+  )
+
+  # Indentation with parenthesized multiline function call
+  (
+    [
+      1
+      2
+      3
+    ]
+    ++ (isOneOf item [
+      1
+      2
+      3
+      4
+    ])
+    ++ isOneOf item [
+      1
+      2
+      3
+      4
     ]
   )
 ]

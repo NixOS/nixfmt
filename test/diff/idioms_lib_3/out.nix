@@ -504,9 +504,7 @@ rec {
             "<function, args: {${showFnas}}>"
         else if isAttrs v then
           # apply pretty values if allowed
-          if
-            allowPrettyValues && v ? __pretty && v ? val
-          then
+          if allowPrettyValues && v ? __pretty && v ? val then
             v.__pretty v.val
           else if v == { } then
             "{ }"

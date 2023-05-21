@@ -34,21 +34,10 @@ let
           else
             [ cfg.phpPackage.extensions.openssl ]
         )
-        # use OpenSSL 1.1 for RC4 Nextcloud encryption if user
-        # has acknowledged the brokenness of the ciphers (RC4).
-        # TODO: remove when https://github.com/nextcloud/server/issues/32003 is fixed.
         ++ optional cfg.enableImagemagick imagick
-        # use OpenSSL 1.1 for RC4 Nextcloud encryption if user
-        # has acknowledged the brokenness of the ciphers (RC4).
-        # TODO: remove when https://github.com/nextcloud/server/issues/32003 is fixed.
+        # Optionally enabled depending on caching settings
         ++ optional cfg.caching.apcu apcu
-        # use OpenSSL 1.1 for RC4 Nextcloud encryption if user
-        # has acknowledged the brokenness of the ciphers (RC4).
-        # TODO: remove when https://github.com/nextcloud/server/issues/32003 is fixed.
         ++ optional cfg.caching.redis redis
-        # use OpenSSL 1.1 for RC4 Nextcloud encryption if user
-        # has acknowledged the brokenness of the ciphers (RC4).
-        # TODO: remove when https://github.com/nextcloud/server/issues/32003 is fixed.
         ++ optional cfg.caching.memcached memcached
       )
       ++ cfg.phpExtraExtensions all
