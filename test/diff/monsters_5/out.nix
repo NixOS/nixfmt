@@ -18,18 +18,14 @@ let
 
   inherit
 
-    (
-      config.boot
-    )
+    (config.boot)
 
     kernelPatches
     ;
 
   inherit
 
-    (
-      config.boot.kernel
-    )
+    (config.boot.kernel)
 
     features
 
@@ -38,9 +34,7 @@ let
 
   inherit
 
-    (
-      config.boot.kernelPackages
-    )
+    (config.boot.kernelPackages)
 
     kernel
     ;
@@ -176,8 +170,7 @@ in
 
                         =
 
-                        (
-                          originalArgs.kernelPatches
+                        (originalArgs.kernelPatches
 
                           or
 

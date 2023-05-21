@@ -89,8 +89,8 @@ instance Pretty Selector where
         = pretty dot <> pretty sel
 
     pretty (Selector dot sel (Just (kw, def)))
-        = pretty dot <> pretty sel
-          <> hardspace <> pretty kw <> hardspace <> pretty def
+        = base $ pretty dot <> pretty sel
+          <> nest 2 (softline <> pretty kw <> hardspace <> pretty def)
 
 -- in attrsets and let bindings
 instance Pretty Binder where
@@ -186,23 +186,26 @@ prettyTerm (Set krec paropen binders parclose)
 
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose)
-    = base $ pretty paropen <> nest 2 (absorbedLine <> group expr <> absorbedLine) <> pretty parclose
+    = base $ groupWithStart paropen (nest 2 (lineL <> group expr <> lineR) <> pretty parclose)
   where
-    absorbedLine =
+    (lineL, lineR) =
       case expr of
         -- Start on the same line for these
-        (Term t) | isAbsorbable t -> mempty
+        (Term t) | isAbsorbable t -> (mempty, mempty)
         -- Also absorb function calls (even though this rarely looks weird)
-        (Application _ _) -> mempty
+        (Application _ _) -> (mempty, mempty)
         -- Absorb function declarations but only those with simple parameter
-        (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t -> mempty
+        (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t -> (mempty, mempty)
         -- Operations are fine too, except if their left hand side is an absorbable term.
         -- In that case, we need to start on a new line, otherwise the starting and closing
         -- bracket/brace would not end up on the same indentation as those of the RHS
-        (Operation left _ _) | startsWithAbsorbableTerm left -> line'
-        (Operation _ _ _) -> mempty
+        (Operation left (Ann _ op _) _) | startsWithAbsorbableTerm left || op == TUpdate -> (line', line')
+        (Operation _ _ _) -> (mempty, line')
+        -- Same thing for selections
+        (Term (Selection t _)) | isAbsorbable t -> (line', line')
+        (Term (Selection _ _)) -> (mempty, line')
         -- Start on a new line for the others
-        _ -> line'
+        _ -> (line', line')
     startsWithAbsorbableTerm (Term t) | isAbsorbable t = True
     startsWithAbsorbableTerm (Operation left _ _) = startsWithAbsorbableTerm left
     startsWithAbsorbableTerm _ = False
@@ -414,6 +417,7 @@ instance Pretty Expression where
             -- First element
             prettyOperation (Nothing, expr) = pretty expr
             -- The others
+            -- TODO when expr contains a comment or op' has a trailing comment, move them before op'
             prettyOperation ((Just op'), expr) = line <> pretty op' <> hardspace <> absorbOperation expr
 
             -- Extract comment before the first operand and move it out, to prevent force-expanding the expression

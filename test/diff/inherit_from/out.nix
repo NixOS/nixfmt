@@ -285,72 +285,56 @@
   }
   {
     inherit # a
-      (
-        c
-      )
+      (c)
       f
       h
       ;
   }
   {
     inherit # a
-      (
-        c
-      )
+      (c)
       f
       h # i
       ;
   }
   {
     inherit # a
-      (
-        c
-      )
+      (c)
       f # g
       h
       ;
   }
   {
     inherit # a
-      (
-        c
-      )
+      (c)
       f # g
       h # i
       ;
   }
   {
     inherit # a
-      (
-        c
-      ) # e
+      (c) # e
       f
       h
       ;
   }
   {
     inherit # a
-      (
-        c
-      ) # e
+      (c) # e
       f
       h # i
       ;
   }
   {
     inherit # a
-      (
-        c
-      ) # e
+      (c) # e
       f # g
       h
       ;
   }
   {
     inherit # a
-      (
-        c
-      ) # e
+      (c) # e
       f # g
       h # i
       ;

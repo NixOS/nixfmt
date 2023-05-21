@@ -431,9 +431,8 @@ buildStdenv.mkDerivation ({
     # https://bugzilla.mozilla.org/show_bug.cgi?id=1482204
     ++ lib.optional
       (ltoSupport
-        && (buildStdenv.isAarch32
-          || buildStdenv.isi686
-          || buildStdenv.isx86_64))
+        && (buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64)
+      )
       "--disable-elf-hack"
     ++ lib.optional (!drmSupport) "--disable-eme"
     ++ [

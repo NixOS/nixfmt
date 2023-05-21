@@ -8,7 +8,9 @@
         || baseName == "_site"
         || baseName == ".sass-cache"
         || baseName == ".jekyll-metadata"
-        || baseName == "build-artifacts"))
+        || baseName == "build-artifacts"
+      )
+    )
     || (type == "symlink" && lib.hasPrefix "result" baseName)
     || (type == "directory" && (baseName == ".idea" || baseName == ".vscode"))
     || lib.hasSuffix ".iml" baseName
@@ -24,7 +26,16 @@
       lib.hasSuffix ".bak" baseName
     ||
       # fifth comment
-      baseName == "tests.nix")
+      baseName == "tests.nix"
+  )
+  # Filter out nix-build result symlinks
+  (type == "symlink" && lib.hasPrefix "result" baseName)
+  ( # Filter out nix-build result symlinks
+    (type == "symlink" && lib.hasPrefix "result" baseName)
+    ||
+      # Filter out sockets and other types of files we can't have in the store.
+      (type == "unknown")
+  )
   (
     # Don't bother wrapping unless we actually have plugins, since the wrapper will stop automatic downloading
     # of plugins, which might be counterintuitive if someone just wants a vanilla Terraform.
@@ -145,7 +156,8 @@
       * gggggggggggggggggggggggg
         ++ hhhhhhhhhhhhhhhhhhhhhhhhhhh
         ++ iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii
-      * jjjjjjjjjjjjjjjjjjjjj)
+      * jjjjjjjjjjjjjjjjjjjjj
+  )
 
   # Logical precedence
   (

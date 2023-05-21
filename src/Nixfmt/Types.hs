@@ -75,6 +75,7 @@ data SimpleSelector
     deriving (Eq, Show)
 
 data Selector
+    -- maybe dot, ident, maybe "or" and default value
     = Selector (Maybe Leaf) SimpleSelector (Maybe (Leaf, Term))
     deriving (Eq, Show)
 

@@ -1,3 +1,10 @@
+[
+  (done // listToAttrs [ {
+    # multline
+    name = entry;
+    value = 1;
+  }])
+]
 (
   ( # test
     a # test

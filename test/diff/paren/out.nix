@@ -1,6 +1,16 @@
-(( # test
-  a # test
-)
+[
+  (
+    done // listToAttrs [ {
+      # multline
+      name = entry;
+      value = 1;
+    } ]
+  )
+]
+(
+  ( # test
+    a # test
+  )
   ((c))
   (
     (c) # e
@@ -70,4 +80,5 @@
     ( # b
       c # d
     ) # e
-  ))
+  )
+)
