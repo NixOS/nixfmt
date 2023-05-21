@@ -129,4 +129,12 @@
       packages
     ];
   }
+  {
+    patches = [
+      (substituteAll {
+        src = ./extensionOverridesPatches/vitals_at_corecoding.com.patch;
+        gtop_path = "${libgtop}/lib/girepository-1.0";
+      })
+    ];
+  }
 ]

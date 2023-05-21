@@ -151,7 +151,7 @@ prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trail
 -- Singleton list
 -- Expand unless absorbable term or single line
 prettyTerm (List (Ann leading paropen Nothing) (Items [CommentedItem [] item]) (Ann [] parclose trailing))
-        = pretty leading <> pretty paropen
+        = base $ pretty leading <> pretty paropen
           <> (if isAbsorbable item then
             (hardspace <> pretty item <> hardspace)
           else
