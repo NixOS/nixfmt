@@ -1,0 +1,17 @@
+on:
+  pull_request:
+    branches:
+    - master
+
+jobs:
+  format_nixpkgs:
+    name: Format Nixpkgs
+    runs-on: ubuntu-latest
+    steps: 
+    - uses: actions/checkout@v3.5.2
+      with:
+        fetch-depth: 0
+    # - uses: cachix/install-nix-action@v20
+    - run: |
+        echo from ${{ github.event.pull_request.base.sha }}
+        echo to ${{ github.event.pull_request.head.sha }}
