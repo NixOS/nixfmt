@@ -911,10 +911,7 @@ in
                 let
                   x = cfg.appstoreEnable;
                 in
-                if x == null then
-                  "false"
-                else
-                  boolToString x
+                if x == null then "false" else boolToString x
                 ;
 
               nextcloudGreaterOrEqualThan =
@@ -1069,30 +1066,14 @@ in
                       # The following attributes are optional depending on the type of
                       # database.  Those that evaluate to null on the left hand side
                       # will be omitted.
-                      ${
-                        if c.dbname != null then
-                          "--database-name"
-                        else
-                          null
-                      } = ''"${c.dbname}"'';
-                      ${
-                        if c.dbhost != null then
-                          "--database-host"
-                        else
-                          null
-                      } = ''"${c.dbhost}"'';
-                      ${
-                        if c.dbport != null then
-                          "--database-port"
-                        else
-                          null
-                      } = ''"${toString c.dbport}"'';
-                      ${
-                        if c.dbuser != null then
-                          "--database-user"
-                        else
-                          null
-                      } = ''"${c.dbuser}"'';
+                      ${if c.dbname != null then "--database-name" else null} =
+                        ''"${c.dbname}"'';
+                      ${if c.dbhost != null then "--database-host" else null} =
+                        ''"${c.dbhost}"'';
+                      ${if c.dbport != null then "--database-port" else null} =
+                        ''"${toString c.dbport}"'';
+                      ${if c.dbuser != null then "--database-user" else null} =
+                        ''"${c.dbuser}"'';
                       "--database-pass" = ''"''$${dbpass.arg}"'';
                       "--admin-user" = ''"${c.adminuser}"'';
                       "--admin-pass" = ''"''$${adminpass.arg}"'';
@@ -1326,12 +1307,7 @@ in
                 try_files $fastcgi_script_name =404;
                 fastcgi_param PATH_INFO $path_info;
                 fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-                fastcgi_param HTTPS ${
-                  if cfg.https then
-                    "on"
-                  else
-                    "off"
-                };
+                fastcgi_param HTTPS ${if cfg.https then "on" else "off"};
                 fastcgi_param modHeadersAvailable true;
                 fastcgi_param front_controller_active true;
                 fastcgi_pass unix:${fpm.socket};

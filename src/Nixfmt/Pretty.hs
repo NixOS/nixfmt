@@ -295,11 +295,12 @@ absorbSet = absorb line mempty Nothing
 absorbElse :: Expression -> Doc
 absorbElse (If if_ cond then_ expr0 else_ expr1)
     -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
+    -- Using hardline here is okay because it will only apply to nested ifs, which should not be inline anyways.
     = hardspace <> (group (pretty if_ <> nest 2 (line <> pretty cond <> line) <> pretty then_))
       <> hardline <> nest 2 (group expr0) <> hardline
       <> pretty else_ <> absorbElse expr1
 absorbElse x
-    = hardline <> nest 2 (group x)
+    = line <> nest 2 (group x)
 
 instance Pretty Expression where
     pretty (Term t) = pretty t
@@ -349,7 +350,7 @@ instance Pretty Expression where
         = base $ group $
             -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
             (groupWithStart if_ (nest 2 (line <> pretty cond <> line) <> pretty then_))
-            <> hardline <> nest 2 (group expr0) <> hardline
+            <> line <> nest 2 (group expr0) <> line
             <> pretty else_ <> absorbElse expr1
 
     pretty (Abstraction (IDParameter param) colon body)

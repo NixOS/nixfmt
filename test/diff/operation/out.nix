@@ -137,12 +137,7 @@
       more
       stuff # multiline
     ]
-    ++ (
-      if foo then
-        [ bar ]
-      else
-        [ baz ]
-    )
+    ++ (if foo then [ bar ] else [ baz ])
     ++ [ ]
     ++ (optionals condition [
       more
@@ -208,14 +203,7 @@
       zip
       zlib
     ]
-    ++ [
-      (
-        if (lib.versionAtLeast version "103") then
-          nss_latest
-        else
-          nss_esr
-      )
-    ]
+    ++ [ (if (lib.versionAtLeast version "103") then nss_latest else nss_esr) ]
   )
 
   # Indentation with parenthesized multiline function call

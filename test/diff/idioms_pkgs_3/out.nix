@@ -446,12 +446,7 @@ buildStdenv.mkDerivation ({
       (enableFeature sndioSupport "sndio")
       (enableFeature webrtcSupport "webrtc")
       (enableFeature debugBuild "debug")
-      (
-        if debugBuild then
-          "--enable-profiling"
-        else
-          "--enable-optimize"
-      )
+      (if debugBuild then "--enable-profiling" else "--enable-optimize")
       # --enable-release adds -ffunction-sections & LTO that require a big amount
       # of RAM, and the 32-bit memory space cannot handle that linking
       (enableFeature (!debugBuild && !stdenv.is32bit) "release")
@@ -504,14 +499,7 @@ buildStdenv.mkDerivation ({
       zip
       zlib
     ]
-    ++ [
-      (
-        if (lib.versionAtLeast version "103") then
-          nss_latest
-        else
-          nss_esr
-      )
-    ]
+    ++ [ (if (lib.versionAtLeast version "103") then nss_latest else nss_esr) ]
     ++ lib.optional alsaSupport alsa-lib
     ++ lib.optional jackSupport libjack2
     ++ lib.optional pulseaudioSupport libpulseaudio # only headers are needed

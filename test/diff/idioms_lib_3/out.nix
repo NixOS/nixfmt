@@ -106,13 +106,7 @@ rec {
       mkLine = k: v: mkKeyValue k v + "\n";
       mkLines =
         if listsAsDuplicateKeys then
-          k: v:
-          map (mkLine k) (
-            if lib.isList v then
-              v
-            else
-              [ v ]
-          )
+          k: v: map (mkLine k) (if lib.isList v then v else [ v ])
         else
           k: v: [ (mkLine k v) ]
         ;
@@ -341,10 +335,7 @@ rec {
       ];
       stepIntoAttr =
         evalNext: name:
-        if builtins.elem name specialAttrs then
-          id
-        else
-          evalNext
+        if builtins.elem name specialAttrs then id else evalNext
         ;
       transform =
         depth:
@@ -453,12 +444,7 @@ rec {
               "''"
               + introSpace
               + concatStringsSep introSpace (lib.init escapedLines)
-              + (
-                if lastLine == "" then
-                  outroSpace
-                else
-                  introSpace + lastLine
-              )
+              + (if lastLine == "" then outroSpace else introSpace + lastLine)
               + "''"
               ;
           in
@@ -488,20 +474,11 @@ rec {
             fna = lib.functionArgs v;
             showFnas = concatStringsSep ", " (
               libAttr.mapAttrsToList
-              (
-                name: hasDefVal:
-                if hasDefVal then
-                  name + "?"
-                else
-                  name
-              )
+              (name: hasDefVal: if hasDefVal then name + "?" else name)
               fna
             );
           in
-          if fna == { } then
-            "<function>"
-          else
-            "<function, args: {${showFnas}}>"
+          if fna == { } then "<function>" else "<function, args: {${showFnas}}>"
         else if isAttrs v then
           # apply pretty values if allowed
           if allowPrettyValues && v ? __pretty && v ? val then
@@ -563,15 +540,7 @@ rec {
 
       literal = ind: x: ind + x;
 
-      bool =
-        ind: x:
-        literal ind (
-          if x then
-            "<true/>"
-          else
-            "<false/>"
-        )
-        ;
+      bool = ind: x: literal ind (if x then "<true/>" else "<false/>");
       int = ind: x: literal ind "<integer>${toString x}</integer>";
       str = ind: x: literal ind "<string>${x}</string>";
       key = ind: x: literal ind "<key>${x}</key>";
@@ -648,19 +617,9 @@ rec {
     else if isList v then
       "[ ${concatItems (map (toDhall args) v)} ]"
     else if isInt v then
-      "${
-        if v < 0 then
-          ""
-        else
-          "+"
-      }${toString v}"
+      "${if v < 0 then "" else "+"}${toString v}"
     else if isBool v then
-      (
-        if v then
-          "True"
-        else
-          "False"
-      )
+      (if v then "True" else "False")
     else if isFunction v then
       abort "generators.toDhall: cannot convert a function to Dhall"
     else if v == null then
