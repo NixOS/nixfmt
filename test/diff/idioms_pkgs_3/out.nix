@@ -226,12 +226,10 @@ let
   defaultPrefsFile = pkgs.writeText "nixos-default-prefs.js" (
     lib.concatStringsSep "\n" (
       lib.mapAttrsToList
-      (
-        key: value: ''
-          // ${value.reason}
-          pref("${key}", ${builtins.toJSON value.value});
-        ''
-      )
+      (key: value: ''
+        // ${value.reason}
+        pref("${key}", ${builtins.toJSON value.value});
+      '')
       defaultPrefs
     )
   );

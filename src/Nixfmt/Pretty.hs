@@ -194,13 +194,14 @@ prettyTerm (Parenthesized paropen expr parclose)
         (Term t) | isAbsorbable t -> (mempty, mempty)
         -- Also absorb function calls (even though this rarely looks weird)
         (Application _ _) -> (mempty, mempty)
-        -- Absorb function declarations but only those with simple parameter
-        (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t -> (mempty, mempty)
         -- Operations are fine too, except if their left hand side is an absorbable term.
         -- In that case, we need to start on a new line, otherwise the starting and closing
         -- bracket/brace would not end up on the same indentation as those of the RHS
         (Operation left (Ann _ op _) _) | startsWithAbsorbableTerm left || op == TUpdate -> (line', line')
         (Operation _ _ _) -> (mempty, line')
+        -- Absorb function declarations but only those with simple parameter(s)
+        (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> (mempty, mempty)
+        (Operation _ _ _) -> (line', line')
         -- Same thing for selections
         (Term (Selection t _)) | isAbsorbable t -> (line', line')
         (Term (Selection _ _)) -> (mempty, line')
@@ -209,6 +210,9 @@ prettyTerm (Parenthesized paropen expr parclose)
     startsWithAbsorbableTerm (Term t) | isAbsorbable t = True
     startsWithAbsorbableTerm (Operation left _ _) = startsWithAbsorbableTerm left
     startsWithAbsorbableTerm _ = False
+    isAbstractionWithAbsorbableTerm (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t = True
+    isAbstractionWithAbsorbableTerm (Abstraction (IDParameter _) _ body) = isAbstractionWithAbsorbableTerm body
+    isAbstractionWithAbsorbableTerm _ = False
 
 instance Pretty Term where
     pretty l@List{} = group $ prettyTerm l
