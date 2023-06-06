@@ -395,6 +395,10 @@ instance Pretty Expression where
     -- '//' operator
     pretty (Operation a op@(Ann _ TUpdate _) b)
         = pretty a <> softline <> pretty op <> hardspace <> pretty b
+    -- binary operators
+    pretty (Operation a op@(Ann _ op' _) b)
+        | op' == TLess || op' == TGreater || op' == TLessEqual || op' == TGreaterEqual || op' == TEqual || op' == TUnequal
+        = pretty a <> softline <> pretty op <> hardspace <> pretty b
     -- all other operators
     pretty operation@(Operation _ op _)
         = let
