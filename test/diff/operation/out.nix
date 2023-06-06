@@ -3,8 +3,10 @@
     # Filter out git
     baseName == ".gitignore"
     || (type == "directory" && baseName == ".git")
-    || (type == "directory"
-      && (baseName == "target"
+    || (
+      type == "directory"
+      && (
+        baseName == "target"
         || baseName == "_site"
         || baseName == ".sass-cache"
         || baseName == ".jekyll-metadata"
@@ -65,10 +67,11 @@
       aaaaaaaaaaaaa
       aaaaaaaaaaaaa
     ]
-    + [
-      bbbbbbbbbbbbbb
-      bbbbbbbbbbbbbbb
-    ]
+    +
+      [
+        bbbbbbbbbbbbbb
+        bbbbbbbbbbbbbbb
+      ]
       * [
         ccccccccccccccc
         ccccccccccccccccccc
@@ -148,12 +151,15 @@
   )
 
   # Test precedence
-  (aaaaaaaaaaaaaaa
+  (
+    aaaaaaaaaaaaaaa
     + bbbbbbbbbbbbbbbbbbbb
     + ccccccccccccccccccccccccccc
     + ddddddddddddddddddddddd * eeeeeeeeeeeeeeeeeeeeeeee
-    + ffffffffffffffffffffffffff
-      * gggggggggggggggggggggggg
+    +
+      ffffffffffffffffffffffffff
+      *
+        gggggggggggggggggggggggg
         ++ hhhhhhhhhhhhhhhhhhhhhhhhhhh
         ++ iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii
       * jjjjjjjjjjjjjjjjjjjjj
@@ -175,6 +181,20 @@
       || bbbbbbbbbbbbbbbbbbb && cccccccccccccccccccccccccccccccc
       || ddddddddddddddddd && eeeeeeeeeeeeeeeeeeee
       || fffffffffffffffffffffffffff
+    then
+      [ ]
+    else if
+      aaaaaaaaaaaaaa && bbbbbbbbbbbb && aaaaaaaaaaaaaa && bbbbbbbbbbbb
+      ||
+        cccccccccccccccccccc
+        && ddddddddddddddddd
+        && cccccccccccccccccccc
+        && ddddddddddddddddd
+      ||
+        eeeeeeeeeeeeeeeeeeee
+        && fffffffffffffffffffffffffff
+        && eeeeeeeeeeeeeeeeeeee
+        && fffffffffffffffffffffffffff
     then
       [ ]
     else
@@ -217,5 +237,25 @@
       3
       4
     ]
+  )
+  # Interaction with function calls
+  (
+    g {
+      # multiline
+      y = 20;
+    }
+    * f {
+      # multiline
+      x = 10;
+    }
+    +
+      g {
+        # multiline
+        y = 20;
+      }
+      * h {
+        # multiline
+        z = 30;
+      }
   )
 ]

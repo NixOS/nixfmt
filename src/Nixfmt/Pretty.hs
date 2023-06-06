@@ -194,11 +194,6 @@ prettyTerm (Parenthesized paropen expr parclose)
         (Term t) | isAbsorbable t -> (mempty, mempty)
         -- Also absorb function calls (even though this rarely looks weird)
         (Application _ _) -> (mempty, mempty)
-        -- Operations are fine too, except if their left hand side is an absorbable term.
-        -- In that case, we need to start on a new line, otherwise the starting and closing
-        -- bracket/brace would not end up on the same indentation as those of the RHS
-        (Operation left (Ann _ op _) _) | startsWithAbsorbableTerm left || op == TUpdate -> (line', line')
-        (Operation _ _ _) -> (mempty, line')
         -- Absorb function declarations but only those with simple parameter(s)
         (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> (mempty, mempty)
         (Operation _ _ _) -> (line', line')
@@ -207,9 +202,6 @@ prettyTerm (Parenthesized paropen expr parclose)
         (Term (Selection _ _)) -> (mempty, line')
         -- Start on a new line for the others
         _ -> (line', line')
-    startsWithAbsorbableTerm (Term t) | isAbsorbable t = True
-    startsWithAbsorbableTerm (Operation left _ _) = startsWithAbsorbableTerm left
-    startsWithAbsorbableTerm _ = False
     isAbstractionWithAbsorbableTerm (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t = True
     isAbstractionWithAbsorbableTerm (Abstraction (IDParameter _) _ body) = isAbstractionWithAbsorbableTerm body
     isAbstractionWithAbsorbableTerm _ = False
@@ -412,9 +404,11 @@ instance Pretty Expression where
             flatten opL (Operation a opR b) | opR == op = (flatten opL a) ++ (flatten (Just opR) b)
             flatten opL x = [(opL, x)]
 
-            -- Some children need nesting
+            -- Called on every operand except the first one (a.k.a RHS)
             absorbOperation :: Expression -> Doc
             absorbOperation (Term t) | isAbsorbable t = pretty t
+            -- Force nested operations to start on a new line
+            absorbOperation x@(Operation _ _ _) = group' True False $ line <> nest 2 (pretty x)
             absorbOperation x = nest 2 (pretty x)
 
             prettyOperation :: (Maybe Leaf, Expression) -> Doc

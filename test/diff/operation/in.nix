@@ -83,6 +83,10 @@
   && cccccccccccccccccccccccccccccccc || ddddddddddddddddd
   && eeeeeeeeeeeeeeeeeeee || fffffffffffffffffffffffffff
   then [] else
+  if aaaaaaaaaaaaaa && bbbbbbbbbbbb && aaaaaaaaaaaaaa && bbbbbbbbbbbb
+      || cccccccccccccccccccc && ddddddddddddddddd && cccccccccccccccccccc && ddddddddddddddddd
+      || eeeeeeeeeeeeeeeeeeee && fffffffffffffffffffffffffff && eeeeeeeeeeeeeeeeeeee && fffffffffffffffffffffffffff
+  then [] else
   {}
   )
 
@@ -106,4 +110,23 @@
   ++ (isOneOf item [1 2 3 4])
   ++ isOneOf item [1 2 3 4]
   )
+  # Interaction with function calls
+  (
+  g {
+      # multiline
+      y = 20;
+    }
+  * f {
+    # multiline
+    x = 10;
+  }
+  + g {
+      # multiline
+      y = 20;
+    }
+    * h {
+      # multiline
+      z = 30;
+    }
+)
 ]

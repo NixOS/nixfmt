@@ -428,7 +428,8 @@ buildStdenv.mkDerivation ({
     # elf-hack is broken when using clang+lld:
     # https://bugzilla.mozilla.org/show_bug.cgi?id=1482204
     ++ lib.optional
-      (ltoSupport
+      (
+        ltoSupport
         && (buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64)
       )
       "--disable-elf-hack"
