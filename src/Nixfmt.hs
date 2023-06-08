@@ -12,7 +12,7 @@ module Nixfmt
     ) where
 
 import Data.Bifunctor (bimap, first)
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import qualified Text.Megaparsec as Megaparsec (parse)
 import Text.Megaparsec.Error (errorBundlePretty)
 
@@ -40,7 +40,7 @@ formatVerify width path unformatted = do
     if formattedOnceParsed /= unformattedParsed
     then pleaseReport "Parses differently after formatting."
     else if formattedOnce /= formattedTwice
-    then pleaseReport "Nixfmt is not idempotent."
+    then flip first (pleaseReport "Nixfmt is not idempotent.") $ \x -> (x <> "\nAfter one formatting:\n" <> unpack formattedOnce <> "\nAfter two:\n" <> unpack formattedTwice)
     else Right formattedOnce
     where
         parse = first errorBundlePretty . Megaparsec.parse file path
