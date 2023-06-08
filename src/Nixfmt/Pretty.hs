@@ -268,6 +268,38 @@ instance Pretty Parameter where
     pretty (ContextParameter param1 at param2)
         = pretty param1 <> pretty at <> pretty param2
 
+
+-- Function application
+-- Some example mapping of Nix code to Doc (using brackets as groups, but omitting the outermost group
+-- and groups around the expressions for conciseness):
+-- `f a` -> [f line*] a
+-- `f g a` -> [f line g line*] a
+-- `f g h a` -> [[f line g] line h line*] a
+-- `f g h i a` -> [[[f line g] line h] line i line*] a
+-- As you can see, it separates the elements by `line` whitespace. However, there are two tricks to make it look good:
+-- Firstly, for each function call (imagine the fully parenthesised Nix code), we group it. Due to the greedy expansion
+-- of groups this means that it will place as many function calls on the first line as possible, but then all the remaining
+-- ones on a separate line each.
+-- Secondly, the `line` between the second-to-last and last argument (marked with asterisk above) is moved into its preceding
+-- group. This allows the last argument to be multi-line without forcing the preceding arguments to be multiline.
+prettyApp :: Expression -> Expression -> Doc
+prettyApp f a
+    = let
+        absorbApp (Application f' a') = (group $ absorbApp f') <> line <> (group a')
+        absorbApp expr = pretty expr
+
+        absorbLast (Term t) | isAbsorbable t
+            = prettyTerm t
+        absorbLast (Term (Parenthesized open expr close))
+            = base $ group $ pretty open <> line' <> nest 2 (group expr) <> line' <> pretty close
+        absorbLast arg = group arg
+
+        -- Extract comment before the first function and move it out, to prevent functions being force-expanded
+        (fWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) f
+        in
+        pretty comment <> (group $
+            (group' False $ absorbApp fWithoutComment <> line) <> absorbLast a)
+
 isAbsorbable :: Term -> Bool
 isAbsorbable (String (Ann _ parts@(_:_:_) _))
     = not $ isSimpleString parts
@@ -363,35 +395,8 @@ instance Pretty Expression where
     pretty (Abstraction param colon body)
         = pretty param <> pretty colon <> absorbSet body
 
-    -- Function application
-    -- Some example mapping of Nix code to Doc (using brackets as groups, but omitting the outermost group
-    -- and groups around the expressions for conciseness):
-    -- `f a` -> [f line*] a
-    -- `f g a` -> [f line g line*] a
-    -- `f g h a` -> [[f line g] line h line*] a
-    -- `f g h i a` -> [[[f line g] line h] line i line*] a
-    -- As you can see, it separates the elements by `line` whitespace. However, there are two tricks to make it look good:
-    -- Firstly, for each function call (imagine the fully parenthesised Nix code), we group it. Due to the greedy expansion
-    -- of groups this means that it will place as many function calls on the first line as possible, but then all the remaining
-    -- ones on a separate line each.
-    -- Secondly, the `line` between the second-to-last and last argument (marked with asterisk above) is moved into its preceding
-    -- group. This allows the last argument to be multi-line without forcing the preceding arguments to be multiline.
     pretty (Application f a)
-        = let
-            absorbApp (Application f' a') = (group $ absorbApp f') <> line <> (group a')
-            absorbApp expr = pretty expr
-
-            absorbLast (Term t) | isAbsorbable t
-              = prettyTerm t
-            absorbLast (Term (Parenthesized open expr close))
-              = base $ group $ pretty open <> line' <> nest 2 (group expr) <> line' <> pretty close
-            absorbLast arg = group arg
-
-            -- Extract comment before the first function and move it out, to prevent functions being force-expanded
-            (fWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) f
-          in
-            pretty comment <> (group $
-              (group' False $ absorbApp fWithoutComment <> line) <> absorbLast a)
+        = prettyApp f a
 
     -- '//' operator
     pretty (Operation a op@(Ann _ TUpdate _) b)
