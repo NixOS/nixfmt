@@ -91,15 +91,17 @@
         # multiline
       }
       .${x};
-    z = functionCall
-      {
-        # multi
-        #line
-      }
-      [
-        # several
-        items
-      ];
+    z =
+      functionCall
+        {
+          # multi
+          #line
+        }
+        [
+          # several
+          items
+        ]
+      ;
     a =
       [
         some

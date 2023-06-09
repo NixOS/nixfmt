@@ -155,8 +155,9 @@
 assert stdenv.cc.libc or null != null;
 assert pipewireSupport
   -> !waylandSupport || !webrtcSupport
-  -> throw
-    "${pname}: pipewireSupport requires both wayland and webrtc support.";
+  ->
+    throw
+      "${pname}: pipewireSupport requires both wayland and webrtc support.";
 
 let
   inherit (lib) enableFeature;
@@ -226,11 +227,11 @@ let
   defaultPrefsFile = pkgs.writeText "nixos-default-prefs.js" (
     lib.concatStringsSep "\n" (
       lib.mapAttrsToList
-      (key: value: ''
-        // ${value.reason}
-        pref("${key}", ${builtins.toJSON value.value});
-      '')
-      defaultPrefs
+        (key: value: ''
+          // ${value.reason}
+          pref("${key}", ${builtins.toJSON value.value});
+        '')
+        defaultPrefs
     )
   );
 in
@@ -260,15 +261,15 @@ buildStdenv.mkDerivation ({
         hash = "sha256-+wNZhkDB3HSknPRD4N6cQXY7zMT/DzNXx29jQH0Gb1o=";
       })
     ]
-    ++ lib.optional
-      (lib.versionOlder version "111")
-      ./env_var_for_system_dir-ff86.patch
-    ++ lib.optional
-      (lib.versionAtLeast version "111")
-      ./env_var_for_system_dir-ff111.patch
-    ++ lib.optional
-      (lib.versionAtLeast version "96")
-      ./no-buildconfig-ffx96.patch
+    ++
+      lib.optional (lib.versionOlder version "111")
+        ./env_var_for_system_dir-ff86.patch
+    ++
+      lib.optional (lib.versionAtLeast version "111")
+        ./env_var_for_system_dir-ff111.patch
+    ++
+      lib.optional (lib.versionAtLeast version "96")
+        ./no-buildconfig-ffx96.patch
     ++ extraPatches
     ;
 
@@ -427,12 +428,15 @@ buildStdenv.mkDerivation ({
     ]
     # elf-hack is broken when using clang+lld:
     # https://bugzilla.mozilla.org/show_bug.cgi?id=1482204
-    ++ lib.optional
-      (
-        ltoSupport
-        && (buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64)
-      )
-      "--disable-elf-hack"
+    ++
+      lib.optional
+        (
+          ltoSupport
+          && (
+            buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64
+          )
+        )
+        "--disable-elf-hack"
     ++ lib.optional (!drmSupport) "--disable-eme"
     ++ [
       (enableFeature alsaSupport "alsa")

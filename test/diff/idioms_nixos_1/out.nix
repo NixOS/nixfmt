@@ -222,63 +222,67 @@ in
   config = mkMerge [
     (mkIf config.boot.initrd.enable {
       boot.initrd.availableKernelModules =
-        optionals config.boot.initrd.includeDefaultModules (
-          [
-            # Note: most of these (especially the SATA/PATA modules)
-            # shouldn't be included by default since nixos-generate-config
-            # detects them, but I'm keeping them for now for backwards
-            # compatibility.
+        optionals config.boot.initrd.includeDefaultModules
+          (
+            [
+              # Note: most of these (especially the SATA/PATA modules)
+              # shouldn't be included by default since nixos-generate-config
+              # detects them, but I'm keeping them for now for backwards
+              # compatibility.
 
-            # Some SATA/PATA stuff.
-            "ahci"
-            "sata_nv"
-            "sata_via"
-            "sata_sis"
-            "sata_uli"
-            "ata_piix"
-            "pata_marvell"
+              # Some SATA/PATA stuff.
+              "ahci"
+              "sata_nv"
+              "sata_via"
+              "sata_sis"
+              "sata_uli"
+              "ata_piix"
+              "pata_marvell"
 
-            # Standard SCSI stuff.
-            "sd_mod"
-            "sr_mod"
+              # Standard SCSI stuff.
+              "sd_mod"
+              "sr_mod"
 
-            # SD cards and internal eMMC drives.
-            "mmc_block"
+              # SD cards and internal eMMC drives.
+              "mmc_block"
 
-            # Support USB keyboards, in case the boot fails and we only have
-            # a USB keyboard, or for LUKS passphrase prompt.
-            "uhci_hcd"
-            "ehci_hcd"
-            "ehci_pci"
-            "ohci_hcd"
-            "ohci_pci"
-            "xhci_hcd"
-            "xhci_pci"
-            "usbhid"
-            "hid_generic"
-            "hid_lenovo"
-            "hid_apple"
-            "hid_roccat"
-            "hid_logitech_hidpp"
-            "hid_logitech_dj"
-            "hid_microsoft"
-          ]
-          ++ optionals pkgs.stdenv.hostPlatform.isx86 [
-            # Misc. x86 keyboard stuff.
-            "pcips2"
-            "atkbd"
-            "i8042"
+              # Support USB keyboards, in case the boot fails and we only have
+              # a USB keyboard, or for LUKS passphrase prompt.
+              "uhci_hcd"
+              "ehci_hcd"
+              "ehci_pci"
+              "ohci_hcd"
+              "ohci_pci"
+              "xhci_hcd"
+              "xhci_pci"
+              "usbhid"
+              "hid_generic"
+              "hid_lenovo"
+              "hid_apple"
+              "hid_roccat"
+              "hid_logitech_hidpp"
+              "hid_logitech_dj"
+              "hid_microsoft"
+            ]
+            ++ optionals pkgs.stdenv.hostPlatform.isx86 [
+              # Misc. x86 keyboard stuff.
+              "pcips2"
+              "atkbd"
+              "i8042"
 
-            # x86 RTC needed by the stage 2 init script.
-            "rtc_cmos"
-          ]
-        );
+              # x86 RTC needed by the stage 2 init script.
+              "rtc_cmos"
+            ]
+          )
+        ;
 
       boot.initrd.kernelModules =
-        optionals config.boot.initrd.includeDefaultModules [
-          # For LVM.
-          "dm_mod"
-        ];
+        optionals config.boot.initrd.includeDefaultModules
+          [
+            # For LVM.
+            "dm_mod"
+          ]
+        ;
     })
 
     (mkIf (!config.boot.isContainer) {
@@ -297,7 +301,9 @@ in
         ;
 
       boot.kernel.sysctl."kernel.printk" =
-        mkDefault config.boot.consoleLogLevel;
+        mkDefault
+          config.boot.consoleLogLevel
+        ;
 
       boot.kernelModules = [
         "loop"
@@ -387,11 +393,11 @@ in
             cfg = config.boot.kernelPackages.kernel.config;
           in
           map
-          (attrs: {
-            assertion = attrs.assertion cfg;
-            inherit (attrs) message;
-          })
-          config.system.requiredKernelConfig
+            (attrs: {
+              assertion = attrs.assertion cfg;
+              inherit (attrs) message;
+            })
+            config.system.requiredKernelConfig
         ;
     })
   ];

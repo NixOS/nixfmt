@@ -120,9 +120,10 @@ instance Pretty Binder where
               -- Non-absorbable term
               -- If it is multi-line, force it to start on a new line with indentation
               (Term _) -> group' False (line <> pretty expr) <> pretty semicolon
-              -- Function calls and with expressions
-              -- Try to absorb and keep the semicolon attached, spread otherwise
-              (Application _ _) -> softline <> group (pretty expr <> softline' <> pretty semicolon)
+              -- Function call
+              -- Absorb if all arguments except the last fit into the line, start on new line otherwise
+              (Application f a) -> group $ prettyApp line line' f a <> pretty semicolon
+              -- With expression: Try to absorb and keep the semicolon attached, spread otherwise
               (With _ _ _ _) -> softline <> group (pretty expr <> softline' <> pretty semicolon)
               -- Special case `//` operator to treat like an absorbable term
               (Operation _ (Ann _ TUpdate _) _) -> softline <> group (pretty expr <> softline' <> pretty semicolon)
@@ -184,6 +185,10 @@ prettyTerm (Set krec paropen binders parclose)
         <> pretty paropen <> line
         <> nest 2 (prettyItems hardline binders) <> line
         <> pretty parclose
+
+-- Parenthesized application
+prettyTerm (Parenthesized paropen (Application f a) parclose)
+    = base $ groupWithStart paropen $ nest 2 (prettyApp line' line' f a) <> pretty parclose
 
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose)
@@ -272,20 +277,24 @@ instance Pretty Parameter where
 -- Function application
 -- Some example mapping of Nix code to Doc (using brackets as groups, but omitting the outermost group
 -- and groups around the expressions for conciseness):
--- `f a` -> [f line*] a
--- `f g a` -> [f line g line*] a
--- `f g h a` -> [[f line g] line h line*] a
--- `f g h i a` -> [[[f line g] line h] line i line*] a
--- As you can see, it separates the elements by `line` whitespace. However, there are two tricks to make it look good:
--- Firstly, for each function call (imagine the fully parenthesised Nix code), we group it. Due to the greedy expansion
+-- `f a` -> pre f line a post
+-- `f g a` -> pre [f line g] line a post
+-- `f g h a` -> pre [[f line g] line h] line a post
+-- `f g h i a` -> pre [[[f line g] line h] line i] line a post
+-- As you can see, it separates the elements by `line` whitespace. However, there are three tricks to make it look good:
+-- First, for each function call (imagine the fully parenthesised Nix code), we group it. Due to the greedy expansion
 -- of groups this means that it will place as many function calls on the first line as possible, but then all the remaining
 -- ones on a separate line each.
--- Secondly, the `line` between the second-to-last and last argument (marked with asterisk above) is moved into its preceding
--- group. This allows the last argument to be multi-line without forcing the preceding arguments to be multiline.
-prettyApp :: Expression -> Expression -> Doc
-prettyApp f a
+-- Second, the last argument is declared as "priority" group, meaning that the layouting algorithm will try to expand
+-- it first when things do not fit onto one line. This allows the last argument to be multi-line without forcing the
+-- preceding arguments to be multiline.
+-- Third, callers may inject `pre` and `post` tokens (mostly newlines) into the inside of the group.
+-- This means that callers can say "try to be compact first, but if more than the last argument does not fit onto the line,
+-- then start on a new line instead".
+prettyApp :: Doc -> Doc -> Expression -> Expression -> Doc
+prettyApp pre post f a
     = let
-        absorbApp (Application f' a') = (group $ absorbApp f') <> line <> (group a')
+        absorbApp (Application f' a') = (group $ absorbApp f') <> line <> (nest 2 (group a'))
         absorbApp expr = pretty expr
 
         absorbLast (Term t) | isAbsorbable t
@@ -297,8 +306,8 @@ prettyApp f a
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
         (fWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) f
         in
-        pretty comment <> (group $
-            (group' False $ absorbApp fWithoutComment <> line) <> absorbLast a)
+        pretty comment <> (group' False $
+            pre <> group (absorbApp fWithoutComment) <> line <> group' True ((nest 2 (absorbLast a))) <> post)
 
 isAbsorbable :: Term -> Bool
 isAbsorbable (String (Ann _ parts@(_:_:_) _))
@@ -396,7 +405,7 @@ instance Pretty Expression where
         = pretty param <> pretty colon <> absorbSet body
 
     pretty (Application f a)
-        = prettyApp f a
+        = prettyApp mempty mempty f a
 
     -- '//' operator
     pretty (Operation a op@(Ann _ TUpdate _) b)
@@ -420,6 +429,8 @@ instance Pretty Expression where
             absorbOperation (Term t) | isAbsorbable t = hardspace <> pretty t
             -- Force nested operations to start on a new line
             absorbOperation x@(Operation _ _ _) = group' False $ line <> nest 2 (pretty x)
+            -- Force applications to start on a new line if more than the last argument is multiline
+            absorbOperation (Application f a) = group $ nest 2 $ hardspace <> prettyApp line mempty f a
             absorbOperation x = nest 2 (hardspace <> pretty x)
 
             prettyOperation :: (Maybe Leaf, Expression) -> Doc
