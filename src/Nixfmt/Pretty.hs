@@ -36,6 +36,11 @@ prettyCommentLine l
 toLineComment :: Text -> Trivium
 toLineComment c = LineComment $ fromMaybe (" " <> c) $ stripPrefix "*" c
 
+-- If the token has some trailing comment after it, move that in front of the token
+moveTrailingCommentUp :: Ann a -> Ann a
+moveTrailingCommentUp (Ann pre a (Just (TrailingComment post))) = Ann (pre ++ [LineComment (" " <> post)]) a Nothing
+moveTrailingCommentUp a = a
+
 -- Make sure a group is not expanded because the token that starts it has
 -- leading comments. This will render both arguments as a group, but
 -- if the first argument has some leading comments they will be put before
@@ -122,7 +127,7 @@ instance Pretty Binder where
               (Term _) -> group' False (line <> pretty expr) <> pretty semicolon
               -- Function call
               -- Absorb if all arguments except the last fit into the line, start on new line otherwise
-              (Application f a) -> group $ prettyApp line line' f a <> pretty semicolon
+              (Application f a) -> group $ prettyApp hardline line line' mempty f a <> pretty semicolon
               -- With expression: Try to absorb and keep the semicolon attached, spread otherwise
               (With _ _ _ _) -> softline <> group (pretty expr <> softline' <> pretty semicolon)
               -- Special case `//` operator to treat like an absorbable term
@@ -187,8 +192,13 @@ prettyTerm (Set krec paropen binders parclose)
         <> pretty parclose
 
 -- Parenthesized application
-prettyTerm (Parenthesized paropen (Application f a) parclose)
-    = base $ groupWithStart paropen $ nest 2 (prettyApp line' line' f a) <> pretty parclose
+prettyTerm (Parenthesized (Ann pre paropen post) (Application f a) parclose)
+    = base $ groupWithStart (Ann pre paropen Nothing) $ nest 2 (
+            -- Move comment trailing on '(' to next line, combine with comment from application
+            case pretty post of { [] -> []; c -> hardline <> c }
+            <> prettyApp hardline line' line' hardline f a
+            <> case pretty post of  { [] -> mempty; _ -> hardline }
+        ) <> pretty parclose
 
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose)
@@ -198,7 +208,7 @@ prettyTerm (Parenthesized paropen expr parclose)
       case expr of
         -- Start on the same line for these
         (Term t) | isAbsorbable t -> (mempty, mempty)
-        -- Also absorb function calls (even though this occasionally looks weird)
+        -- unreachable
         (Application _ _) -> (mempty, mempty)
         -- Absorb function declarations but only those with simple parameter(s)
         (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> (mempty, mempty)
@@ -215,10 +225,6 @@ prettyTerm (Parenthesized paropen expr parclose)
 instance Pretty Term where
     pretty l@List{} = group $ prettyTerm l
     pretty x        = prettyTerm x
-
-toLeading :: Maybe TrailingComment -> Trivia
-toLeading Nothing = []
-toLeading (Just (TrailingComment c)) = [LineComment (" " <> c)]
 
 instance Pretty ParamAttr where
     -- Simple parameter, move comment around
@@ -291,23 +297,29 @@ instance Pretty Parameter where
 -- Third, callers may inject `pre` and `post` tokens (mostly newlines) into the inside of the group.
 -- This means that callers can say "try to be compact first, but if more than the last argument does not fit onto the line,
 -- then start on a new line instead".
-prettyApp :: Doc -> Doc -> Expression -> Expression -> Doc
-prettyApp pre post f a
+-- Out of necessity, callers may also inject `commentPre` and `commentPost`, which will be added before/after the entire
+-- thing if the function has a comment associated with its first token
+prettyApp :: Doc -> Doc -> Doc -> Doc -> Expression -> Expression -> Doc
+prettyApp commentPre pre post commentPost f a
     = let
         absorbApp (Application f' a') = (group $ absorbApp f') <> line <> (nest 2 (group a'))
         absorbApp expr = pretty expr
 
         absorbLast (Term t) | isAbsorbable t
             = prettyTerm t
-        absorbLast (Term (Parenthesized open expr close))
-            = base $ group $ pretty open <> line' <> nest 2 (group expr) <> line' <> pretty close
+        absorbLast (Term (Parenthesized (Ann pre' open post') expr close))
+            = base $ group $ pretty (Ann pre' open Nothing) <> line'
+                <> nest 2 (pretty post' <> group expr)
+                <> line' <> pretty close
         absorbLast arg = group arg
 
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
         (fWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) f
         in
-        pretty comment <> (group' False $
+        (if null comment then mempty else commentPre)
+        <> pretty comment <> (group' False $
             pre <> group (absorbApp fWithoutComment) <> line <> group' True ((nest 2 (absorbLast a))) <> post)
+        <> (if null comment then mempty else commentPost)
 
 isAbsorbable :: Term -> Bool
 isAbsorbable (String (Ann _ parts@(_:_:_) _))
@@ -405,7 +417,7 @@ instance Pretty Expression where
         = pretty param <> pretty colon <> absorbSet body
 
     pretty (Application f a)
-        = prettyApp mempty mempty f a
+        = prettyApp mempty mempty mempty mempty f a
 
     -- '//' operator
     pretty (Operation a op@(Ann _ TUpdate _) b)
@@ -426,19 +438,19 @@ instance Pretty Expression where
 
             -- Called on every operand except the first one (a.k.a. RHS)
             absorbOperation :: Expression -> Doc
-            absorbOperation (Term t) | isAbsorbable t = hardspace <> pretty t
+            absorbOperation (Term t) | isAbsorbable t = hardspace <> (base $ pretty t)
             -- Force nested operations to start on a new line
-            absorbOperation x@(Operation _ _ _) = group' False $ line <> nest 2 (pretty x)
+            absorbOperation x@(Operation _ _ _) = group' False $ line <> pretty x
             -- Force applications to start on a new line if more than the last argument is multiline
-            absorbOperation (Application f a) = group $ nest 2 $ hardspace <> prettyApp line mempty f a
-            absorbOperation x = nest 2 (hardspace <> pretty x)
+            absorbOperation (Application f a) = group $ hardspace <> prettyApp hardline line mempty mempty f a
+            absorbOperation x = hardspace <> pretty x
 
             prettyOperation :: (Maybe Leaf, Expression) -> Doc
             -- First element
             prettyOperation (Nothing, expr) = pretty expr
             -- The others
-            -- TODO when expr contains a comment or op' has a trailing comment, move them before op'
-            prettyOperation ((Just op'), expr) = line <> pretty op' <> absorbOperation expr
+            prettyOperation ((Just op'), expr) =
+                line <> pretty (moveTrailingCommentUp op') <> nest 2 (absorbOperation expr)
 
             -- Extract comment before the first operand and move it out, to prevent force-expanding the expression
             (operationWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) operation

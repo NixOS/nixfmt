@@ -20,8 +20,8 @@
     || baseName == "Cargo.nix"
     || lib.hasSuffix "~" baseName
     || builtins.match "^\\.sw[a-z]$$" baseName != null
-    || # a third comment
-      builtins.match "^\\..*\\.sw[a-z]$$" baseName != null
+    # a third comment
+    || builtins.match "^\\..*\\.sw[a-z]$$" baseName != null
     || lib.hasSuffix ".tmp" baseName
     ||
       # fourth comment
@@ -29,14 +29,35 @@
     ||
       # fifth comment
       baseName == "tests.nix"
+    # comment on operator inside
+    || baseName == "tests.nix"
+    # comment absorbable term
+    || { }
+    # comment absorbable term 2
+    || {
+      foo = "bar"; # multiline
+    }
+    # comment on function application
+    || foo bar baz
+    # comment on function application 2
+    || foo bar baz [
+      1
+      2
+    ]
+    # comment on other
+    || foo ? bar
   )
   # Filter out nix-build result symlinks
   (type == "symlink" && lib.hasPrefix "result" baseName)
   ( # Filter out nix-build result symlinks
     (type == "symlink" && lib.hasPrefix "result" baseName)
+    # Filter out sockets and other types of files we can't have in the store.
+    || (type == "unknown")
     ||
       # Filter out sockets and other types of files we can't have in the store.
       (type == "unknown")
+    # Filter out sockets and other types of files we can't have in the store.
+    || (type == "unknown")
   )
   (
     # Don't bother wrapping unless we actually have plugins, since the wrapper will stop automatic downloading

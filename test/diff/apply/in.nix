@@ -5,6 +5,65 @@
   )
   # Function call with comment
   (mapAttrsToStringsSep "\n" mkSection attrsOfAttrs)
+  ( # Function call with comment
+    mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+  )
+
+  # Same song again, but within function application
+
+  (
+    foo bar baz (
+      # Function call with comment
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+    )
+  )
+  (
+    foo bar baz
+    # Function call with comment
+    (mapAttrsToStringsSep "\n" mkSection attrsOfAttrs)
+  )
+  (
+    foo bar baz ( # Function call with comment
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+    )
+  )
+
+  # And again, but with wide function application
+
+  (
+    foo
+      [ 1 2 # multiline
+      ]
+      baz (
+      # Function call with comment
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+    )
+  )
+  (
+    foo
+      [ 1 2 # multiline
+      ]
+      bar baz
+      # Function call with comment
+      (mapAttrsToStringsSep "\n" mkSection attrsOfAttrs)
+  )
+  (
+    foo
+      [ 1 2 # multiline
+      ]
+      bar baz ( # Function call with comment
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+    )
+  )
+
+  # Now in attribute set position
+  {
+    a =
+      # Function call with comment
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
+    b = # Function call with comment
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
+  }
   [
     (mapAttrsToStringsSep [force long] "\n" mkSection attrsOfAttrs)
   ]
