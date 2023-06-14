@@ -63,14 +63,14 @@ stdenv.mkDerivation # Foo
             = # Foo
             "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0="; # Foo
         }
-      ; # Foo
+    ; # Foo
     cargoDeps # Foo
       = # Foo
       rustPlatform.fetchCargoTarball # Foo
         { # Foo
           inherit # Foo
             src
-            ; # Foo
+          ; # Foo
           name # Foo
             = # Foo
             "${pname}-${version}"; # Foo
@@ -78,7 +78,7 @@ stdenv.mkDerivation # Foo
             = # Foo
             "sha256-W4FyqwJpimf0isQRCq9TegpTQPQfsumx40AFQCFG5VQ="; # Foo
         }
-      ; # Foo
+    ; # Foo
     nativeBuildInputs # Foo
       = # Foo
       [ # Foo

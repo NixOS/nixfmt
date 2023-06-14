@@ -1,5 +1,7 @@
 [
   {
+    # empty inherit o.O
+    inherit (geany.meta);
     inherit (builtins)
       pathExists
       readFile
@@ -12,7 +14,7 @@
       seq
       deepSeq
       genericClosure
-      ;
+    ;
   }
   {
     inherit
@@ -22,50 +24,50 @@
       })
       foo
       bar
-      ;
+    ;
   }
   { inherit (c) f h; }
   {
     inherit (c)
       f
       h # i
-      ;
+    ;
   }
   {
     inherit (c)
       f # g
       h
-      ;
+    ;
   }
   {
     inherit (c)
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit (c) # e
       f
       h
-      ;
+    ;
   }
   {
     inherit (c) # e
       f
       h # i
-      ;
+    ;
   }
   {
     inherit (c) # e
       f # g
       h
-      ;
+    ;
   }
   {
     inherit (c) # e
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -74,7 +76,7 @@
       )
       f
       h
-      ;
+    ;
   }
   {
     inherit
@@ -83,7 +85,7 @@
       )
       f
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -92,7 +94,7 @@
       )
       f # g
       h
-      ;
+    ;
   }
   {
     inherit
@@ -101,7 +103,7 @@
       )
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -110,7 +112,7 @@
       ) # e
       f
       h
-      ;
+    ;
   }
   {
     inherit
@@ -119,7 +121,7 @@
       ) # e
       f
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -128,7 +130,7 @@
       ) # e
       f # g
       h
-      ;
+    ;
   }
   {
     inherit
@@ -137,7 +139,7 @@
       ) # e
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -146,7 +148,7 @@
       )
       f
       h
-      ;
+    ;
   }
   {
     inherit
@@ -155,7 +157,7 @@
       )
       f
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -164,7 +166,7 @@
       )
       f # g
       h
-      ;
+    ;
   }
   {
     inherit
@@ -173,7 +175,7 @@
       )
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -182,7 +184,7 @@
       ) # e
       f
       h
-      ;
+    ;
   }
   {
     inherit
@@ -191,7 +193,7 @@
       ) # e
       f
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -200,7 +202,7 @@
       ) # e
       f # g
       h
-      ;
+    ;
   }
   {
     inherit
@@ -209,7 +211,7 @@
       ) # e
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -218,7 +220,7 @@
       )
       f
       h
-      ;
+    ;
   }
   {
     inherit
@@ -227,7 +229,7 @@
       )
       f
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -236,7 +238,7 @@
       )
       f # g
       h
-      ;
+    ;
   }
   {
     inherit
@@ -245,7 +247,7 @@
       )
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -254,7 +256,7 @@
       ) # e
       f
       h
-      ;
+    ;
   }
   {
     inherit
@@ -263,7 +265,7 @@
       ) # e
       f
       h # i
-      ;
+    ;
   }
   {
     inherit
@@ -272,7 +274,7 @@
       ) # e
       f # g
       h
-      ;
+    ;
   }
   {
     inherit
@@ -281,63 +283,63 @@
       ) # e
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit # a
       (c)
       f
       h
-      ;
+    ;
   }
   {
     inherit # a
       (c)
       f
       h # i
-      ;
+    ;
   }
   {
     inherit # a
       (c)
       f # g
       h
-      ;
+    ;
   }
   {
     inherit # a
       (c)
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit # a
       (c) # e
       f
       h
-      ;
+    ;
   }
   {
     inherit # a
       (c) # e
       f
       h # i
-      ;
+    ;
   }
   {
     inherit # a
       (c) # e
       f # g
       h
-      ;
+    ;
   }
   {
     inherit # a
       (c) # e
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -346,7 +348,7 @@
       )
       f
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -355,7 +357,7 @@
       )
       f
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -364,7 +366,7 @@
       )
       f # g
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -373,7 +375,7 @@
       )
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -382,7 +384,7 @@
       ) # e
       f
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -391,7 +393,7 @@
       ) # e
       f
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -400,7 +402,7 @@
       ) # e
       f # g
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -409,7 +411,7 @@
       ) # e
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -418,7 +420,7 @@
       )
       f
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -427,7 +429,7 @@
       )
       f
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -436,7 +438,7 @@
       )
       f # g
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -445,7 +447,7 @@
       )
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -454,7 +456,7 @@
       ) # e
       f
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -463,7 +465,7 @@
       ) # e
       f
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -472,7 +474,7 @@
       ) # e
       f # g
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -481,7 +483,7 @@
       ) # e
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -490,7 +492,7 @@
       )
       f
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -499,7 +501,7 @@
       )
       f
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -508,7 +510,7 @@
       )
       f # g
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -517,7 +519,7 @@
       )
       f # g
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -526,7 +528,7 @@
       ) # e
       f
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -535,7 +537,7 @@
       ) # e
       f
       h # i
-      ;
+    ;
   }
   {
     inherit # a
@@ -544,7 +546,7 @@
       ) # e
       f # g
       h
-      ;
+    ;
   }
   {
     inherit # a
@@ -553,6 +555,6 @@
       ) # e
       f # g
       h # i
-      ;
+    ;
   }
 ]

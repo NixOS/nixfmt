@@ -21,7 +21,7 @@ let
     (config.boot)
 
     kernelPatches
-    ;
+  ;
 
   inherit
 
@@ -30,14 +30,14 @@ let
     features
 
     randstructSeed
-    ;
+  ;
 
   inherit
 
     (config.boot.kernelPackages)
 
     kernel
-    ;
+  ;
 
   kernelModulesConf
 
@@ -50,7 +50,7 @@ let
       ''
         ${concatStringsSep "\n" config.boot.kernelModules}
       ''
-    ;
+  ;
 in
 
 {
@@ -84,7 +84,7 @@ in
               literalExpression
 
                 "{debug= true;}"
-              ;
+            ;
 
             internal
 
@@ -104,7 +104,7 @@ in
                 `grep features pkgs/os-specific/linux/kernel/common-config.nix`
               '';
           }
-        ;
+      ;
 
       boot.kernelPackages
 
@@ -166,7 +166,7 @@ in
                             inherit
 
                               randstructSeed
-                              ;
+                            ;
 
                             kernelPatches
 
@@ -182,7 +182,7 @@ in
                               ++
 
                                 kernelPatches
-                              ;
+                            ;
 
                             features
 
@@ -193,13 +193,13 @@ in
                                 super.kernel.features
 
                                 features
-                              ;
+                            ;
                           }
                         )
-                      ;
+                    ;
                   }
                 )
-              ;
+            ;
 
             # We don't want to evaluate all of linuxPackages for the manual
             # - some of it might not even evaluate correctly.
@@ -211,7 +211,7 @@ in
               literalExpression
 
                 "pkgs.linuxPackages"
-              ;
+            ;
 
             example
 
@@ -220,7 +220,7 @@ in
               literalExpression
 
                 "pkgs.linuxKernel.packages.linux_5_10"
-              ;
+            ;
 
             description
 
@@ -239,7 +239,7 @@ in
                 <varname>nvidia_x11</varname>.
               '';
           }
-        ;
+      ;
 
       boot.kernelPatches
 
@@ -256,7 +256,7 @@ in
               types.listOf
 
                 types.attrs
-              ;
+            ;
 
             default
 
@@ -271,10 +271,10 @@ in
               literalExpression
 
                 "[ pkgs.kernelPatches.ubuntu_fan_4_4 ]"
-              ;
+            ;
             description =
               "A list of additional patches to apply to the kernel.";
           }
-        ;
+      ;
     };
 }

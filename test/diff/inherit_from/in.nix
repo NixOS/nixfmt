@@ -1,5 +1,7 @@
 [
   {
+    # empty inherit o.O
+    inherit (geany.meta) ;
     inherit (builtins)
       pathExists readFile isBool
       isInt isFloat add sub lessThan

@@ -27,7 +27,7 @@ stdenv.mkDerivation rec {
         "hello must not be rebuilt when environment.noXlibs is set."
         hello
         (nixos { environment.noXlibs = true; }).pkgs.hello
-      ;
+    ;
   };
 
   meta = with lib; {

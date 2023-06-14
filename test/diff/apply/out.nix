@@ -141,7 +141,7 @@
           # multiline
         }
         argument
-      ;
+    ;
 
     name3 =
       function arg
@@ -151,7 +151,7 @@
         }
         { qwer = 12345; }
         argument
-      ;
+    ;
   }
   {
     name4 =
@@ -161,7 +161,7 @@
           qwer2 = 54321;
         }
         argument
-      ;
+    ;
   }
   {
     option1 =
@@ -171,7 +171,7 @@
           qwer2 = 54321;
         }
         lastArg
-      ;
+    ;
 
     option2 =
       function arg { asdf = 1; }
@@ -180,7 +180,7 @@
           qwer2 = 54321;
         }
         lastArg
-      ;
+    ;
 
     option3 =
       function arg { asdf = 1; }
@@ -189,7 +189,7 @@
           qwer2 = 54321;
         }
         lastArg
-      ;
+    ;
   }
   # https://github.com/kamadorueda/alejandra/issues/372#issuecomment-1435083516
   {
@@ -199,7 +199,7 @@
       }:
       # For each supported platform,
       utils.lib.eachDefaultSystem (system: { })
-      ;
+    ;
   }
   {
     escapeSingleline = libStr.escape [
@@ -217,7 +217,7 @@
           "''\${"
           "'''"
         ]
-      ;
+    ;
     test =
       foo
         [ # multiline
@@ -233,7 +233,7 @@
           2
           3 # multiline
         ]
-      ;
+    ;
     looooooooong =
       (
         toINI
@@ -243,6 +243,6 @@
     looooooooong' =
       toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys aaaaaaaa; }
         sections
-      ;
+    ;
   }
 ]

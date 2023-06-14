@@ -102,41 +102,41 @@ instance Pretty Selector where
 instance Pretty Binder where
     -- `inherit bar` statement
     pretty (Inherit inherit Nothing ids semicolon)
-        = base $ group (pretty inherit <> line
-                 <> nest 2 (sepBy line ids <> line' <> pretty semicolon))
+        = base $ group (pretty inherit
+            <> (if null ids then mempty else line <> nest 2 (sepBy line ids) <> line')
+            <> pretty semicolon)
 
     -- `inherit (foo) bar` statement
     pretty (Inherit inherit (Just source) ids semicolon)
         = base $ group (pretty inherit <> nest 2 (
-            (group' False (line <> pretty source)) <> line
-                <> sepBy line ids
-                <> line' <> pretty semicolon
-        ))
+            (group' False (line <> pretty source))
+                <> if null ids then mempty else line <> sepBy line ids
+        ) <> line' <> pretty semicolon)
 
     -- `foo = bar`
     pretty (Assignment selectors assign expr semicolon)
         = base $ group $ hcat selectors
-                 <> nest 2 (hardspace <> pretty assign <> inner)
+                 <> nest 2 (hardspace <> pretty assign <> inner) <> pretty semicolon
         where
           inner =
             case expr of
               -- Absorbable term. Always start on the same line, keep semicolon attatched
-              (Term t) | isAbsorbable t -> hardspace <> group expr <> pretty semicolon
+              (Term t) | isAbsorbable t -> hardspace <> group expr
               -- Non-absorbable term
               -- If it is multi-line, force it to start on a new line with indentation
-              (Term _) -> group' False (line <> pretty expr) <> pretty semicolon
+              (Term _) -> group' False (line <> pretty expr)
               -- Function call
               -- Absorb if all arguments except the last fit into the line, start on new line otherwise
-              (Application f a) -> group $ prettyApp hardline line line' mempty f a <> pretty semicolon
+              (Application f a) -> group $ prettyApp hardline line line' mempty f a
               -- With expression: Try to absorb and keep the semicolon attached, spread otherwise
-              (With _ _ _ _) -> softline <> group (pretty expr <> softline' <> pretty semicolon)
+              (With _ _ _ _) -> softline <> group' False (pretty expr <> softline')
               -- Special case `//` operator to treat like an absorbable term
-              (Operation _ (Ann _ TUpdate _) _) -> softline <> group (pretty expr <> softline' <> pretty semicolon)
+              (Operation _ (Ann _ TUpdate _) _) -> softline <> group' False (pretty expr <> softline')
               -- Everything else:
               -- If it fits on one line, it fits
               -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
               -- Otherwise, start on new line, expand fully (including the semicolon)
-              _ -> line <> group (pretty expr <> line' <> pretty semicolon)
+              _ -> line <> group' False (pretty expr <> line')
 
 -- | Pretty print a term without wrapping it in a group.
 prettyTerm :: Term -> Doc

@@ -54,7 +54,7 @@ in
             );
           }
         )
-        ;
+      ;
       # We don't want to evaluate all of linuxPackages for the manual
       # - some of it might not even evaluate correctly.
       defaultText = literalExpression "pkgs.linuxPackages";
@@ -274,7 +274,7 @@ in
               "rtc_cmos"
             ]
           )
-        ;
+      ;
 
       boot.initrd.kernelModules =
         optionals config.boot.initrd.includeDefaultModules
@@ -282,7 +282,7 @@ in
             # For LVM.
             "dm_mod"
           ]
-        ;
+      ;
     })
 
     (mkIf (!config.boot.isContainer) {
@@ -298,12 +298,12 @@ in
           "vga=0x317"
           "nomodeset"
         ]
-        ;
+      ;
 
       boot.kernel.sysctl."kernel.printk" =
         mkDefault
           config.boot.consoleLogLevel
-        ;
+      ;
 
       boot.kernelModules = [
         "loop"
@@ -337,7 +337,7 @@ in
             message = "CONFIG_${option} is not yes!";
             configLine = "CONFIG_${option}=y";
           }
-          ;
+        ;
 
         isNo =
           option: {
@@ -345,7 +345,7 @@ in
             message = "CONFIG_${option} is not no!";
             configLine = "CONFIG_${option}=n";
           }
-          ;
+        ;
 
         isModule =
           option: {
@@ -353,7 +353,7 @@ in
             message = "CONFIG_${option} is not built as a module!";
             configLine = "CONFIG_${option}=m";
           }
-          ;
+        ;
 
         ### Usually you will just want to use these two
         # True if yes or module
@@ -363,7 +363,7 @@ in
             message = "CONFIG_${option} is not enabled!";
             configLine = "CONFIG_${option}=y";
           }
-          ;
+        ;
 
         # True if no or omitted
         isDisabled =
@@ -372,7 +372,7 @@ in
             message = "CONFIG_${option} is not disabled!";
             configLine = "CONFIG_${option}=n";
           }
-          ;
+        ;
       };
 
       # The config options that all modules can depend upon
@@ -398,7 +398,7 @@ in
               inherit (attrs) message;
             })
             config.system.requiredKernelConfig
-        ;
+      ;
     })
   ];
 }

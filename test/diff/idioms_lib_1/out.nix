@@ -7,5 +7,5 @@
     # Value to return
     x:
     if pred then trace msg x else x
-    ;
+  ;
 }

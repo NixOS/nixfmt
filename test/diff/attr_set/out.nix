@@ -101,7 +101,7 @@
           # several
           items
         ]
-      ;
+    ;
     a =
       [
         some
@@ -118,7 +118,7 @@
         more
         items
       ])
-      ;
+    ;
     b = with pkgs; [
       a
       lot

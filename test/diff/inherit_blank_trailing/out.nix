@@ -12,7 +12,7 @@
 
       g
       h
-      ;
+    ;
   }
   {
     inherit
@@ -25,9 +25,9 @@
       b # multiple newlines
 
       c # multiple comments
-      # comment 1
-      # comment 2
-      # comment 3
-      ;
+    # comment 1
+    # comment 2
+    # comment 3
+    ;
   }
 ]
