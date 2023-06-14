@@ -414,7 +414,7 @@ instance Pretty Expression where
               absorbAbs x = absorbSet x
 
     pretty (Abstraction param colon body)
-        = pretty param <> pretty colon <> absorbSet body
+        = pretty param <> pretty colon <> line <> pretty body
 
     pretty (Application f a)
         = prettyApp mempty mempty mempty mempty f a
