@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps: 
     - uses: actions/checkout@v3.5.2
-      with:
-        fetch-depth: 0
-    # - uses: cachix/install-nix-action@v20
+    - uses: cachix/install-nix-action@v20
     - run: |
-        echo from ${{ github.event.pull_request.base.sha }}
-        echo to ${{ github.event.pull_request.head.sha }}
+        ./sync-pr.sh \
+          https://github.com/${{ github.repository }} \
+          {{ github.event.pull_request.number }} \
+          https://github.com/${{ github.repository_owner }}/nixpkgs \
