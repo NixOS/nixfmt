@@ -230,9 +230,8 @@ rec {
         (toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } globalSection)
         + "\n"
     )
-    + (
-      toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; }
-        sections
+    + (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; }
+      sections
     )
   ;
 

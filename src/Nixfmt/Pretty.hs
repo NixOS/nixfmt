@@ -196,7 +196,7 @@ prettyTerm (Parenthesized (Ann pre paropen post) (Application f a) parclose)
     = base $ groupWithStart (Ann pre paropen Nothing) $ nest 2 (
             -- Move comment trailing on '(' to next line, combine with comment from application
             case pretty post of { [] -> []; c -> hardline <> c }
-            <> prettyApp hardline line' line' hardline f a
+            <> base (prettyApp hardline mempty line' hardline f a)
             <> case pretty post of  { [] -> mempty; _ -> hardline }
         ) <> pretty parclose
 

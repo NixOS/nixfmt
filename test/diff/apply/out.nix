@@ -16,12 +16,11 @@
     # Function call with comment
     mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
   ))
-  (
-    foo bar baz
-      # Function call with comment
-      (
-        mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
-      )
+  (foo bar baz
+    # Function call with comment
+    (
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+    )
   )
   (foo bar baz (
     # Function call with comment
@@ -30,43 +29,40 @@
 
   # And again, but with wide function application
 
-  (
-    foo
-      [
-        1
-        2 # multiline
-      ]
-      baz
-      (
-        # Function call with comment
-        mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
-      )
-  )
-  (
-    foo
-      [
-        1
-        2 # multiline
-      ]
-      bar
-      baz
+  (foo
+    [
+      1
+      2 # multiline
+    ]
+    baz
+    (
       # Function call with comment
-      (
-        mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
-      )
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+    )
   )
-  (
-    foo
-      [
-        1
-        2 # multiline
-      ]
-      bar
-      baz
-      (
-        # Function call with comment
-        mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
-      )
+  (foo
+    [
+      1
+      2 # multiline
+    ]
+    bar
+    baz
+    # Function call with comment
+    (
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+    )
+  )
+  (foo
+    [
+      1
+      2 # multiline
+    ]
+    bar
+    baz
+    (
+      # Function call with comment
+      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
+    )
   )
 
   # Now in attribute set position
@@ -78,29 +74,26 @@
       mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
   }
   [
-    (
-      mapAttrsToStringsSep
-        [
-          force
-          long
-        ]
-        "\n"
-        mkSection
-        attrsOfAttrs
+    (mapAttrsToStringsSep
+      [
+        force
+        long
+      ]
+      "\n"
+      mkSection
+      attrsOfAttrs
     )
   ]
   (a b)
-  (
-    (a b) (a b)
-      (
-        a # b
-          c
-      )
-      (
-        # a
-        b # c
-          d # e
-      )
+  ((a b) (a b)
+    (a # b
+      c
+    )
+    (
+      # a
+      b # c
+        d # e
+    )
   )
   ''
     otherModules=${
@@ -235,10 +228,8 @@
         ]
     ;
     looooooooong =
-      (
-        toINI
-          { inherit mkSectionName mkKeyValue listsAsDuplicateKeys aaaaaaaa; }
-          sections
+      (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys aaaaaaaa; }
+        sections
       );
     looooooooong' =
       toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys aaaaaaaa; }
