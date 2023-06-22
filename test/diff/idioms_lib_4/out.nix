@@ -809,12 +809,15 @@ rec {
   # This should revert the job done by config.guess from the gcc compiler.
   mkSystemFromSkeleton =
     {
-      cpu, # Optional, but fallback too complex for here.
+      cpu,
+      # Optional, but fallback too complex for here.
       # Inferred below instead.
       vendor ? assert false;
         null,
-      kernel, # Also inferred below
-      abi ? assert false; null,
+      kernel,
+      # Also inferred below
+      abi ? assert false;
+        null,
     }@args:
     let
       getCpu = name: cpuTypes.${name} or (throw "Unknown CPU type: ${name}");
