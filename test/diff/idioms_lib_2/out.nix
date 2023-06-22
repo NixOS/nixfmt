@@ -432,7 +432,9 @@ rec {
      like callPackage expect to be able to query expected arguments.
   */
   setFunctionArgs =
-    f: args: { # TODO: Should we add call-time "type" checking like built in?
+    f: args:
+    # TODO: Should we add call-time "type" checking like built in?
+    {
       __functor = self: f;
       __functionArgs = args;
     }

@@ -17,7 +17,7 @@ import Data.Text as Text
   stripPrefix, stripStart, takeWhile, unwords)
 import Data.Void (Void)
 import Text.Megaparsec
-  (Parsec, SourcePos(..), anySingle, chunk, getSourcePos, hidden, many,
+  (Parsec, SourcePos(..), Pos, anySingle, chunk, getSourcePos, hidden, many,
   manyTill, some, try, unPos, (<|>))
 import Text.Megaparsec.Char (eol)
 
@@ -27,7 +27,8 @@ import Nixfmt.Util (manyP)
 
 data ParseTrivium
     = PTNewlines     Int
-    | PTLineComment  Text
+      -- Track the column where the comment starts
+    | PTLineComment  Text Pos
     | PTBlockComment [Text]
     deriving (Show)
 
@@ -53,8 +54,11 @@ fixLines n (h : t) = strip h
     : map (stripIndentation $ commonIndentationLength n $ filter (/="") t) t
 
 lineComment :: Parser ParseTrivium
-lineComment = preLexeme $ chunk "#" *>
-    (PTLineComment <$> manyP (\x -> x /= '\n' && x /= '\r'))
+lineComment = preLexeme $ do
+    SourcePos{sourceColumn = col} <- getSourcePos
+    _ <- chunk "#"
+    text <- manyP (\x -> x /= '\n' && x /= '\r')
+    return (PTLineComment text col)
 
 blockComment :: Parser ParseTrivium
 blockComment = try $ preLexeme $ do
@@ -63,9 +67,10 @@ blockComment = try $ preLexeme $ do
     chars <- manyTill anySingle $ chunk "*/"
     return $ PTBlockComment $ fixLines (unPos pos) $ splitLines $ pack chars
 
+-- This should be called with zero or one elements, as per `span isTrailing`
 convertTrailing :: [ParseTrivium] -> Maybe TrailingComment
 convertTrailing = toMaybe . join . map toText
-    where toText (PTLineComment c)    = strip c
+    where toText (PTLineComment c _)    = strip c
           toText (PTBlockComment [c]) = strip c
           toText _                    = ""
           join = Text.unwords . filter (/="")
@@ -76,13 +81,13 @@ convertLeading :: [ParseTrivium] -> Trivia
 convertLeading = concatMap (\case
     PTNewlines 1       -> []
     PTNewlines _       -> [EmptyLine]
-    PTLineComment c    -> [LineComment c]
+    PTLineComment c _  -> [LineComment c]
     PTBlockComment []  -> []
     PTBlockComment [c] -> [LineComment $ " " <> strip c]
     PTBlockComment cs  -> [BlockComment cs])
 
 isTrailing :: ParseTrivium -> Bool
-isTrailing (PTLineComment _)    = True
+isTrailing (PTLineComment _ _)  = True
 isTrailing (PTBlockComment [])  = True
 isTrailing (PTBlockComment [_]) = True
 isTrailing _                    = False
@@ -90,7 +95,13 @@ isTrailing _                    = False
 convertTrivia :: [ParseTrivium] -> (Maybe TrailingComment, Trivia)
 convertTrivia pts =
     let (trailing, leading) = span isTrailing pts
-    in (convertTrailing trailing, convertLeading leading)
+    in case (trailing, leading) of
+        -- Special case: if the trailing comment visually forms a block with the following line comments,
+        -- then treat it like part of those comments instead of a distinct trailing comment.
+        -- This happens especially often after `{` or `[` tokens, where the comment of the first item
+        -- starts on the same line ase the opening token.
+        ([PTLineComment _ pos], (PTNewlines 1):(PTLineComment _ pos'):_) | pos == pos' -> (Nothing, convertLeading pts)
+        _ -> (convertTrailing trailing, convertLeading leading)
 
 trivia :: Parser [ParseTrivium]
 trivia = many $ hidden $ lineComment <|> blockComment <|> newlines

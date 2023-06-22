@@ -33,12 +33,16 @@ prettyCommentLine l
     | Text.null l = emptyline
     | otherwise   = text l <> hardline
 
-toLineComment :: Text -> Trivium
-toLineComment c = LineComment $ fromMaybe (" " <> c) $ stripPrefix "*" c
+toLineComment :: TrailingComment -> Trivium
+toLineComment (TrailingComment c) = LineComment $ " " <> c
+
+-- The prime variant also strips leading * prefix
+toLineComment' :: Text -> Trivium
+toLineComment' c = LineComment $ fromMaybe (" " <> c) $ stripPrefix "*" c
 
 -- If the token has some trailing comment after it, move that in front of the token
 moveTrailingCommentUp :: Ann a -> Ann a
-moveTrailingCommentUp (Ann pre a (Just (TrailingComment post))) = Ann (pre ++ [LineComment (" " <> post)]) a Nothing
+moveTrailingCommentUp (Ann pre a (Just post)) = Ann (pre ++ [toLineComment post]) a Nothing
 moveTrailingCommentUp a = a
 
 -- Make sure a group is not expanded because the token that starts it has
@@ -57,7 +61,7 @@ instance Pretty Trivium where
     pretty EmptyLine        = emptyline
     pretty (LineComment c)  = text "#" <> pretty c <> hardline
     pretty (BlockComment c)
-        | all ("*" `isPrefixOf`) (tail c) = hcat (map toLineComment c)
+        | all ("*" `isPrefixOf`) (tail c) = hcat (map toLineComment' c)
         | otherwise
             = base $ text "/*" <> hardspace
               <> nest 3 (hcat (map prettyCommentLine c))
@@ -167,27 +171,35 @@ prettyTerm (List (Ann leading paropen Nothing) (Items [CommentedItem [] item]) (
 
 -- General list (len >= 2)
 -- Always expand
-prettyTerm (List (Ann [] paropen trailing) items parclose)
-    = base $ pretty paropen <> pretty trailing <> hardline
-        <> nest 2 (prettyItems hardline items) <> hardline
-        <> pretty parclose
-
 -- Lists with leading comments get their own group so the comments don't always
 -- force the list to be split over multiple lines.
-prettyTerm (List paropen items parclose)
-    = base $ groupWithStart paropen $
-        line
-        <> nest 2 (prettyItems hardline items) <> line
-        <> pretty parclose
+prettyTerm (List paropen@(Ann pre paropen' post) items parclose) =
+    base $ groupWithStart (moveTrailingCommentUp paropen) $ line
+    <> nest 2 (prettyItems hardline items) <> line
+    <> pretty parclose
 
 -- Empty, non-recursive attribute set
 prettyTerm (Set Nothing (Ann [] paropen Nothing) (Items []) parclose)
     = pretty paropen <> hardspace <> pretty parclose
 
+-- General set, but with a comment after `{` that we need to deal with
+prettyTerm (Set krec (Ann pre paropen (Just post)) binders parclose) =
+    base $ startTokens <> line
+    <> nest 2 (prettyItems hardline binders) <> line
+    <> pretty parclose
+    where
+        -- Move comment up before `{` or `rec`
+        startTokens = case krec of
+            -- Move comment before `rec`
+            Just (Ann recPre krec' Nothing) | null pre ->
+                pretty (Ann (recPre ++ [toLineComment post]) krec' Nothing) <> hardspace <> pretty (Ann [] paropen Nothing)
+            -- Just move it before `{`
+            _ -> pretty (fmap ((<>hardspace) . pretty) krec) <> pretty (Ann (pre ++ [toLineComment post]) paropen Nothing)
+
 -- General set
 prettyTerm (Set krec paropen binders parclose)
     = base $ pretty (fmap ((<>hardspace) . pretty) krec)
-        <> pretty paropen <> line
+        <> pretty (moveTrailingCommentUp paropen) <> line
         <> nest 2 (prettyItems hardline binders) <> line
         <> pretty parclose
 

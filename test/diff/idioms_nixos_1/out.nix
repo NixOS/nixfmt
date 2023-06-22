@@ -322,7 +322,8 @@ in
       systemd.services.systemd-modules-load = {
         wantedBy = [ "multi-user.target" ];
         restartTriggers = [ kernelModulesConf ];
-        serviceConfig = { # Ignore failed module loads.  Typically some of the
+        serviceConfig = {
+          # Ignore failed module loads.  Typically some of the
           # modules in ‘boot.kernelModules’ are "nice to have but
           # not required" (e.g. acpi-cpufreq), so we don't want to
           # barf on those.
