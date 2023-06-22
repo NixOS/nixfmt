@@ -128,8 +128,8 @@ instance Pretty Binder where
               -- Function call
               -- Absorb if all arguments except the last fit into the line, start on new line otherwise
               (Application f a) -> group $ prettyApp hardline line line' mempty f a
-              -- With expression: Try to absorb and keep the semicolon attached, spread otherwise
-              (With _ _ _ _) -> softline <> group' False (pretty expr <> softline')
+              -- With expression with absorbable body: Try to absorb and keep the semicolon attached, spread otherwise
+              (With _ _ _ (Term t)) | isAbsorbable t -> softline <> group' False (pretty expr <> softline')
               -- Special case `//` operator to treat like an absorbable term
               (Operation _ (Ann _ TUpdate _) _) -> softline <> group' False (pretty expr <> softline')
               -- Everything else:

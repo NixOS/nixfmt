@@ -132,7 +132,8 @@ stdenv.mkDerivation # Foo
             maintainers; # Foo
           [ # Foo
             jtojnar # Foo
-          ]; # Foo
+          ]
+        ; # Foo
         platforms # Foo
           = # Foo
           platforms.unix; # Foo

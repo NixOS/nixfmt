@@ -344,14 +344,16 @@ in
     };
 
     poolSettings = mkOption {
-      type = with types;
+      type =
+        with types;
         attrsOf (
           oneOf [
             str
             int
             bool
           ]
-        );
+        )
+      ;
       default = {
         "pm" = "dynamic";
         "pm.max_children" = "32";
@@ -817,7 +819,8 @@ in
           '')
         ;
 
-        services.nextcloud.package = with pkgs;
+        services.nextcloud.package =
+          with pkgs;
           mkDefault (
             if pkgs ? nextcloud then
               throw ''
@@ -831,7 +834,8 @@ in
               nextcloud25
             else
               nextcloud26
-          );
+          )
+        ;
 
         services.nextcloud.phpPackage =
           if versionOlder cfg.package.version "26" then

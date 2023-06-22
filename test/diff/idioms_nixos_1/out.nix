@@ -376,13 +376,15 @@ in
       };
 
       # The config options that all modules can depend upon
-      system.requiredKernelConfig = with config.lib.kernelConfig;
+      system.requiredKernelConfig =
+        with config.lib.kernelConfig;
         [
           # !!! Should this really be needed?
           (isYes "MODULES")
           (isYes "BINFMT_ELF")
         ]
-        ++ (optional (randstructSeed != "") (isYes "GCC_PLUGIN_RANDSTRUCT"));
+        ++ (optional (randstructSeed != "") (isYes "GCC_PLUGIN_RANDSTRUCT"))
+      ;
 
       # nixpkgs kernels are assumed to have all required features
       assertions =

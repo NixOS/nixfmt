@@ -27,9 +27,11 @@
     };
   }
   {
-    a = with b;
+    a =
+      with b;
       # comment
-      1;
+      1
+    ;
   }
   {
     a = with b; 1;
@@ -54,10 +56,12 @@
   )
   { a = with b; with b; with b; 1; }
   {
-    binPath = with pkgs;
+    binPath =
+      with pkgs;
       makeBinPath ([
         rsync
         util-linux
-      ]);
+      ])
+    ;
   }
 ]
