@@ -272,8 +272,7 @@ in
 
                 "[ pkgs.kernelPatches.ubuntu_fan_4_4 ]"
             ;
-            description =
-              "A list of additional patches to apply to the kernel.";
+            description = "A list of additional patches to apply to the kernel.";
           }
       ;
     };

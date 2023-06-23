@@ -59,8 +59,7 @@ stdenv.mkDerivation rec {
       --replace "gtk-update-icon-cache" "gtk4-update-icon-cache"
   '';
   meta = with lib; {
-    description =
-      "Checks whether the contrast between two colors meet the WCAG requirements";
+    description = "Checks whether the contrast between two colors meet the WCAG requirements";
     homepage = "https://gitlab.gnome.org/World/design/contrast";
     license = licenses.gpl3Plus;
     maintainers = with maintainers; [ jtojnar ];

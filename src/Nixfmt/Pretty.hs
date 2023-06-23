@@ -130,6 +130,11 @@ instance Pretty Binder where
             case expr of
               -- Absorbable term. Always start on the same line, keep semicolon attatched
               (Term t) | isAbsorbable t -> hardspace <> group expr
+              -- Not all strings are absorbably, but in this case we always want to keep them attached.
+              -- Because there's nothing to gain from having them start on a new line.
+              (Term (String _)) -> hardspace <> group expr
+              -- Same for path
+              (Term (Path _)) -> hardspace <> group expr
               -- Non-absorbable term
               -- If it is multi-line, force it to start on a new line with indentation
               (Term _) -> group' False (line <> pretty expr)
