@@ -11,7 +11,7 @@ shellcheck "$0"
 cd "$(dirname "$0")/.."
 
 shopt -s expand_aliases
-alias nixfmt="cabal v2-run --verbose=0 nixfmt --"
+alias nixfmt="cabal v2-run --verbose=0 nixfmt -- -w 80"
 
 # Do a test run to make sure it compiles fine
 nixfmt --version
