@@ -164,7 +164,8 @@ in
       cc =
         let
           nativePrefix =
-            { # switch
+            {
+              # switch
               i686-solaris = "/usr/gnu";
               x86_64-solaris = "/opt/local/gcc47";
             }

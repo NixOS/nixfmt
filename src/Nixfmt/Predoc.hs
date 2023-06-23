@@ -114,6 +114,12 @@ instance Pretty a => Pretty (Maybe a) where
     pretty Nothing  = mempty
     pretty (Just x) = pretty x
 
+instance (Pretty a, Pretty b) => Pretty (a, b) where
+    pretty (a, b) = pretty a <> pretty b
+
+instance (Pretty a, Pretty b, Pretty c) => Pretty (a, b, c) where
+    pretty (a, b, c) = pretty a <> pretty b <> pretty c
+
 text :: Text -> Doc
 text "" = []
 text t  = [Text t]

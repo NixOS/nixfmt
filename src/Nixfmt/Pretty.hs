@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE FlexibleInstances, OverloadedStrings, RankNTypes #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings, RankNTypes, TupleSections #-}
 
 module Nixfmt.Pretty where
 
@@ -33,12 +33,16 @@ prettyCommentLine l
     | Text.null l = emptyline
     | otherwise   = text l <> hardline
 
-toLineComment :: Text -> Trivium
-toLineComment c = LineComment $ fromMaybe (" " <> c) $ stripPrefix "*" c
+toLineComment :: TrailingComment -> Trivium
+toLineComment (TrailingComment c) = LineComment $ " " <> c
+
+-- The prime variant also strips leading * prefix
+toLineComment' :: Text -> Trivium
+toLineComment' c = LineComment $ fromMaybe (" " <> c) $ stripPrefix "*" c
 
 -- If the token has some trailing comment after it, move that in front of the token
 moveTrailingCommentUp :: Ann a -> Ann a
-moveTrailingCommentUp (Ann pre a (Just (TrailingComment post))) = Ann (pre ++ [LineComment (" " <> post)]) a Nothing
+moveTrailingCommentUp (Ann pre a (Just post)) = Ann (pre ++ [toLineComment post]) a Nothing
 moveTrailingCommentUp a = a
 
 -- Make sure a group is not expanded because the token that starts it has
@@ -57,11 +61,15 @@ instance Pretty Trivium where
     pretty EmptyLine        = emptyline
     pretty (LineComment c)  = text "#" <> pretty c <> hardline
     pretty (BlockComment c)
-        | all ("*" `isPrefixOf`) (tail c) = hcat (map toLineComment c)
+        | all ("*" `isPrefixOf`) (tail c) = hcat (map toLineComment' c)
         | otherwise
             = base $ text "/*" <> hardspace
               <> nest 3 (hcat (map prettyCommentLine c))
               <> text "*/" <> hardline
+
+instance Pretty a => Pretty (Item a) where
+    pretty (DetachedComments trivia) = pretty trivia
+    pretty (CommentedItem trivia x) = pretty trivia <> group x
 
 -- For lists, attribute sets and let bindings
 prettyItems :: Pretty a => Doc -> Items a -> Doc
@@ -69,12 +77,11 @@ prettyItems sep = prettyItems' . unItems
   where
     prettyItems' :: Pretty a => [Item a] -> Doc
     prettyItems' [] = mempty
-    prettyItems' [DetachedComments trivia] = pretty trivia
-    prettyItems' [CommentedItem trivia x]  = pretty trivia <> group x
-    prettyItems' (DetachedComments trivia : xs)
-        = pretty trivia <> emptyline <> prettyItems' xs
-    prettyItems' (CommentedItem trivia x : xs)
-        = pretty trivia <> group x <> sep <> prettyItems' xs
+    prettyItems' [item] = pretty item
+    prettyItems' (item : xs)
+        = pretty item
+        <> case item of { CommentedItem _ _ -> sep; DetachedComments _ -> emptyline }
+        <> prettyItems' xs
 
 instance Pretty [Trivium] where
     pretty []     = mempty
@@ -157,38 +164,33 @@ prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trail
 
 -- Singleton list
 -- Expand unless absorbable term or single line
-prettyTerm (List (Ann leading paropen Nothing) (Items [CommentedItem [] item]) (Ann [] parclose trailing))
-        = base $ pretty leading <> pretty paropen
-          <> (if isAbsorbable item then
-            (hardspace <> pretty item <> hardspace)
-          else
-            (line <> nest 2 (pretty item) <> line)
-          ) <> pretty parclose <> pretty trailing
+prettyTerm (List paropen@(Ann _ _ Nothing) (Items [item@(CommentedItem iComment item')]) parclose@(Ann [] _ _))
+        = base $ groupWithStart paropen $
+            (if isAbsorbable item' && null iComment then
+                (hardspace <> pretty item' <> hardspace)
+            else
+                (line <> nest 2 (pretty item) <> line)
+            )
+            <> pretty parclose
 
 -- General list (len >= 2)
 -- Always expand
-prettyTerm (List (Ann [] paropen trailing) items parclose)
-    = base $ pretty paropen <> pretty trailing <> hardline
-        <> nest 2 (prettyItems hardline items) <> hardline
-        <> pretty parclose
-
--- Lists with leading comments get their own group so the comments don't always
--- force the list to be split over multiple lines.
-prettyTerm (List paropen items parclose)
-    = base $ groupWithStart paropen $
-        line
-        <> nest 2 (prettyItems hardline items) <> line
-        <> pretty parclose
+prettyTerm (List (Ann pre paropen post) items parclose) =
+    base $ pretty (Ann pre paropen Nothing) <> hardline
+    <> nest 2 ((pretty post) <> prettyItems hardline items) <> hardline
+    <> pretty parclose
 
 -- Empty, non-recursive attribute set
-prettyTerm (Set Nothing (Ann [] paropen Nothing) (Items []) parclose)
+prettyTerm (Set Nothing (Ann [] paropen Nothing) (Items []) parclose@(Ann [] _ _))
     = pretty paropen <> hardspace <> pretty parclose
 
 -- General set
-prettyTerm (Set krec paropen binders parclose)
-    = base $ pretty (fmap ((<>hardspace) . pretty) krec)
-        <> pretty paropen <> line
-        <> nest 2 (prettyItems hardline binders) <> line
+-- Singleton sets are allowed to fit onto one line,
+-- but apart from that always expand.
+prettyTerm (Set krec (Ann pre paropen post) binders parclose)
+    = base $ pretty (fmap (, hardspace) krec) <>
+        pretty (Ann pre paropen Nothing) <> line
+        <> nest 2 (pretty post <> prettyItems hardline binders) <> line
         <> pretty parclose
 
 -- Parenthesized application
