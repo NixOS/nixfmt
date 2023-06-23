@@ -26,6 +26,20 @@
       bar
     ;
   }
+  {
+    inherit (a)
+      b
+      c
+      d
+      e
+      f
+      g
+      h
+      i
+      j
+      k
+    ;
+  }
   { inherit (c) f h; }
   {
     inherit (c)

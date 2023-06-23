@@ -3,6 +3,7 @@
     # empty inherit o.O
     inherit;
     inherit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; }
+  { inherit a b c d e f g h i j; }
   { inherit
   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; }
   { inherit       b       d       ; }

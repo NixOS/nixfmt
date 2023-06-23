@@ -143,7 +143,12 @@ let
 
       fetchurlBoot = fetchurl;
 
-      inherit shell cc overrides config;
+      inherit
+        shell
+        cc
+        overrides
+        config
+      ;
     }
   ;
 in

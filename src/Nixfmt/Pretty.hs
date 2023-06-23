@@ -110,14 +110,15 @@ instance Pretty Binder where
     -- `inherit bar` statement
     pretty (Inherit inherit Nothing ids semicolon)
         = base $ group (pretty inherit
-            <> (if null ids then mempty else line <> nest 2 (sepBy line ids) <> line')
+            <> (if null ids then mempty else line <> nest 2 (sepBy (if length ids < 4 then line else hardline) ids) <> line')
             <> pretty semicolon)
 
     -- `inherit (foo) bar` statement
     pretty (Inherit inherit (Just source) ids semicolon)
         = base $ group (pretty inherit <> nest 2 (
             (group' False (line <> pretty source))
-                <> if null ids then mempty else line <> sepBy line ids
+                <> if null ids then mempty else line
+                <> sepBy (if length ids < 4 then line else hardline) ids
         ) <> line' <> pretty semicolon)
 
     -- `foo = bar`

@@ -10,6 +10,7 @@
   {
     inherit ({ foo = "1"; bar = "2"; /* force multiline */}) foo bar;
   }
+  { inherit (a) b c d e f g h i j k; }
   { inherit       (      c      )       f       h      ; }
   { inherit       (      c      )       f       h /*i*/; }
   { inherit       (      c      )       f /*g*/ h      ; }

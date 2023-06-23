@@ -229,11 +229,27 @@
         ]
     ;
     looooooooong =
-      (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys aaaaaaaa; }
+      (toINI
+        {
+          inherit
+            mkSectionName
+            mkKeyValue
+            listsAsDuplicateKeys
+            aaaaaaaa
+          ;
+        }
         sections
       );
     looooooooong' =
-      toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys aaaaaaaa; }
+      toINI
+        {
+          inherit
+            mkSectionName
+            mkKeyValue
+            listsAsDuplicateKeys
+            aaaaaaaa
+          ;
+        }
         sections
     ;
   }
