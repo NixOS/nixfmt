@@ -43,7 +43,7 @@ data Nixfmt = Nixfmt
 
 options :: Nixfmt
 options =
-  let defaultWidth = 150
+  let defaultWidth = 160
       addDefaultHint value message =
         message ++ "\n[default: " ++ show value ++ "]"
    in Nixfmt
