@@ -319,7 +319,7 @@ prettyApp commentPre pre post commentPost f a
             = group' True $ nest 2 $ base $ pretty (Ann pre' open Nothing) <> line'
                 <> group (nest 2 (pretty post' <> pretty expr))
                 <> line' <> pretty close
-        absorbLast arg = group' True $ nest 2 $ pretty arg
+        absorbLast arg = group' False $ nest 2 $ pretty arg
 
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
         (fWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) f

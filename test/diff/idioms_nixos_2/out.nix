@@ -134,8 +134,10 @@ in
     enableBrokenCiphersForSSE = mkOption {
       type = types.bool;
       default = versionOlder stateVersion "22.11";
-      defaultText = literalExpression ''
-        versionOlder system.stateVersion "22.11"'';
+      defaultText =
+        literalExpression
+          ''versionOlder system.stateVersion "22.11"''
+      ;
       description = lib.mdDoc ''
         This option enables using the OpenSSL PHP extension linked against OpenSSL 1.1
         rather than latest OpenSSL (≥ 3), this is not recommended unless you need
@@ -896,9 +898,8 @@ in
                           "'hostname' => '${s3.hostname}',"
                       }
                       ${
-                        optionalString (s3.port != null) "'port' => ${
-                            toString s3.port
-                          },"
+                        optionalString (s3.port != null)
+                          "'port' => ${toString s3.port},"
                       }
                       'use_ssl' => ${boolToString s3.useSsl},
                       ${
@@ -987,9 +988,8 @@ in
                       "'dbhost' => '${c.dbhost}',"
                   }
                   ${
-                    optionalString (c.dbport != null) "'dbport' => '${
-                        toString c.dbport
-                      }',"
+                    optionalString (c.dbport != null)
+                      "'dbport' => '${toString c.dbport}',"
                   }
                   ${
                     optionalString (c.dbuser != null)

@@ -406,7 +406,8 @@ rec {
     let
       unexpected = lib.subtractLists valid given;
     in
-    lib.throwIfNot (unexpected == [ ]) "${msg}: ${
+    lib.throwIfNot (unexpected == [ ])
+      "${msg}: ${
         builtins.concatStringsSep ", " (
           builtins.map builtins.toString unexpected
         )
