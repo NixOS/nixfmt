@@ -314,19 +314,19 @@ prettyApp commentPre pre post commentPost f a
         absorbApp expr = pretty expr
 
         absorbLast (Term t) | isAbsorbable t
-            = prettyTerm t
+            = group' True $ nest 2 $ prettyTerm t
         absorbLast (Term (Parenthesized (Ann pre' open post') expr close))
-            = base $ group $ pretty (Ann pre' open Nothing) <> line'
-                <> nest 2 (pretty post' <> group expr)
+            = group' True $ nest 2 $ base $ pretty (Ann pre' open Nothing) <> line'
+                <> group (nest 2 (pretty post' <> pretty expr))
                 <> line' <> pretty close
-        absorbLast arg = group arg
+        absorbLast arg = group' True $ nest 2 $ pretty arg
 
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
         (fWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) f
         in
         (if null comment then mempty else commentPre)
         <> pretty comment <> (group' False $
-            pre <> group (absorbApp fWithoutComment) <> line <> group' True ((nest 2 (absorbLast a))) <> post)
+            pre <> group (absorbApp fWithoutComment) <> line <> absorbLast a <> post)
         <> (if null comment then mempty else commentPost)
 
 isAbsorbable :: Term -> Bool

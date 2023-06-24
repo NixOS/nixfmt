@@ -76,9 +76,10 @@ data DocAnn
     -- pre, prio and post.
     -- If any group contains a priority group, the following happens:
     -- If it entirely fits on one line, render on one line (as usual).
-    -- If it does not fit on one line, but pre does, but prio doesn't, then only expand prio
-    -- In all other cases, including when only pre and prio fit into one line, fully expand the group.
-    -- Groups containing multiple priority groups are not supported at the momen.
+    -- If it does not fit on one line, but pre does, then only expand prio.
+    -- In all other cases, fully expand the group.
+    -- Groups containing multiple priority groups are not supported at the moment.
+    -- Nesting further groups into post is not supported at the moment.
     = Group Bool
     -- | Node (Nest n) doc indicates all line starts in doc should be indented
     -- by n more spaces than the surrounding Base.
@@ -213,6 +214,20 @@ isHardSpacing (Spacing Hardline) = True
 isHardSpacing (Spacing Emptyline) = True
 isHardSpacing (Spacing (Newlines _)) = True
 isHardSpacing _           = False
+
+-- Manually force a group to its compact layout, by replacing all relevant whitespace.
+-- Does not recurse into inner groups (maybe it should though?)
+unexpandSpacing :: Doc -> Doc
+unexpandSpacing [] = []
+unexpandSpacing ((Spacing s):xs) = maybe [] (pure . Spacing) (unexpandSpacing' s) ++ unexpandSpacing xs
+unexpandSpacing (x:xs) = x : unexpandSpacing xs
+
+unexpandSpacing' :: Spacing -> Maybe Spacing
+unexpandSpacing' Space = Just Hardspace
+unexpandSpacing' Softspace = Just Hardspace
+unexpandSpacing' Break = Nothing
+unexpandSpacing' Softbreak = Nothing
+unexpandSpacing' x = Just x
 
 spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
 spanEnd p = fmap reverse . span p . reverse
@@ -423,12 +438,10 @@ layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node (Group False) doc]
                 -- If that fails, check whether the group contains any priority groups as its children and try to expand them first
                 <|> do
                     -- Split up on the first priority group
-                    (pre, prio : post) <- Just (break isPriorityGroup ys)
-                    -- Make sure to exclude the case where pre and prio fit onto the line but not post.
-                    -- This would look weird and also not be true to the intended semantics for priority groups.
-                    guard . isNothing $ handleGroup (pre ++ [prio]) (Chunk ti (Node (Group False) post) : xs)
-                    -- Try to fit pre onto one line (with prio expanded, also need to re-group post)
-                    handleGroup pre ([Chunk ti prio, Chunk ti (Node (Group False) post)] ++ xs)
+                    -- Note that the pattern on prio is infallible as per isPriorityGroup
+                    (pre, (Node (Group True) prio) : post) <- Just (break isPriorityGroup ys)
+                    -- Try to fit pre onto one line (with prio expanded, and post manually unexpanded)
+                    handleGroup pre $ map (Chunk ti) prio ++ map (Chunk ti) (unexpandSpacing post) ++ xs
                 -- Otherwise, dissolve the group by mapping its members to the target indentation
                 -- This also implies that whitespace in there will now be rendered "expanded"
                 & fromMaybe (go cc ci $ map (Chunk ti) ys ++ xs)
