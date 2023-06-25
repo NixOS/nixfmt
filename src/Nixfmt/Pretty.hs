@@ -427,10 +427,13 @@ instance Pretty Expression where
             <> pretty else_ <> absorbElse expr1
 
     pretty (Abstraction (IDParameter param) colon body)
-        = pretty param <> pretty colon <> absorbAbs body
-        where absorbAbs (Abstraction (IDParameter param0) colon0 body0) =
-                  hardspace <> pretty param0 <> pretty colon0 <> absorbAbs body0
-              absorbAbs x = absorbSet x
+        = pretty param <> pretty colon <> absorbAbs 1 body
+        where absorbAbs :: Int -> Expression -> Doc
+              absorbAbs depth (Abstraction (IDParameter param0) colon0 body0) =
+                  hardspace <> pretty param0 <> pretty colon0 <> absorbAbs (depth + 1) body0
+              absorbAbs depth x
+                  | depth <= 2 = absorbSet x
+                  | otherwise = absorb hardline mempty Nothing x
 
     pretty (Abstraction param colon body)
         = pretty param <> pretty colon <> line <> pretty body
