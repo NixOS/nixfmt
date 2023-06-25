@@ -155,9 +155,7 @@
 assert stdenv.cc.libc or null != null;
 assert pipewireSupport
   -> !waylandSupport || !webrtcSupport
-  ->
-    throw
-      "${pname}: pipewireSupport requires both wayland and webrtc support.";
+  -> throw "${pname}: pipewireSupport requires both wayland and webrtc support.";
 
 let
   inherit (lib) enableFeature;
@@ -264,9 +262,7 @@ buildStdenv.mkDerivation ({
     ++
       lib.optional (lib.versionAtLeast version "111")
         ./env_var_for_system_dir-ff111.patch
-    ++
-      lib.optional (lib.versionAtLeast version "96")
-        ./no-buildconfig-ffx96.patch
+    ++ lib.optional (lib.versionAtLeast version "96") ./no-buildconfig-ffx96.patch
     ++ extraPatches
   ;
 
@@ -428,9 +424,7 @@ buildStdenv.mkDerivation ({
       lib.optional
         (
           ltoSupport
-          && (
-            buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64
-          )
+          && (buildStdenv.isAarch32 || buildStdenv.isi686 || buildStdenv.isx86_64)
         )
         "--disable-elf-hack"
     ++ lib.optional (!drmSupport) "--disable-eme"

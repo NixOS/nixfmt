@@ -18,9 +18,7 @@
       j
     ;
   }
-  {
-    inherit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
-  }
+  { inherit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; }
   { inherit b d; }
   {
     inherit

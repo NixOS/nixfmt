@@ -266,18 +266,10 @@
     name_______ = sanitizeDerivationName (builtins.substring 33 (-1) (path'));
     name________ = sanitizeDerivationName (builtins.substring 33 (-1) (path'));
     name_________ = sanitizeDerivationName (builtins.substring 33 (-1) (path'));
-    name__________ = sanitizeDerivationName (
-      builtins.substring 33 (-1) (path')
-    );
-    name___________ = sanitizeDerivationName (
-      builtins.substring 33 (-1) (path')
-    );
-    name____________ = sanitizeDerivationName (
-      builtins.substring 33 (-1) (path')
-    );
-    name_____________ = sanitizeDerivationName (
-      builtins.substring 33 (-1) (path')
-    );
+    name__________ = sanitizeDerivationName (builtins.substring 33 (-1) (path'));
+    name___________ = sanitizeDerivationName (builtins.substring 33 (-1) (path'));
+    name____________ = sanitizeDerivationName (builtins.substring 33 (-1) (path'));
+    name_____________ = sanitizeDerivationName (builtins.substring 33 (-1) (path'));
     name______________ = sanitizeDerivationName (
       builtins.substring 33 (-1) (path')
     );
@@ -301,18 +293,10 @@
     (sanitizeDerivationName__ (builtins.substring 33 (-1) (baseNameOf path')))
     (sanitizeDerivationName___ (builtins.substring 33 (-1) (baseNameOf path')))
     (sanitizeDerivationName____ (builtins.substring 33 (-1) (baseNameOf path')))
-    (sanitizeDerivationName_____ (
-      builtins.substring 33 (-1) (baseNameOf path')
-    ))
-    (sanitizeDerivationName______ (
-      builtins.substring 33 (-1) (baseNameOf path')
-    ))
-    (sanitizeDerivationName_______ (
-      builtins.substring 33 (-1) (baseNameOf path')
-    ))
-    (sanitizeDerivationName________ (
-      builtins.substring 33 (-1) (baseNameOf path')
-    ))
+    (sanitizeDerivationName_____ (builtins.substring 33 (-1) (baseNameOf path')))
+    (sanitizeDerivationName______ (builtins.substring 33 (-1) (baseNameOf path')))
+    (sanitizeDerivationName_______ (builtins.substring 33 (-1) (baseNameOf path')))
+    (sanitizeDerivationName________ (builtins.substring 33 (-1) (baseNameOf path')))
     (sanitizeDerivationName_________ (
       builtins.substring 33 (-1) (baseNameOf path')
     ))
@@ -347,18 +331,10 @@
   # Function calls with lambdas as last argument
   {
     overrideArgs = copyArgs (newArgs: makeOverridable f (overrideWith newArgs));
-    overrideArgs_ = copyArgs (
-      newArgs: makeOverridable f (overrideWith newArgs)
-    );
-    overrideArgs__ = copyArgs (
-      newArgs: makeOverridable f (overrideWith newArgs)
-    );
-    overrideArgs___ = copyArgs (
-      newArgs: makeOverridable f (overrideWith newArgs)
-    );
-    overrideArgs____ = copyArgs (
-      newArgs: makeOverridable f (overrideWith newArgs)
-    );
+    overrideArgs_ = copyArgs (newArgs: makeOverridable f (overrideWith newArgs));
+    overrideArgs__ = copyArgs (newArgs: makeOverridable f (overrideWith newArgs));
+    overrideArgs___ = copyArgs (newArgs: makeOverridable f (overrideWith newArgs));
+    overrideArgs____ = copyArgs (newArgs: makeOverridable f (overrideWith newArgs));
     # Get a list of suggested argument names for a given missing one
     getSuggestions =
       arg:
@@ -368,9 +344,7 @@
         # levenshteinAtMost is only fast for 2 or less.
         (lib.filter (lib.strings.levenshteinAtMost 2 arg))
         # Put strings with shorter distance first
-        (lib.sort (
-          x: y: lib.strings.levenshtein x arg < lib.strings.levenshtein y arg
-        ))
+        (lib.sort (x: y: lib.strings.levenshtein x arg < lib.strings.levenshtein y arg))
         # Only take the first couple results
         (lib.take 3)
         # Quote all entries

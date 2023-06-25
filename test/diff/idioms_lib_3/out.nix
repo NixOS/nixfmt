@@ -37,8 +37,7 @@ rec {
       err =
         t: v:
         abort (
-          "generators.mkValueStringDefault: "
-          + "${t} not supported: ${toPretty { } v}"
+          "generators.mkValueStringDefault: " + "${t} not supported: ${toPretty { } v}"
         )
       ;
     in
@@ -112,9 +111,7 @@ rec {
       ;
     in
     attrs:
-    libStr.concatStrings (
-      lib.concatLists (libAttr.mapAttrsToList mkLines attrs)
-    )
+    libStr.concatStrings (lib.concatLists (libAttr.mapAttrsToList mkLines attrs))
   ;
 
   # Generate an INI-style config file from an
@@ -227,12 +224,9 @@ rec {
       if globalSection == { } then
         ""
       else
-        (toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } globalSection)
-        + "\n"
+        (toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } globalSection) + "\n"
     )
-    + (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; }
-      sections
-    )
+    + (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; } sections)
   ;
 
   # Generate a git-config file from an attrset.
@@ -286,14 +280,9 @@ rec {
           recurse =
             path: value:
             if isAttrs value && !lib.isDerivation value then
-              lib.mapAttrsToList (name: value: recurse ([ name ] ++ path) value)
-                value
+              lib.mapAttrsToList (name: value: recurse ([ name ] ++ path) value) value
             else if length path > 1 then
-              {
-                ${concatStringsSep "." (lib.reverseList (tail path))}.${
-                  head path
-                } = value;
-              }
+              { ${concatStringsSep "." (lib.reverseList (tail path))}.${head path} = value; }
             else
               { ${head path} = value; }
           ;
@@ -333,9 +322,7 @@ rec {
         "__pretty"
       ];
       stepIntoAttr =
-        evalNext: name:
-        if builtins.elem name specialAttrs then id else evalNext
-      ;
+        evalNext: name: if builtins.elem name specialAttrs then id else evalNext;
       transform =
         depth:
         if depthLimit != null && depth > depthLimit then
@@ -433,10 +420,7 @@ rec {
                 ]
             ;
             singlelineResult =
-              ''"''
-              + concatStringsSep "\\n" (map escapeSingleline lines)
-              + ''"''
-            ;
+              ''"'' + concatStringsSep "\\n" (map escapeSingleline lines) + ''"'';
             multilineResult =
               let
                 escapedLines = map escapeMultiline lines;
@@ -451,10 +435,7 @@ rec {
               + "''"
             ;
           in
-          if multiline && length lines > 1 then
-            multilineResult
-          else
-            singlelineResult
+          if multiline && length lines > 1 then multilineResult else singlelineResult
         else if true == v then
           "true"
         else if false == v then
@@ -476,8 +457,7 @@ rec {
           let
             fna = lib.functionArgs v;
             showFnas = concatStringsSep ", " (
-              libAttr.mapAttrsToList
-                (name: hasDefVal: if hasDefVal then name + "?" else name)
+              libAttr.mapAttrsToList (name: hasDefVal: if hasDefVal then name + "?" else name)
                 fna
             );
           in
@@ -498,9 +478,9 @@ rec {
                 (
                   name: value:
                   "${libStr.escapeNixIdentifier name} = ${
-                    builtins.addErrorContext
-                      "while evaluating an attribute `${name}`"
-                      (go (indent + "  ") value)
+                    builtins.addErrorContext "while evaluating an attribute `${name}`" (
+                      go (indent + "  ") value
+                    )
                   };"
                 )
                 v
@@ -612,9 +592,7 @@ rec {
     if isAttrs v then
       "{ ${
         concatItems (
-          lib.attrsets.mapAttrsToList
-            (key: value: "${key} = ${toDhall args value}")
-            v
+          lib.attrsets.mapAttrsToList (key: value: "${key} = ${toDhall args value}") v
         )
       } }"
     else if isList v then

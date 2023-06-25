@@ -47,8 +47,7 @@ in
             kernel = super.kernel.override (
               originalArgs: {
                 inherit randstructSeed;
-                kernelPatches =
-                  (originalArgs.kernelPatches or [ ]) ++ kernelPatches;
+                kernelPatches = (originalArgs.kernelPatches or [ ]) ++ kernelPatches;
                 features = lib.recursiveUpdate super.kernel.features features;
               }
             );
@@ -302,10 +301,7 @@ in
         ]
       ;
 
-      boot.kernel.sysctl."kernel.printk" =
-        mkDefault
-          config.boot.consoleLogLevel
-      ;
+      boot.kernel.sysctl."kernel.printk" = mkDefault config.boot.consoleLogLevel;
 
       boot.kernelModules = [
         "loop"

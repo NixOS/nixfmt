@@ -418,12 +418,12 @@ layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node (Group False) doc]
             Spacing (Newlines n) -> newlines n : go 0 ti xs
 
             Spacing Softbreak
-              | firstLineFits (tw - nc) (tw - ti) (map unChunk xs)
+              | firstLineFits (tw - nc + ci) (tw - ti) (map unChunk xs)
                                  ->              go cc ci xs
               | otherwise        -> newlines 1 : go 0 ti xs
 
             Spacing Softspace
-              | firstLineFits (tw - nc - 1) (tw - ti) (map unChunk xs)
+              | firstLineFits (tw - nc + ci - 1) (tw - ti) (map unChunk xs)
                                  -> " "        : go (cc + 1) ci xs
               | otherwise        -> newlines 1 : go 0 ti xs
 
@@ -437,10 +437,10 @@ layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node (Group False) doc]
                     handleGroup pre post =
                         if needsIndent then
                             let i = ti + firstLineIndent pre in
-                            fits (tw - i - firstLineWidth (map unChunk post)) pre
+                            fits (tw - firstLineWidth (map unChunk post)) pre
                             <&> \t -> indent i : t : go (i + textWidth t) ci post
                         else
-                            fits (tw - cc - firstLineWidth (map unChunk post)) pre
+                            fits (tw - cc + ci - firstLineWidth (map unChunk post)) pre
                             <&> \t -> t : go (cc + textWidth t) ci post
                 in
                 -- Try to fit the entire group first

@@ -29,10 +29,7 @@
     d
   )
   (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
-  (
-    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:
-    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  )
+  (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
   (
     {
       pkgs ? import ./.. { },

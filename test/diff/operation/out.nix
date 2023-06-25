@@ -184,9 +184,7 @@
 
   # Logical precedence
   (
-    assert pipewireSupport
-      -> !waylandSupport || !webrtcSupport
-      -> pipewireSupport;
+    assert pipewireSupport -> !waylandSupport || !webrtcSupport -> pipewireSupport;
     if
       aaaaaaaaaaaaaa && bbbbbbbbbbbb
       || cccccccccccccccccccc && ddddddddddddddddd

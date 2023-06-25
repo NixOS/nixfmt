@@ -107,8 +107,7 @@ rec {
 
   # bitwise “xor”
   bitXor =
-    builtins.bitXor
-      or (import ./zip-int-bits.nix (a: b: if a != b then 1 else 0));
+    builtins.bitXor or (import ./zip-int-bits.nix (a: b: if a != b then 1 else 0));
 
   # bitwise “not”
   bitNot = builtins.sub (-1);
@@ -203,10 +202,7 @@ rec {
     let
       suffixFile = ../.version-suffix;
     in
-    if pathExists suffixFile then
-      lib.strings.fileContents suffixFile
-    else
-      "pre-git"
+    if pathExists suffixFile then lib.strings.fileContents suffixFile else "pre-git"
   ;
 
   /* Attempts to return the the current revision of nixpkgs and
@@ -230,8 +226,7 @@ rec {
   ;
 
   nixpkgsVersion =
-    builtins.trace
-      "`lib.nixpkgsVersion` is deprecated, use `lib.version` instead!"
+    builtins.trace "`lib.nixpkgsVersion` is deprecated, use `lib.version` instead!"
       version
   ;
 
@@ -361,8 +356,7 @@ rec {
     then
       msg:
       builtins.trace "[1;31mwarning: ${msg}[0m" (
-        abort
-          "NIX_ABORT_ON_WARN=true; warnings are treated as unrecoverable errors."
+        abort "NIX_ABORT_ON_WARN=true; warnings are treated as unrecoverable errors."
       )
     else
       msg: builtins.trace "[1;31mwarning: ${msg}[0m"
@@ -411,9 +405,7 @@ rec {
     in
     lib.throwIfNot (unexpected == [ ])
       "${msg}: ${
-        builtins.concatStringsSep ", " (
-          builtins.map builtins.toString unexpected
-        )
+        builtins.concatStringsSep ", " (builtins.map builtins.toString unexpected)
       } unexpected; valid ones: ${
         builtins.concatStringsSep ", " (builtins.map builtins.toString valid)
       }"
