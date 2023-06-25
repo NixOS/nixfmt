@@ -528,25 +528,33 @@ rec {
       # the normalized name for macOS.
       macos = {
         execFormat = macho;
-        families = { inherit darwin; };
+        families = {
+          inherit darwin;
+        };
         name = "darwin";
       };
       ios = {
         execFormat = macho;
-        families = { inherit darwin; };
+        families = {
+          inherit darwin;
+        };
       };
       # A tricky thing about FreeBSD is that there is no stable ABI across
       # versions. That means that putting in the version as part of the
       # config string is paramount.
       freebsd12 = {
         execFormat = elf;
-        families = { inherit bsd; };
+        families = {
+          inherit bsd;
+        };
         name = "freebsd";
         version = 12;
       };
       freebsd13 = {
         execFormat = elf;
-        families = { inherit bsd; };
+        families = {
+          inherit bsd;
+        };
         name = "freebsd";
         version = 13;
       };
@@ -556,7 +564,9 @@ rec {
       };
       netbsd = {
         execFormat = elf;
-        families = { inherit bsd; };
+        families = {
+          inherit bsd;
+        };
       };
       none = {
         execFormat = unknown;
@@ -564,7 +574,9 @@ rec {
       };
       openbsd = {
         execFormat = elf;
-        families = { inherit bsd; };
+        families = {
+          inherit bsd;
+        };
       };
       solaris = {
         execFormat = elf;
@@ -621,8 +633,12 @@ rec {
     # Note: eabi is specific to ARM and PowerPC.
     # On PowerPC, this corresponds to PPCEABI.
     # On ARM, this corresponds to ARMEABI.
-    eabi = { float = "soft"; };
-    eabihf = { float = "hard"; };
+    eabi = {
+      float = "soft";
+    };
+    eabihf = {
+      float = "hard";
+    };
 
     # Other architectures should use ELF in embedded situations.
     elf = { };
@@ -637,8 +653,12 @@ rec {
       } ];
     };
 
-    gnueabi = { float = "soft"; };
-    gnueabihf = { float = "hard"; };
+    gnueabi = {
+      float = "soft";
+    };
+    gnueabihf = {
+      float = "hard";
+    };
     gnu = {
       assertions = [
         {
@@ -655,24 +675,44 @@ rec {
         }
       ];
     };
-    gnuabi64 = { abi = "64"; };
-    muslabi64 = { abi = "64"; };
+    gnuabi64 = {
+      abi = "64";
+    };
+    muslabi64 = {
+      abi = "64";
+    };
 
     # NOTE: abi=n32 requires a 64-bit MIPS chip!  That is not a typo.
     # It is basically the 64-bit abi with 32-bit pointers.  Details:
     # https://www.linux-mips.org/pub/linux/mips/doc/ABI/MIPS-N32-ABI-Handbook.pdf
-    gnuabin32 = { abi = "n32"; };
-    muslabin32 = { abi = "n32"; };
+    gnuabin32 = {
+      abi = "n32";
+    };
+    muslabin32 = {
+      abi = "n32";
+    };
 
-    gnuabielfv2 = { abi = "elfv2"; };
-    gnuabielfv1 = { abi = "elfv1"; };
+    gnuabielfv2 = {
+      abi = "elfv2";
+    };
+    gnuabielfv1 = {
+      abi = "elfv1";
+    };
 
-    musleabi = { float = "soft"; };
-    musleabihf = { float = "hard"; };
+    musleabi = {
+      float = "soft";
+    };
+    musleabihf = {
+      float = "hard";
+    };
     musl = { };
 
-    uclibceabi = { float = "soft"; };
-    uclibceabihf = { float = "hard"; };
+    uclibceabi = {
+      float = "soft";
+    };
+    uclibceabihf = {
+      float = "hard";
+    };
     uclibc = { };
 
     unknown = { };

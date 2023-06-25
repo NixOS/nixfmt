@@ -129,7 +129,7 @@ instance Pretty Binder where
           inner =
             case expr of
               -- Absorbable term. Always start on the same line, keep semicolon attatched
-              (Term t) | isAbsorbable t -> hardspace <> group expr
+              (Term t) | isAbsorbable t -> hardspace <> prettyTermWide t
               -- Not all strings are absorbably, but in this case we always want to keep them attached.
               -- Because there's nothing to gain from having them start on a new line.
               (Term (String _)) -> hardspace <> group expr
@@ -150,6 +150,28 @@ instance Pretty Binder where
               -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
               -- Otherwise, start on new line, expand fully (including the semicolon)
               _ -> line <> group' False (pretty expr <> line')
+
+-- Pretty a set
+-- while we already pretty eagerly expand sets with more than one element,
+-- in some situations even that is not sufficient. The wide parameter will
+-- be even more eager at expanding, except for empty sets and inherit statements.
+prettySet :: Bool -> (Maybe Leaf, Leaf, Items Binder, Leaf) -> Doc
+-- Empty, non-recursive attribute set
+prettySet _ (Nothing, Ann [] paropen Nothing, Items [], parclose@(Ann [] _ _))
+    = pretty paropen <> hardspace <> pretty parclose
+-- Singleton sets are allowed to fit onto one line,
+-- but apart from that always expand.
+prettySet wide (krec, Ann pre paropen post, binders, parclose)
+    = base $ pretty (fmap (, hardspace) krec) <>
+        pretty (Ann pre paropen Nothing) <> sep
+        <> nest 2 (pretty post <> prettyItems hardline binders) <> sep
+        <> pretty parclose
+    where
+        sep = if wide && not (null (unItems binders)) then hardline else line
+
+prettyTermWide :: Term -> Doc
+prettyTermWide (Set krec paropen items parclose) = prettySet True (krec, paropen, items, parclose)
+prettyTermWide t = prettyTerm t
 
 -- | Pretty print a term without wrapping it in a group.
 prettyTerm :: Term -> Doc
@@ -186,18 +208,7 @@ prettyTerm (List (Ann pre paropen post) items parclose) =
     <> nest 2 ((pretty post) <> prettyItems hardline items) <> hardline
     <> pretty parclose
 
--- Empty, non-recursive attribute set
-prettyTerm (Set Nothing (Ann [] paropen Nothing) (Items []) parclose@(Ann [] _ _))
-    = pretty paropen <> hardspace <> pretty parclose
-
--- General set
--- Singleton sets are allowed to fit onto one line,
--- but apart from that always expand.
-prettyTerm (Set krec (Ann pre paropen post) binders parclose)
-    = base $ pretty (fmap (, hardspace) krec) <>
-        pretty (Ann pre paropen Nothing) <> line
-        <> nest 2 (pretty post <> prettyItems hardline binders) <> line
-        <> pretty parclose
+prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
 
 -- Parenthesized application
 prettyTerm (Parenthesized (Ann pre paropen post) (Application f a) parclose)
