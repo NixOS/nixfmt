@@ -316,8 +316,7 @@ buildStdenv.mkDerivation ({
     ++ extraNativeBuildInputs
   ;
 
-  setOutputFlags =
-    false; # `./mach configure` doesn't understand `--*dir=` flags.
+  setOutputFlags = false; # `./mach configure` doesn't understand `--*dir=` flags.
 
   preConfigure =
     ''

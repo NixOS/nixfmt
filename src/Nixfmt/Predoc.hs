@@ -10,6 +10,7 @@
 -- easier to use.
 module Nixfmt.Predoc
     ( text
+    , comment
     , sepBy
     , hcat
     , base
@@ -35,11 +36,10 @@ module Nixfmt.Predoc
 import Data.List (intersperse)
 import Data.Function ((&))
 import Data.Functor ((<&>))
-import Data.Maybe (isNothing, fromMaybe)
-import Data.Text as Text (Text, concat, length, pack, replicate, strip)
+import Data.Maybe (fromMaybe)
+import Data.Text as Text (Text, concat, length, replicate, strip)
 import GHC.Stack (HasCallStack)
 -- import Debug.Trace (traceShow)
-import Control.Monad (guard)
 import Control.Applicative ((<|>))
 
 -- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
@@ -92,7 +92,8 @@ data DocAnn
 -- | Single document element. Documents are modeled as lists of these elements
 -- in order to make concatenation simple.
 data DocE
-    = Text Text
+    -- Mark comments with a flag, to not count them to line length limits
+    = Text Bool Text
     | Spacing Spacing
     | Node DocAnn Doc
     deriving (Show, Eq)
@@ -102,11 +103,11 @@ type Doc = [DocE]
 class Pretty a where
     pretty :: a -> Doc
 
-instance Pretty Text where
-    pretty = pure . Text
+--instance Pretty Text where
+--    pretty = pure . (Text False)
 
-instance Pretty String where
-    pretty = pure . Text . pack
+--instance Pretty String where
+--    pretty = pure . (Text False) . pack
 
 instance Pretty Doc where
     pretty = id
@@ -123,7 +124,11 @@ instance (Pretty a, Pretty b, Pretty c) => Pretty (a, b, c) where
 
 text :: Text -> Doc
 text "" = []
-text t  = [Text t]
+text t  = [Text False t]
+
+comment :: Text -> Doc
+comment "" = []
+comment t  = [Text True t]
 
 -- | Group document elements together (see Node Group documentation)
 -- Must not contain non-hard whitespace (e.g. line, softline' etc.) at the start of the end.
@@ -268,7 +273,8 @@ mergeSpacings _            y            = y
 mergeLines :: Doc -> Doc
 mergeLines []                           = []
 mergeLines (Spacing a : Spacing b : xs) = mergeLines $ Spacing (mergeSpacings a b) : xs
-mergeLines (Text a : Text b : xs)       = mergeLines $ Text (a <> b) : xs
+mergeLines (Text isComment a : Text isComment' b : xs) | isComment == isComment'
+    = mergeLines $ Text isComment (a <> b) : xs
 mergeLines (Node ann xs : ys)           = Node ann (mergeLines xs) : mergeLines ys
 mergeLines (x : xs)                     = x : mergeLines xs
 
@@ -320,7 +326,8 @@ fits :: Int -> Doc -> Maybe Text
 fits c _ | c < 0 = Nothing
 fits _ [] = Just ""
 fits c (x:xs) = case x of
-    Text t               -> (t<>) <$> fits (c - textWidth t) xs
+    Text False t         -> (t<>) <$> fits (c - textWidth t) xs
+    Text True t          -> (t<>) <$> fits c xs
     Spacing Softbreak    -> fits c xs
     Spacing Break        -> fits c xs
     Spacing Softspace    -> (" "<>) <$> fits (c - 1) xs
@@ -335,7 +342,8 @@ fits c (x:xs) = case x of
 -- width 0, which always forces line breaks when possible.
 firstLineWidth :: Doc -> Int
 firstLineWidth []                       = 0
-firstLineWidth (Text t : xs)            = textWidth t + firstLineWidth xs
+firstLineWidth (Text False t : xs)      = textWidth t + firstLineWidth xs
+firstLineWidth (Text True _ : xs)       = firstLineWidth xs
 firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
 firstLineWidth (Spacing _ : _)          = 0
 firstLineWidth (Node _ xs : ys)         = firstLineWidth (xs ++ ys)
@@ -346,7 +354,8 @@ firstLineFits :: Int -> Int -> Doc -> Bool
 firstLineFits targetWidth maxWidth docs = go maxWidth docs
     where go c _ | c < 0                = False
           go c []                       = maxWidth - c <= targetWidth
-          go c (Text t : xs)            = go (c - textWidth t) xs
+          go c (Text False t : xs)      = go (c - textWidth t) xs
+          go c (Text True _ : xs)       = go c xs
           go c (Spacing Hardspace : xs) = go (c - 1) xs
           go c (Spacing _ : _)          = maxWidth - c <= targetWidth
           go c (Node (Group _) ys : xs)     =
@@ -396,7 +405,8 @@ layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node (Group False) doc]
                 lineStart = if needsIndent then indent ti else ""
             in
             case x of
-            Text t               -> lineStart : t : go (nc + textWidth t) ci xs
+            Text False t         -> lineStart : t : go (nc + textWidth t) ci xs
+            Text True t          -> lineStart : t : go (nc + textWidth t) ci xs
 
             -- This code treats whitespace as "expanded"
             -- A new line resets the column counter and sets the target indentation as current indentation

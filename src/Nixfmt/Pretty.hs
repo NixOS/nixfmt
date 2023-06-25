@@ -19,7 +19,7 @@ import qualified Data.Text as Text
 -- import Debug.Trace (traceShowId)
 import Nixfmt.Predoc
   (Doc, Pretty, base, emptyline, group, group', hardline, hardspace, hcat, line, line',
-  nest, newline, pretty, sepBy, softline, softline', text, textWidth)
+  nest, newline, pretty, sepBy, softline, softline', text, comment, textWidth)
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
@@ -55,11 +55,11 @@ groupWithStart (Ann leading a trailing) b
 
 instance Pretty TrailingComment where
     pretty (TrailingComment c)
-        = hardspace <> text "#" <> hardspace <> text c <> hardline
+        = hardspace <> comment ("# " <> c) <> hardline
 
 instance Pretty Trivium where
     pretty EmptyLine        = emptyline
-    pretty (LineComment c)  = text "#" <> pretty c <> hardline
+    pretty (LineComment c)  = comment ("#" <> c) <> hardline
     pretty (BlockComment c)
         | all ("*" `isPrefixOf`) (tail c) = hcat (map toLineComment' c)
         | otherwise
@@ -249,13 +249,13 @@ instance Pretty ParamAttr where
     -- Simple parameter, move comment around
     -- Move comments around when switching from leading comma to trailing comma style:
     -- `, name # foo` → `name, #foo`
-    pretty (ParamAttr (Ann trivia name (Just comment)) Nothing (Just (Ann trivia' comma Nothing)))
-            = pretty (ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann trivia' comma (Just comment))))
+    pretty (ParamAttr (Ann trivia name (Just comment')) Nothing (Just (Ann trivia' comma Nothing)))
+            = pretty (ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann trivia' comma (Just comment'))))
 
     -- Simple parameter, move comment around and add trailing comma
     -- Same as above, but also add trailing comma
-    pretty (ParamAttr (Ann trivia name (Just comment)) Nothing Nothing)
-            = pretty (ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann [] TComma (Just comment))))
+    pretty (ParamAttr (Ann trivia name (Just comment')) Nothing Nothing)
+            = pretty (ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann [] TComma (Just comment'))))
 
     -- Simple parameter
     -- Still need to handle missing trailing comma here, because the special cases above are not exhaustive
@@ -333,12 +333,12 @@ prettyApp commentPre pre post commentPost f a
         absorbLast arg = group' False $ nest 2 $ pretty arg
 
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
-        (fWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) f
+        (fWithoutComment, comment') = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) f
         in
-        (if null comment then mempty else commentPre)
-        <> pretty comment <> (group' False $
+        (if null comment' then mempty else commentPre)
+        <> pretty comment' <> (group' False $
             pre <> group (absorbApp fWithoutComment) <> line <> absorbLast a <> post)
-        <> (if null comment then mempty else commentPost)
+        <> (if null comment' then mempty else commentPost)
 
 isAbsorbable :: Term -> Bool
 isAbsorbable (String (Ann _ parts@(_:_:_) _))
@@ -475,9 +475,9 @@ instance Pretty Expression where
                 line <> pretty (moveTrailingCommentUp op') <> nest 2 (absorbOperation expr)
 
             -- Extract comment before the first operand and move it out, to prevent force-expanding the expression
-            (operationWithoutComment, comment) = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) operation
+            (operationWithoutComment, comment') = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) operation
           in
-            pretty comment <> (group $
+            pretty comment' <> (group $
                 (concat . map prettyOperation . (flatten Nothing)) operationWithoutComment)
 
     pretty (MemberCheck expr qmark sel)
