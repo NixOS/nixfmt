@@ -755,24 +755,22 @@ in
         warnings =
           let
             latest = 26;
-            upgradeWarning =
-              major: nixos: ''
-                A legacy Nextcloud install (from before NixOS ${nixos}) may be installed.
+            upgradeWarning = major: nixos: ''
+              A legacy Nextcloud install (from before NixOS ${nixos}) may be installed.
 
-                After nextcloud${
-                  toString major
-                } is installed successfully, you can safely upgrade
-                to ${toString (major + 1)}. The latest version available is nextcloud${
-                  toString latest
-                }.
+              After nextcloud${
+                toString major
+              } is installed successfully, you can safely upgrade
+              to ${toString (major + 1)}. The latest version available is nextcloud${
+                toString latest
+              }.
 
-                Please note that Nextcloud doesn't support upgrades across multiple major versions
-                (i.e. an upgrade from 16 is possible to 17, but not 16 to 18).
+              Please note that Nextcloud doesn't support upgrades across multiple major versions
+              (i.e. an upgrade from 16 is possible to 17, but not 16 to 18).
 
-                The package can be upgraded by explicitly declaring the service-option
-                `services.nextcloud.package`.
-              ''
-            ;
+              The package can be upgraded by explicitly declaring the service-option
+              `services.nextcloud.package`.
+            '';
           in
           (optional (cfg.poolConfig != null) ''
             Using config.services.nextcloud.poolConfig is deprecated and will become unsupported in a future release.
