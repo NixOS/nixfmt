@@ -4,13 +4,14 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE DeriveFoldable, OverloadedStrings, RankNTypes #-}
+{-# LANGUAGE DeriveFoldable, OverloadedStrings, RankNTypes, LambdaCase #-}
 
 module Nixfmt.Types where
 
 import Prelude hiding (String)
 
 import Control.Monad.State (StateT)
+import Data.Bifunctor (first)
 import Data.Foldable (toList)
 import Data.Function (on)
 import Data.Text (Text, pack)
@@ -141,58 +142,39 @@ class LanguageElement a where
     mapFirstToken' :: (forall b. Ann b -> (Ann b, c)) -> a -> (a, c)
 
 instance LanguageElement Parameter where
-    mapFirstToken' f (IDParameter name)
-        = let (name', ret) = f name in (IDParameter name', ret)
-    mapFirstToken' f (SetParameter open items close)
-        = let (open', ret) = f open in (SetParameter open' items close, ret)
-    mapFirstToken' f (ContextParameter first at second)
-        = let (first', ret) = mapFirstToken' f first in ((ContextParameter first' at second), ret)
+    mapFirstToken' f = \case
+        (IDParameter name) -> first IDParameter (f name)
+        (SetParameter open items close) -> first (\open' -> SetParameter open' items close) (f open)
+        (ContextParameter first' at second) -> first (\first'' -> ContextParameter first'' at second) (mapFirstToken' f first')
 
 instance LanguageElement Term where
-    mapFirstToken' f (Token leaf)
-        = let (leaf', ret) = (f leaf) in (Token leaf', ret)
-    mapFirstToken' f (String string)
-        = let (string', ret) = (f string) in (String string', ret)
-    mapFirstToken' f (Path path)
-        = let (path', ret) = (f path) in (Path path', ret)
-    mapFirstToken' f (List open items close)
-        = let (open', ret) = (f open) in (List open' items close, ret)
-    mapFirstToken' f (Set (Just rec) open items close)
-        = let (rec', ret) = (f rec) in (Set (Just rec') open items close, ret)
-    mapFirstToken' f (Set Nothing open items close)
-        = let (open', ret) = (f open) in (Set Nothing open' items close, ret)
-    mapFirstToken' f (Selection term selector)
-        = let (term', ret) = (mapFirstToken' f term) in (Selection term' selector, ret)
-    mapFirstToken' f (Parenthesized open expr close)
-        = let (open', ret) = (f open) in (Parenthesized open' expr close, ret)
+    mapFirstToken' f = \case
+        (Token leaf) -> first Token (f leaf)
+        (String string) -> first String (f string)
+        (Path path) -> first Path (f path)
+        (List open items close) -> first (\open' -> List open' items close) (f open)
+        (Set (Just rec) open items close) -> first (\rec' -> Set (Just rec') open items close) (f rec)
+        (Set Nothing open items close) -> first (\open' -> Set Nothing open' items close) (f open)
+        (Selection term selector) -> first (\term' -> Selection term' selector) (mapFirstToken' f term)
+        (Parenthesized open expr close) -> first (\open' -> Parenthesized open' expr close) (f open)
 
 instance LanguageElement Expression where
-    mapFirstToken' f (Term term)
-        = let (term', ret) = (mapFirstToken' f term) in (Term term', ret)
-    mapFirstToken' f (With with expr0 semicolon expr1)
-        = let (with', ret) = (f with) in (With with' expr0 semicolon expr1, ret)
-    mapFirstToken' f (Let let_ items in_ body)
-        = let (let_', ret) = (f let_) in (Let let_' items in_ body, ret)
-    mapFirstToken' f (Assert assert cond semicolon body)
-        = let (assert', ret) = (f assert) in (Assert assert' cond semicolon body, ret)
-    mapFirstToken' f (If if_ expr0 then_ expr1 else_ expr2)
-        = let (if_', ret) = (f if_) in (If if_' expr0 then_ expr1 else_ expr2, ret)
-    mapFirstToken' f (Abstraction param colon body)
-        = let (param', ret) = (mapFirstToken' f param) in (Abstraction param' colon body, ret)
-    mapFirstToken' f (Application g a)
-        = let (g', ret) = (mapFirstToken' f g) in (Application g' a, ret)
-    mapFirstToken' f (Operation left op right)
-        = let (left', ret) = (mapFirstToken' f left) in (Operation left' op right, ret)
-    mapFirstToken' f (MemberCheck name dot selectors)
-        = let (name', ret) = (mapFirstToken' f name) in (MemberCheck name' dot selectors, ret)
-    mapFirstToken' f (Negation not_ expr)
-        = let (not_', ret) = (f not_) in (Negation not_' expr, ret)
-    mapFirstToken' f (Inversion tilde expr)
-        = let (tilde', ret) = (f tilde) in (Inversion tilde' expr, ret)
+    mapFirstToken' f = \case
+        (Term term) -> first Term (mapFirstToken' f term)
+        (With with expr0 semicolon expr1) -> first (\with' -> With with' expr0 semicolon expr1) (f with)
+        (Let let_ items in_ body) -> first (\let_' -> Let let_' items in_ body) (f let_)
+        (Assert assert cond semicolon body) -> first (\assert' -> Assert assert' cond semicolon body) (f assert)
+        (If if_ expr0 then_ expr1 else_ expr2) -> first (\if_' -> If if_' expr0 then_ expr1 else_ expr2) (f if_)
+        (Abstraction param colon body) -> first (\param' -> Abstraction param' colon body) (mapFirstToken' f param)
+        (Application g a) -> first (\g' -> Application g' a) (mapFirstToken' f g)
+        (Operation left op right) -> first (\left' -> Operation left' op right) (mapFirstToken' f left)
+        (MemberCheck name dot selectors) -> first (\name' -> MemberCheck name' dot selectors) (mapFirstToken' f name)
+        (Negation not_ expr) -> first (\not_' -> Negation not_' expr) (f not_)
+        (Inversion tilde expr) -> first (\tilde' -> Inversion tilde' expr) (f tilde)
 
 instance LanguageElement a => LanguageElement (Whole a) where
     mapFirstToken' f (Whole a trivia)
-        = let (a', ret) = (mapFirstToken' f a) in (Whole a' trivia, ret)
+        = first (\a' -> Whole a' trivia) (mapFirstToken' f a)
 
 data Token
     = Integer    Int
