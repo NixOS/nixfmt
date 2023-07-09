@@ -145,8 +145,16 @@ instance Pretty Binder where
               (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> hardspace <> group expr
               -- With expression with absorbable body: Try to absorb and keep the semicolon attached, spread otherwise
               (With _ _ _ (Term t)) | isAbsorbable t -> softline <> group' False (pretty expr <> softline')
-              -- Special case `//` operator to treat like an absorbable term
-              (Operation _ (Ann _ TUpdate _) _) -> softline <> group' False (pretty expr <> softline')
+              -- Special case `//` operations to be more compact in some cases
+              -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
+              (Operation (Term t) (Ann [] TUpdate Nothing) b) | isAbsorbable t ->
+                group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TUpdate <> hardspace <> pretty b <> line'
+              -- Case 2a: LHS fits onto first line, RHS is an absorbable term
+              (Operation l (Ann [] TUpdate Nothing) (Term t)) | isAbsorbable t ->
+                group' False $ line <> pretty l <> line <> group' True (pretty TUpdate <> hardspace <> prettyTermWide t) <> line'
+              -- Case 2b: LHS fits onto first line, RHS is a function application
+              (Operation l (Ann [] TUpdate Nothing) (Application f a)) ->
+                line <> (group $ pretty l) <> line <> prettyApp hardline (pretty TUpdate <> hardspace) line' hardline f a
               -- Everything else:
               -- If it fits on one line, it fits
               -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
@@ -445,9 +453,6 @@ instance Pretty Expression where
     pretty (Application f a)
         = prettyApp mempty mempty mempty mempty f a
 
-    -- '//' operator
-    pretty (Operation a op@(Ann _ TUpdate _) b)
-        = pretty a <> softline <> pretty op <> hardspace <> pretty b
     -- binary operators
     pretty (Operation a op@(Ann _ op' _) b)
         | op' == TLess || op' == TGreater || op' == TLessEqual || op' == TGreaterEqual || op' == TEqual || op' == TUnequal

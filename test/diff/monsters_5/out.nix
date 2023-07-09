@@ -128,14 +128,15 @@ in
 
               //
 
-              {
+                {
 
-                merge
+                  merge
 
-                  =
+                    =
 
-                  mergeEqualOption;
-              };
+                    mergeEqualOption;
+                }
+            ;
 
             apply
 

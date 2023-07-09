@@ -1,6 +1,7 @@
 [
   (
-    done // listToAttrs [ {
+    done
+    // listToAttrs [ {
       # multline
       name = entry;
       value = 1;

@@ -475,7 +475,8 @@ let
         broken = isMarkedBroken attrs;
         unsupported = hasUnsupportedPlatform attrs;
         insecure = isMarkedInsecure attrs;
-      } // (
+      }
+      // (
         # --- Put checks that cannot be ignored here ---
         if checkOutputsToInstall attrs then
           {
@@ -597,11 +598,13 @@ let
         ]
         ++ lib.optional (hasOutput "man") "man"
       ;
-    } // attrs.meta or { }
+    }
+    // attrs.meta or { }
     # Fill `meta.position` to identify the source location of the package.
     // lib.optionalAttrs (pos != null) {
       position = pos.file + ":" + toString pos.line;
-    } // {
+    }
+    // {
       # Expose the result of the checks for everyone to see.
       inherit (validity)
         unfree
@@ -630,7 +633,8 @@ let
     let
       validity = checkValidity attrs;
     in
-    validity // {
+    validity
+    // {
       # Throw an error if trying to evaluate a non-valid derivation
       # or, alternatively, just output a warning message.
       handled =

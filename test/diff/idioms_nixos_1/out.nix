@@ -39,7 +39,9 @@ in
 
     boot.kernelPackages = mkOption {
       default = pkgs.linuxPackages;
-      type = types.unspecified // { merge = mergeEqualOption; };
+      type = types.unspecified // {
+        merge = mergeEqualOption;
+      };
       apply =
         kernelPackages:
         kernelPackages.extend (
@@ -94,7 +96,8 @@ in
 
     boot.kernelParams = mkOption {
       type = types.listOf (
-        types.strMatching ''([^"[:space:]]|"[^"]*")+'' // {
+        types.strMatching ''([^"[:space:]]|"[^"]*")+''
+        // {
           name = "kernelParam";
           description = "string, with spaces inside double quotes";
         }
