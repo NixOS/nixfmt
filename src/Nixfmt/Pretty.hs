@@ -140,7 +140,7 @@ instance Pretty Binder where
               (Term _) -> group' False (line <> pretty expr)
               -- Function call
               -- Absorb if all arguments except the last fit into the line, start on new line otherwise
-              (Application f a) -> group $ prettyApp hardline line line' mempty f a
+              (Application f a) -> prettyApp hardline line line' mempty f a
               -- Absorb function declarations but only those with simple parameter(s)
               (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> hardspace <> group expr
               -- With expression with absorbable body: Try to absorb and keep the semicolon attached, spread otherwise

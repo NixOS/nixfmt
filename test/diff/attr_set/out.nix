@@ -144,6 +144,21 @@
     ];
   }
   {
+    systemd.initrdBi = lib.mkIf config.boot.initrd.services.lvm.enable [ pkgs.vdo ];
+    systemd.initrdBin = lib.mkIf config.boot.initrd.services.lvm.enable [
+      pkgs.vdo
+    ];
+    systemd.initrdBin_ = lib.mkIf config.boot.initrd.services.lvm.enable [
+      pkgs.vdo
+    ];
+    systemd.initrdBin__ = lib.mkIf config.boot.initrd.services.lvm.enable [
+      pkgs.vdo
+    ];
+    systemd.initrdBin___ = lib.mkIf config.boot.initrd.services.lvm.enable [
+      pkgs.vdo
+    ];
+  }
+  {
     patches = [
       (substituteAll {
         src = ./extensionOverridesPatches/vitals_at_corecoding.com.patch;

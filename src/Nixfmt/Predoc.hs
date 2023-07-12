@@ -36,12 +36,14 @@ module Nixfmt.Predoc
 
 import Data.List (intersperse)
 import Data.Function ((&))
-import Data.Functor ((<&>))
+import Data.Functor ((<&>), ($>))
+import Data.Functor.Identity (runIdentity)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (Text, concat, length, replicate, strip)
 import GHC.Stack (HasCallStack)
--- import Debug.Trace (traceShow)
+-- import Debug.Trace (traceShow, traceShowId)
 import Control.Applicative ((<|>))
+import Control.Monad.Trans.State.Strict (State, StateT, StateT(..), mapStateT, state, runState, evalState, get, put)
 
 -- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
 -- This means that e.g. a Space followed by an Emptyline results in just an
@@ -77,10 +79,9 @@ data DocAnn
     -- pre, prio and post.
     -- If any group contains a priority group, the following happens:
     -- If it entirely fits on one line, render on one line (as usual).
-    -- If it does not fit on one line, but pre does, then only expand prio.
+    -- If it does not fit on one line, but pre and post do when prio is expanded, then try that.
     -- In all other cases, fully expand the group.
     -- Groups containing multiple priority groups are not supported at the moment.
-    -- Nesting further groups into post is not supported at the moment.
     = Group Bool
     -- | Node (Nest n) doc indicates all line starts in doc should be indented
     -- by n more spaces than the surrounding Base.
@@ -225,19 +226,16 @@ isHardSpacing (Spacing Emptyline) = True
 isHardSpacing (Spacing (Newlines _)) = True
 isHardSpacing _           = False
 
--- Manually force a group to its compact layout, by replacing all relevant whitespace.
--- Does not recurse into inner groups (maybe it should though?)
+--- Manually force a group to its compact layout, by replacing all relevant whitespace.
+--- Does recurse into inner groups.
 unexpandSpacing :: Doc -> Doc
 unexpandSpacing [] = []
-unexpandSpacing ((Spacing s):xs) = maybe [] (pure . Spacing) (unexpandSpacing' s) ++ unexpandSpacing xs
+unexpandSpacing ((Spacing Space):xs) = Spacing Hardspace : unexpandSpacing xs
+unexpandSpacing ((Spacing Softspace):xs) = Spacing Hardspace : unexpandSpacing xs
+unexpandSpacing ((Spacing Break):xs) = unexpandSpacing xs
+unexpandSpacing ((Spacing Softbreak):xs) = unexpandSpacing xs
+unexpandSpacing (s@(Spacing _):xs) = s : unexpandSpacing xs
 unexpandSpacing (x:xs) = x : unexpandSpacing xs
-
-unexpandSpacing' :: Spacing -> Maybe Spacing
-unexpandSpacing' Space = Just Hardspace
-unexpandSpacing' Softspace = Just Hardspace
-unexpandSpacing' Break = Nothing
-unexpandSpacing' Softbreak = Nothing
-unexpandSpacing' x = Just x
 
 spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
 spanEnd p = fmap reverse . span p . reverse
@@ -398,65 +396,97 @@ unChunk (Chunk _ doc) = doc
 --        Only for the tokens starting on the next line the current
 --        indentation will match the target indentation.
 layoutGreedy :: Int -> Doc -> Text
-layoutGreedy tw doc = Text.concat $ go 0 0 [Chunk 0 $ Node (Group False) doc]
-    where go :: Int -> Int -> [Chunk] -> [Text]
-          go _ _ [] = []
-          go cc ci (Chunk ti x : xs) =
+layoutGreedy tw doc = Text.concat $ evalState (go [Chunk 0 $ Node (Group False) doc] []) (0, 0)
+    where
+    -- All state is (cc, ci)
+
+    -- First argument: chunks to render
+    -- Second argument: lookahead of following chunks, not rendered
+    go :: [Chunk] -> [Chunk] -> State (Int, Int) [Text]
+    go [] _ = return []
+    go (x:xs) ys = do { t <- goOne x (xs ++ ys); ts <- go xs ys; return (t ++ ts) }
+
+    -- First argument: chunk to render. This will recurse into nests/groups if the chunk is one.
+    -- Second argument: lookahead of following chunks
+    goOne :: Chunk -> [Chunk] -> State (Int, Int) [Text]
+    goOne (Chunk ti x) xs = get >>= \(cc,ci) ->
+        let
+            needsIndent = (cc == 0)
+            -- next column, if we print some non-whitespace characters
+            nc = if needsIndent then ti else cc
+            -- Start of line indentation, if necessary
+            lineStart = if needsIndent then indent ti else ""
+
+            -- Some state helpers
+            putCC cc' = put (cc', ci)
+            putNL = put (0, ti)
+        in
+        case x of
+        Text False t         -> putCC (nc + textWidth t) $> [lineStart, t]
+        Text True t          -> putCC (nc + textWidth t) $> [lineStart, t]
+
+        -- This code treats whitespace as "expanded"
+        -- A new line resets the column counter and sets the target indentation as current indentation
+        Spacing Break        -> putNL $> [newlines 1]
+        Spacing Space        -> putNL $> [newlines 1]
+        Spacing Hardspace    -> putCC (cc + 1) $> [" "]
+        Spacing Hardline     -> putNL $> [newlines 1]
+        Spacing Emptyline    -> putNL $> [newlines 2]
+        Spacing (Newlines n) -> putNL $> [newlines n]
+
+        Spacing Softbreak
+            | firstLineFits (tw - nc + ci) (tw - ti) (map unChunk xs)
+                               -> pure []
+            | otherwise        -> putNL $> [newlines 1]
+
+        Spacing Softspace
+            | firstLineFits (tw - nc + ci - 1) (tw - ti) (map unChunk xs)
+                               -> putCC (cc + 1) $> [" "]
+            | otherwise        -> putNL $> [newlines 1]
+
+        Node (Nest l) ys     -> do { put (cc, (if needsIndent then ti + l else ci)); go (map (Chunk (ti + l)) ys) xs }
+        Node Base ys         -> go (map (Chunk ci) ys) xs
+        Node (Group _) ys    ->
             let
-                needsIndent = (cc == 0)
-                -- next column, if we print some non-whitespace characters
-                nc = if needsIndent then ti else cc
-                -- Start of line indentation, if necessary
-                lineStart = if needsIndent then indent ti else ""
+                xs' = map unChunk xs
+
+                -- fromMaybe lifted to (StateT s Maybe)
+                fromMaybeState :: State s a -> StateT s Maybe a -> State s a
+                fromMaybeState l r = state $ \s -> fromMaybe (runState l s) (runStateT r s)
             in
-            case x of
-            Text False t         -> lineStart : t : go (nc + textWidth t) ci xs
-            Text True t          -> lineStart : t : go (nc + textWidth t) ci xs
+            -- Try to fit the entire group first
+            goGroup ti ys xs'
+            -- If that fails, check whether the group contains a priority group within its children and try to expand that first
+            <|> do
+                -- Split up on the first priority group, if present
+                -- Note that the pattern on prio is infallible as per isPriorityGroup
+                (pre, (Node (Group True) prio) : post) <- pure $ (break isPriorityGroup ys)
+                -- Try to fit pre onto one line
+                preRendered <- goGroup ti pre (prio ++ post ++ xs')
+                -- Render prio expanded
+                -- We know that post will be rendered compact. So we tell the renderer that by manually removing all
+                -- line breaks in post here. Otherwise we might get into awkward the situation where pre and prio are put
+                -- onto the one line, all three obviously wouldn't fit.
+                prioRendered <- mapStateT (Just . runIdentity) $
+                    go (map (Chunk ti) prio) (map (Chunk ti) (unexpandSpacing post) ++ xs)
+                -- Try to render post onto one line
+                postRendered <- goGroup ti post xs'
+                -- If none of these failed, put together and return
+                return $ (preRendered ++ prioRendered ++ postRendered)
+            -- Otherwise, dissolve the group by mapping its members to the target indentation
+            -- This also implies that whitespace in there will now be rendered "expanded".
+            & fromMaybeState (go (map (Chunk ti) ys) xs)
 
-            -- This code treats whitespace as "expanded"
-            -- A new line resets the column counter and sets the target indentation as current indentation
-            Spacing Break        -> newlines 1 : go 0 ti xs
-            Spacing Space        -> newlines 1 : go 0 ti xs
-            Spacing Hardspace    -> " "        : go (cc + 1) ci xs
-            Spacing Hardline     -> newlines 1 : go 0 ti xs
-            Spacing Emptyline    -> newlines 2 : go 0 ti xs
-            Spacing (Newlines n) -> newlines n : go 0 ti xs
-
-            Spacing Softbreak
-              | firstLineFits (tw - nc + ci) (tw - ti) (map unChunk xs)
-                                 ->              go cc ci xs
-              | otherwise        -> newlines 1 : go 0 ti xs
-
-            Spacing Softspace
-              | firstLineFits (tw - nc + ci - 1) (tw - ti) (map unChunk xs)
-                                 -> " "        : go (cc + 1) ci xs
-              | otherwise        -> newlines 1 : go 0 ti xs
-
-            Node (Nest l) ys     -> go cc (if needsIndent then ti + l else ci) $ map (Chunk (ti + l)) ys ++ xs
-            Node Base ys         -> go cc ci $ map (Chunk ci) ys ++ xs
-            Node (Group _) ys    ->
-                let
-                    -- Does the group (plus whatever comes after it on that line) fit in one line?
-                    -- This is where treating whitespace as "compact" happens
-                    handleGroup :: Doc -> [Chunk] -> Maybe [Text]
-                    handleGroup pre post =
-                        if needsIndent then
-                            let i = ti + firstLineIndent pre in
-                            fits (tw - firstLineWidth (map unChunk post)) pre
-                            <&> \t -> indent i : t : go (i + textWidth t) ci post
-                        else
-                            fits (tw - cc + ci - firstLineWidth (map unChunk post)) pre
-                            <&> \t -> t : go (cc + textWidth t) ci post
-                in
-                -- Try to fit the entire group first
-                handleGroup ys xs
-                -- If that fails, check whether the group contains any priority groups as its children and try to expand them first
-                <|> do
-                    -- Split up on the first priority group
-                    -- Note that the pattern on prio is infallible as per isPriorityGroup
-                    (pre, (Node (Group True) prio) : post) <- Just (break isPriorityGroup ys)
-                    -- Try to fit pre onto one line (with prio expanded, and post manually unexpanded)
-                    handleGroup pre $ map (Chunk ti) prio ++ map (Chunk ti) (unexpandSpacing post) ++ xs
-                -- Otherwise, dissolve the group by mapping its members to the target indentation
-                -- This also implies that whitespace in there will now be rendered "expanded"
-                & fromMaybe (go cc ci $ map (Chunk ti) ys ++ xs)
+    -- Try to fit the group onto a single line, while accounting for the fact that the first
+    -- bits of rest must fit as well (until the first possibility for a line break within rest).
+    -- Any whitespace within the group is treated as "compact".
+    -- Return Nothing on failure, i.e. if the group would require a line break
+    goGroup :: Int -> Doc -> Doc -> StateT (Int, Int) Maybe [Text]
+    goGroup ti grp rest = StateT $ \(cc,ci) ->
+        if cc == 0 then
+            let i = ti + firstLineIndent grp in
+            fits (tw - firstLineWidth rest) grp
+            <&> \t -> ([indent i, t], (i + textWidth t, ci))
+        else
+            fits (tw + (ci - cc) - firstLineWidth rest) grp
+            <&> \t -> ([t], (cc + textWidth t, ci))
