@@ -155,6 +155,16 @@ instance Pretty Binder where
               -- Case 2b: LHS fits onto first line, RHS is a function application
               (Operation l (Ann [] TUpdate Nothing) (Application f a)) ->
                 line <> (group $ pretty l) <> line <> prettyApp hardline (pretty TUpdate <> hardspace) line' hardline f a
+              -- Special case `++` operations to be more compact in some cases
+              -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
+              (Operation (Term t) (Ann [] TConcat Nothing) b) | isAbsorbable t ->
+                group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TConcat <> hardspace <> pretty b <> line'
+              -- Case 2a: LHS fits onto first line, RHS is an absorbable term
+              (Operation l (Ann [] TConcat Nothing) (Term t)) | isAbsorbable t ->
+                group' False $ line <> pretty l <> line <> group' True (pretty TConcat <> hardspace <> prettyTermWide t) <> line'
+              -- Case 2b: LHS fits onto first line, RHS is a function application
+              (Operation l (Ann [] TConcat Nothing) (Application f a)) ->
+                line <> (group $ pretty l) <> line <> prettyApp hardline (pretty TConcat <> hardspace) line' hardline f a
               -- Everything else:
               -- If it fits on one line, it fits
               -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
