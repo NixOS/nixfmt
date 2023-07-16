@@ -14,9 +14,7 @@
 # e.g. exhaustive cases. Its more a sanity check to make sure nobody defines
 # systems that overlap with existing ones and won't notice something amiss.
 #
-{
-  lib,
-}:
+{ lib }:
 with lib.lists;
 with lib.types;
 with lib.attrsets;

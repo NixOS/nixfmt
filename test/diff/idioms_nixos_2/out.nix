@@ -17,10 +17,7 @@ let
 
   phpPackage = cfg.phpPackage.buildEnv {
     extensions =
-      {
-        enabled,
-        all,
-      }:
+      { enabled, all }:
       (
         with all;
         # disable default openssl extension
@@ -995,13 +992,7 @@ in
               '';
               occInstallCmd =
                 let
-                  mkExport =
-                    {
-                      arg,
-                      value,
-                    }:
-                    "export ${arg}=${value}"
-                  ;
+                  mkExport = { arg, value }: "export ${arg}=${value}";
                   dbpass = {
                     arg = "DBPASS";
                     value =

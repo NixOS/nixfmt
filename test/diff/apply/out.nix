@@ -187,9 +187,7 @@
   # https://github.com/kamadorueda/alejandra/issues/372#issuecomment-1435083516
   {
     outputs =
-      {
-        utils,
-      }:
+      { utils }:
       # For each supported platform,
       utils.lib.eachDefaultSystem (system: { })
     ;

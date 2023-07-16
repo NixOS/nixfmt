@@ -276,10 +276,7 @@ let
   ;
 
   handleEvalIssue =
-    {
-      meta,
-      attrs,
-    }:
+    { meta, attrs }:
     {
       reason,
       errormsg ? "",
@@ -303,10 +300,7 @@ let
   ;
 
   handleEvalWarning =
-    {
-      meta,
-      attrs,
-    }:
+    { meta, attrs }:
     {
       reason,
       errormsg ? "",
@@ -626,10 +620,7 @@ let
   ;
 
   assertValidity =
-    {
-      meta,
-      attrs,
-    }:
+    { meta, attrs }:
     let
       validity = checkValidity attrs;
     in

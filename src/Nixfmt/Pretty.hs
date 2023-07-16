@@ -262,41 +262,46 @@ instance Pretty Term where
     pretty l@List{} = group $ prettyTerm l
     pretty x        = prettyTerm x
 
+-- Does not move around comments, nor does it inject a trailing comma
 instance Pretty ParamAttr where
-    -- Simple parameter, move comment around
-    -- Move comments around when switching from leading comma to trailing comma style:
-    -- `, name # foo` → `name, #foo`
-    pretty (ParamAttr (Ann trivia name (Just comment')) Nothing (Just (Ann trivia' comma Nothing)))
-            = pretty (ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann trivia' comma (Just comment'))))
-
-    -- Simple parameter, move comment around and add trailing comma
-    -- Same as above, but also add trailing comma
-    pretty (ParamAttr (Ann trivia name (Just comment')) Nothing Nothing)
-            = pretty (ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann [] TComma (Just comment'))))
-
-    -- Simple parameter
-    -- Still need to handle missing trailing comma here, because the special cases above are not exhaustive
+    -- Simple parameter (no default)
     pretty (ParamAttr name Nothing maybeComma)
-        = pretty name <> (fromMaybe (text ",") (fmap pretty maybeComma))
+        = pretty name <> pretty maybeComma
 
     -- With ? default
     pretty (ParamAttr name (Just (qmark, def)) maybeComma)
         = group (pretty name <> hardspace <> pretty qmark
             <> absorb softline mempty (Just 2) def)
-            <> (fromMaybe (text ",") (fmap pretty maybeComma))
+            <> pretty maybeComma
 
     -- `...`
     pretty (ParamEllipsis ellipsis)
         = pretty ellipsis
 
+-- Move comments around and inject trailing commas everywhere
+moveParamAttrComment :: ParamAttr -> ParamAttr
+-- Simple parameter, move comment around
+-- Move comments around when switching from leading comma to trailing comma style:
+-- `, name # foo` → `name, #foo`
+moveParamAttrComment (ParamAttr (Ann trivia name (Just comment')) Nothing (Just (Ann trivia' comma Nothing)))
+    = ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann trivia' comma (Just comment')))
+-- Simple parameter, move comment around and add trailing comma
+-- Same as above, but also add trailing comma
+moveParamAttrComment (ParamAttr (Ann trivia name (Just comment')) Nothing Nothing)
+    = ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann [] TComma (Just comment')))
+-- Other cases, just inject a trailing comma
+moveParamAttrComment (ParamAttr name def Nothing)
+    = ParamAttr name def (Just (Ann [] TComma Nothing))
+moveParamAttrComment x = x
+
 -- When a `, name` entry has some line comments before it, they are actually attached to the comment
 -- of the preceding item. Move them to the next one
-moveParamComments :: [ParamAttr] -> [ParamAttr]
-moveParamComments
+moveParamsComments :: [ParamAttr] -> [ParamAttr]
+moveParamsComments
     ((ParamAttr name maybeDefault (Just (Ann trivia comma Nothing))) : (ParamAttr (Ann [] name' Nothing) maybeDefault' maybeComma') : xs)
-    = (ParamAttr name maybeDefault (Just (Ann [] comma Nothing))) : moveParamComments ((ParamAttr (Ann trivia name' Nothing) maybeDefault' maybeComma') : xs)
-moveParamComments (x : xs) = x : moveParamComments xs
-moveParamComments [] = []
+    = (ParamAttr name maybeDefault (Just (Ann [] comma Nothing))) : moveParamsComments ((ParamAttr (Ann trivia name' Nothing) maybeDefault' maybeComma') : xs)
+moveParamsComments (x : xs) = x : moveParamsComments xs
+moveParamsComments [] = []
 
 instance Pretty Parameter where
     -- param:
@@ -307,10 +312,28 @@ instance Pretty Parameter where
         = group $ pretty bopen <> hardspace <> pretty bclose
 
     -- { stuff }:
-    pretty (SetParameter bopen attrs bclose)
-        = groupWithStart bopen $ hardline
-                  <> nest 2 (((sepBy hardline) . moveParamComments) attrs) <> hardline
-                  <> pretty bclose
+    pretty (SetParameter bopen attrs bclose) =
+        groupWithStart bopen $
+            (surroundWith sep $ nest 2 (sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments $ attrs))
+            <> pretty bclose
+        where
+        -- pretty all ParamAttrs, but make the trailing comma of the last element specially
+        handleTrailingComma :: [ParamAttr] -> [Doc]
+        handleTrailingComma [] = []
+        -- That's the case we're interested in
+        handleTrailingComma [(ParamAttr name maybeDefault (Just (Ann [] TComma Nothing)))]
+            = [pretty (ParamAttr name maybeDefault Nothing) <> trailing ","]
+        handleTrailingComma (x:xs) = pretty x : handleTrailingComma xs
+
+        sep = case attrs of
+            [] -> line
+            [ParamEllipsis _] -> line
+            -- Attributes must be without default
+            [ParamAttr _ Nothing _] -> line
+            [ParamAttr _ Nothing _, ParamEllipsis _] -> line
+            [ParamAttr _ Nothing _, ParamAttr _ Nothing _] -> line
+            [ParamAttr _ Nothing _, ParamAttr _ Nothing _, ParamEllipsis _] -> line
+            _ -> hardline
 
     pretty (ContextParameter param1 at param2)
         = pretty param1 <> pretty at <> pretty param2
