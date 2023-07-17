@@ -52,8 +52,7 @@ let
       post_max_size = cfg.maxUploadSize;
       memory_limit = cfg.maxUploadSize;
     }
-    // cfg.phpOptions // optionalAttrs cfg.caching.apcu { "apc.enable_cli" = "1"; }
-  ;
+    // cfg.phpOptions // optionalAttrs cfg.caching.apcu { "apc.enable_cli" = "1"; };
 
   occ = pkgs.writeScriptBin "nextcloud-occ" ''
     #! ${pkgs.runtimeShell}
@@ -344,8 +343,7 @@ in
             int
             bool
           ]
-        )
-      ;
+        );
       default = {
         "pm" = "dynamic";
         "pm.max_children" = "32";
@@ -625,8 +623,7 @@ in
       )
       // {
         default = true;
-      }
-    ;
+      };
 
     caching = {
       apcu = mkOption {
@@ -824,8 +821,7 @@ in
               nextcloud25
             else
               nextcloud26
-          )
-        ;
+          );
 
         services.nextcloud.phpPackage =
           if versionOlder cfg.package.version "26" then pkgs.php81 else pkgs.php82;
@@ -884,16 +880,14 @@ in
                       }
                     ],
                   ]
-                ''
-              ;
+                '';
 
               showAppStoreSetting = cfg.appstoreEnable != null || cfg.extraApps != { };
               renderedAppStoreSetting =
                 let
                   x = cfg.appstoreEnable;
                 in
-                if x == null then "false" else boolToString x
-              ;
+                if x == null then "false" else boolToString x;
 
               nextcloudGreaterOrEqualThan = req: versionAtLeast cfg.package.version req;
 
@@ -1025,8 +1019,7 @@ in
                   ${mkExport adminpass}
                   ${occ}/bin/nextcloud-occ maintenance:install \
                       ${installFlags}
-                ''
-              ;
+                '';
               occSetTrustedDomainsCmd = concatStringsSep "\n" (
                 imap0
                   (i: v: ''
@@ -1107,10 +1100,8 @@ in
               # an automatic creation of the database user.
               environment.NC_setup_create_db_user =
                 lib.mkIf (nextcloudGreaterOrEqualThan "26")
-                  "false"
-              ;
-            }
-          ;
+                  "false";
+            };
           nextcloud-cron = {
             after = [ "nextcloud-setup.service" ];
             environment.NEXTCLOUD_CONFIG_DIR = "${datadir}/config";

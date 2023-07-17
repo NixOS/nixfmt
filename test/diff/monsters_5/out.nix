@@ -49,8 +49,7 @@ let
 
       ''
         ${concatStringsSep "\n" config.boot.kernelModules}
-      ''
-  ;
+      '';
 in
 
 {
@@ -83,8 +82,7 @@ in
 
               literalExpression
 
-                "{debug= true;}"
-            ;
+                "{debug= true;}";
 
             internal
 
@@ -103,8 +101,7 @@ in
                 which would have separate nixos options.
                 `grep features pkgs/os-specific/linux/kernel/common-config.nix`
               '';
-          }
-      ;
+          };
 
       boot.kernelPackages
 
@@ -193,14 +190,11 @@ in
 
                                 super.kernel.features
 
-                                features
-                            ;
+                                features;
                           }
-                        )
-                    ;
+                        );
                   }
-                )
-            ;
+                );
 
             # We don't want to evaluate all of linuxPackages for the manual
             # - some of it might not even evaluate correctly.
@@ -211,8 +205,7 @@ in
 
               literalExpression
 
-                "pkgs.linuxPackages"
-            ;
+                "pkgs.linuxPackages";
 
             example
 
@@ -220,8 +213,7 @@ in
 
               literalExpression
 
-                "pkgs.linuxKernel.packages.linux_5_10"
-            ;
+                "pkgs.linuxKernel.packages.linux_5_10";
 
             description
 
@@ -239,8 +231,7 @@ in
                 then it also needs to contain an attribute
                 <varname>nvidia_x11</varname>.
               '';
-          }
-      ;
+          };
 
       boot.kernelPatches
 
@@ -256,8 +247,7 @@ in
 
               types.listOf
 
-                types.attrs
-            ;
+                types.attrs;
 
             default
 
@@ -271,10 +261,8 @@ in
 
               literalExpression
 
-                "[ pkgs.kernelPatches.ubuntu_fan_4_4 ]"
-            ;
+                "[ pkgs.kernelPatches.ubuntu_fan_4_4 ]";
             description = "A list of additional patches to apply to the kernel.";
-          }
-      ;
+          };
     };
 }

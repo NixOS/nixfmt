@@ -19,8 +19,7 @@ let
     attrs:
     attrs.name or (
       "${attrs.pname or "«name-missing»"}-${attrs.version or "«version-missing»"}"
-    )
-  ;
+    );
 
   allowUnfree =
     config.allowUnfree || builtins.getEnv "NIXPKGS_ALLOW_UNFREE" == "1";
@@ -29,8 +28,7 @@ let
     let
       envVar = builtins.getEnv "NIXPKGS_ALLOW_NONSOURCE";
     in
-    if envVar != "" then envVar != "0" else config.allowNonSource or true
-  ;
+    if envVar != "" then envVar != "0" else config.allowNonSource or true;
 
   allowlist = config.allowlistedLicenses or config.whitelistedLicenses or [ ];
   blocklist = config.blocklistedLicenses or config.blacklistedLicenses or [ ];
@@ -115,8 +113,7 @@ let
 
   hasNonSourceProvenance =
     attrs:
-    (attrs ? meta.sourceProvenance) && isNonSource attrs.meta.sourceProvenance
-  ;
+    (attrs ? meta.sourceProvenance) && isNonSource attrs.meta.sourceProvenance;
 
   # Allow granular checks to allow only some non-source-built packages
   # Example:
@@ -167,8 +164,7 @@ let
       UnsupportedSystem = "NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM";
       NonSource = "NIXPKGS_ALLOW_NONSOURCE";
     }
-    .${allow_attr}
-  ;
+    .${allow_attr};
   remediation_phrase =
     allow_attr:
     {
@@ -177,8 +173,7 @@ let
       UnsupportedSystem = "packages that are unsupported for this system";
       NonSource = "packages not built from source";
     }
-    .${allow_attr}
-  ;
+    .${allow_attr};
   remediate_predicate = predicateConfigAttr: attrs: ''
 
     Alternatively you can configure a predicate to allow specific packages:
@@ -257,8 +252,7 @@ let
       actualOutputs = attrs.outputs or [ "out" ];
       missingOutputs =
         builtins.filter (output: !builtins.elem output actualOutputs)
-          expectedOutputs
-      ;
+          expectedOutputs;
     in
     ''
       The package ${getName attrs} has set meta.outputsToInstall to: ${
@@ -272,8 +266,7 @@ let
       and is missing the following ouputs:
 
       ${lib.concatStrings (builtins.map (output: "  - ${output}\n") missingOutputs)}
-    ''
-  ;
+    '';
 
   handleEvalIssue =
     { meta, attrs }:
@@ -296,8 +289,7 @@ let
       handler =
         if config ? handleEvalIssue then config.handleEvalIssue reason else throw;
     in
-    handler msg
-  ;
+    handler msg;
 
   handleEvalWarning =
     { meta, attrs }:
@@ -318,8 +310,7 @@ let
       ;
       isEnabled = lib.findFirst (x: x == reason) null showWarnings;
     in
-    if isEnabled != null then builtins.trace msg true else true
-  ;
+    if isEnabled != null then builtins.trace msg true else true;
 
   # Deep type-checking. Note that calling `type.check` is not enough: see `lib.mkOptionType`'s documentation.
   # We don't include this in lib for now because this function is flawed: it accepts things like `mkIf true 42`.
@@ -332,8 +323,7 @@ let
       } ];
       eval = builtins.tryEval (builtins.deepSeq merged.mergedValue null);
     in
-    eval.success
-  ;
+    eval.success;
 
   # TODO make this into a proper module and use the generic option documentation generation?
   metaTypes = with lib.types; rec {
@@ -349,8 +339,7 @@ let
       let
         licenseType = either (attrsOf anything) str; # TODO disallow `str` licenses, use a module
       in
-      either licenseType (listOf licenseType)
-    ;
+      either licenseType (listOf licenseType);
     sourceProvenance = listOf lib.types.attrs;
     maintainers = listOf (attrsOf anything); # TODO use the maintainer type from lib/tests/maintainer-module.nix
     priority = int;
@@ -418,8 +407,7 @@ let
     meta:
     lib.optionals config.checkMeta (
       lib.remove null (lib.mapAttrsToList checkMetaAttr meta)
-    )
-  ;
+    );
 
   checkOutputsToInstall =
     attrs:
@@ -428,11 +416,9 @@ let
       actualOutputs = attrs.outputs or [ "out" ];
       missingOutputs =
         builtins.filter (output: !builtins.elem output actualOutputs)
-          expectedOutputs
-      ;
+          expectedOutputs;
     in
-    if config.checkMeta then builtins.length missingOutputs > 0 else false
-  ;
+    if config.checkMeta then builtins.length missingOutputs > 0 else false;
 
   # Check if a derivation is valid, that is whether it passes checks for
   # e.g brokenness or license.

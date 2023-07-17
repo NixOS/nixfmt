@@ -91,8 +91,7 @@ let
         [ ../cygwin/rebase-x86_64.sh ]
       else
         [ ]
-    )
-  ;
+    );
 
   # A function that builds a "native" stdenv (one that uses tools in
   # /usr etc.).
@@ -149,8 +148,7 @@ let
         overrides
         config
       ;
-    }
-  ;
+    };
 in
 
 [
@@ -188,8 +186,7 @@ in
             nativeLibc = true;
           };
           inherit stdenvNoCC;
-        }
-      ;
+        };
 
       fetchurl = import ../../build-support/fetchurl {
         inherit lib stdenvNoCC;

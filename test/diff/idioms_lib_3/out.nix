@@ -36,8 +36,7 @@ rec {
         t: v:
         abort (
           "generators.mkValueStringDefault: " + "${t} not supported: ${toPretty { } v}"
-        )
-      ;
+        );
     in
     if isInt v then
       toString v
@@ -86,8 +85,7 @@ rec {
       mkValueString ? mkValueStringDefault { },
     }:
     sep: k: v:
-    "${libStr.escape [ sep ] k}${sep}${mkValueString v}"
-  ;
+    "${libStr.escape [ sep ] k}${sep}${mkValueString v}";
 
   ## -- FILE FORMAT GENERATORS --
 
@@ -109,8 +107,7 @@ rec {
       ;
     in
     attrs:
-    libStr.concatStrings (lib.concatLists (libAttr.mapAttrsToList mkLines attrs))
-  ;
+    libStr.concatStrings (lib.concatLists (libAttr.mapAttrsToList mkLines attrs));
 
   # Generate an INI-style config file from an
   # attrset of sections to an attrset of key-value pairs.
@@ -153,8 +150,7 @@ rec {
       # map function to string for each key val
       mapAttrsToStringsSep =
         sep: mapFn: attrs:
-        libStr.concatStringsSep sep (libAttr.mapAttrsToList mapFn attrs)
-      ;
+        libStr.concatStringsSep sep (libAttr.mapAttrsToList mapFn attrs);
       mkSection =
         sectName: sectValues:
         ''
@@ -164,8 +160,7 @@ rec {
       ;
     in
     # map input to ini sections
-    mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
-  ;
+    mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
 
   # Generate an INI-style config file from an attrset
   # specifying the global section (no header), and an
@@ -266,8 +261,7 @@ rec {
         let
           mkKeyValue = mkKeyValueDefault { } " = " k;
         in
-        concatStringsSep "\n" (map (kv: "	" + mkKeyValue kv) (lib.toList v))
-      ;
+        concatStringsSep "\n" (map (kv: "	" + mkKeyValue kv) (lib.toList v));
 
       # converts { a.b.c = 5; } to { "a.b".c = 5; } for toINI
       gitFlattenAttrs =
@@ -283,13 +277,11 @@ rec {
           ;
         in
         attrs:
-        lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs))
-      ;
+        lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs));
 
       toINI_ = toINI { inherit mkKeyValue mkSectionName; };
     in
-    toINI_ (gitFlattenAttrs attrs)
-  ;
+    toINI_ (gitFlattenAttrs attrs);
 
   # Generates JSON from an arbitrary (non-function) value.
   # For more information see the documentation of the builtin.
@@ -345,8 +337,7 @@ rec {
           transform (depth + 1) v
       ;
     in
-    mapAny 0
-  ;
+    mapAny 0;
 
   # Pretty print a value, akin to `builtins.trace`.
   # Should probably be a builtin as well.
@@ -412,8 +403,7 @@ rec {
                 [
                   "''\${"
                   "'''"
-                ]
-            ;
+                ];
             singlelineResult =
               ''"'' + concatStringsSep "\\n" (map escapeSingleline lines) + ''"'';
             multilineResult =
@@ -486,8 +476,7 @@ rec {
           abort "generators.toPretty: should never happen (v = ${v})"
       ;
     in
-    go indent
-  ;
+    go indent;
 
   # PLIST handling
   toPlist =
@@ -534,8 +523,7 @@ rec {
           (literal ind "<array>")
           (item ind x)
           (literal ind "</array>")
-        ]
-      ;
+        ];
 
       attrs =
         ind: x:
@@ -543,8 +531,7 @@ rec {
           (literal ind "<dict>")
           (attr ind x)
           (literal ind "</dict>")
-        ]
-      ;
+        ];
 
       attr =
         let
@@ -563,16 +550,14 @@ rec {
               )
               x
           )
-        )
-      ;
+        );
     in
     ''
       <?xml version="1.0" encoding="UTF-8"?>
       <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
       <plist version="1.0">
       ${expr "" v}
-      </plist>''
-  ;
+      </plist>'';
 
   # Translate a simple Nix expression to Dhall notation.
   # Note that integers are translated to Integer and never

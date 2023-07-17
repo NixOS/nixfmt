@@ -64,8 +64,7 @@ stdenv.mkDerivation # Foo
           sha256 # Foo
             = # Foo
             "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0="; # Foo
-        }
-    ; # Foo
+        }; # Foo
     cargoDeps # Foo
       = # Foo
       rustPlatform.fetchCargoTarball # Foo
@@ -80,8 +79,7 @@ stdenv.mkDerivation # Foo
           hash # Foo
             = # Foo
             "sha256-W4FyqwJpimf0isQRCq9TegpTQPQfsumx40AFQCFG5VQ="; # Foo
-        }
-    ; # Foo
+        }; # Foo
     nativeBuildInputs # Foo
       = # Foo
       [
@@ -139,8 +137,7 @@ stdenv.mkDerivation # Foo
           [
             # Foo
             jtojnar # Foo
-          ]
-        ; # Foo
+          ]; # Foo
         platforms # Foo
           = # Foo
           platforms.unix; # Foo

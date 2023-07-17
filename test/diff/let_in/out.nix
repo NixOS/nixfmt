@@ -5,62 +5,53 @@ let
       b = 2;
       c = 3;
     in
-    d
-  ;
+    d;
   a =
     let
       c = 1;
     in
-    f
-  ;
+    f;
 
   a =
     let
       c = 1;
     in
     # e
-    f
-  ;
+    f;
   a =
     let
       c = 1; # d
     in
-    f
-  ;
+    f;
 
   a =
     let
       c = 1; # d
     in
     # e
-    f
-  ;
+    f;
   a =
     let # b
       c = 1;
     in
-    f
-  ;
+    f;
   a =
     let # b
       c = 1;
     in
     # e
-    f
-  ;
+    f;
   a =
     let # b
       c = 1; # d
     in
-    f
-  ;
+    f;
   a =
     let # b
       c = 1; # d
     in
     # e
-    f
-  ;
+    f;
 
   a =
     let
@@ -68,8 +59,7 @@ let
     [
       1
       2
-    ]
-  ;
+    ];
 in
 
 a

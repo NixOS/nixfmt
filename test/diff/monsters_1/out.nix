@@ -126,8 +126,7 @@ stdenv.mkDerivation
             # foo
             "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0=";
           # foo
-        }
-    ;
+        };
     # foo
     cargoDeps
       # foo
@@ -154,8 +153,7 @@ stdenv.mkDerivation
             # foo
             "sha256-W4FyqwJpimf0isQRCq9TegpTQPQfsumx40AFQCFG5VQ=";
           # foo
-        }
-    ;
+        };
     # foo
     nativeBuildInputs
       # foo

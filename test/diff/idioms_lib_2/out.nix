@@ -12,8 +12,7 @@ rec {
   id =
     # The value to return
     x:
-    x
-  ;
+    x;
 
   /* The constant function
 
@@ -30,8 +29,7 @@ rec {
     x:
     # Value to ignore
     y:
-    x
-  ;
+    x;
 
   /* Pipes a value through a list of functions, left to right.
 
@@ -67,8 +65,7 @@ rec {
     let
       reverseApply = x: f: f x;
     in
-    builtins.foldl' reverseApply val functions
-  ;
+    builtins.foldl' reverseApply val functions;
 
   # note please don’t add a function like `compose = flip pipe`.
   # This would confuse users, because the order of the functions
@@ -133,8 +130,7 @@ rec {
     x:
     # Right attribute set (higher precedence for equal keys)
     y:
-    x // y
-  ;
+    x // y;
 
   /* Flip the order of the arguments of a binary function.
 
@@ -146,8 +142,7 @@ rec {
   */
   flip =
     f: a: b:
-    f b a
-  ;
+    f b a;
 
   /* Apply function if the supplied argument is non-null.
 
@@ -162,8 +157,7 @@ rec {
     f:
     # Argument to check for null before passing it to `f`
     a:
-    if a == null then a else f a
-  ;
+    if a == null then a else f a;
 
   # Pull in some builtins not included elsewhere.
   inherit (builtins)
@@ -200,7 +194,10 @@ rec {
     let
       suffixFile = ../.version-suffix;
     in
-    if pathExists suffixFile then lib.strings.fileContents suffixFile else "pre-git"
+    if pathExists suffixFile then
+      lib.strings.fileContents suffixFile
+    else
+      "pre-git"
   ;
 
   /* Attempts to return the the current revision of nixpkgs and
@@ -225,8 +222,7 @@ rec {
 
   nixpkgsVersion =
     builtins.trace "`lib.nixpkgsVersion` is deprecated, use `lib.version` instead!"
-      version
-  ;
+      version;
 
   /* Determine whether the function is being called from inside a Nix
      shell.
@@ -406,8 +402,7 @@ rec {
         builtins.concatStringsSep ", " (builtins.map builtins.toString unexpected)
       } unexpected; valid ones: ${
         builtins.concatStringsSep ", " (builtins.map builtins.toString valid)
-      }"
-  ;
+      }";
 
   info = msg: builtins.trace "INFO: ${msg}";
 
@@ -479,8 +474,7 @@ rec {
           .${toString d}
       ;
     in
-    lib.concatMapStrings toHexDigit (toBaseDigits 16 i)
-  ;
+    lib.concatMapStrings toHexDigit (toBaseDigits 16 i);
 
   /* `toBaseDigits base i` converts the positive integer i to a list of its
      digits in the given base. For example:
@@ -508,6 +502,5 @@ rec {
     in
     assert (base >= 2);
     assert (i >= 0);
-    lib.reverseList (go i)
-  ;
+    lib.reverseList (go i);
 }

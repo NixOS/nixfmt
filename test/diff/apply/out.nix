@@ -133,8 +133,7 @@
           asdf = 1;
           # multiline
         }
-        argument
-    ;
+        argument;
 
     name3 =
       function arg
@@ -143,8 +142,7 @@
           # multiline
         }
         { qwer = 12345; }
-        argument
-    ;
+        argument;
   }
   {
     name4 =
@@ -153,8 +151,7 @@
           qwer = 12345;
           qwer2 = 54321;
         }
-        argument
-    ;
+        argument;
   }
   {
     option1 =
@@ -163,8 +160,7 @@
           qwer = 12345;
           qwer2 = 54321;
         }
-        lastArg
-    ;
+        lastArg;
 
     option2 =
       function arg { asdf = 1; }
@@ -172,8 +168,7 @@
           qwer = 12345;
           qwer2 = 54321;
         }
-        lastArg
-    ;
+        lastArg;
 
     option3 =
       function arg { asdf = 1; }
@@ -181,16 +176,14 @@
           qwer = 12345;
           qwer2 = 54321;
         }
-        lastArg
-    ;
+        lastArg;
   }
   # https://github.com/kamadorueda/alejandra/issues/372#issuecomment-1435083516
   {
     outputs =
       { utils }:
       # For each supported platform,
-      utils.lib.eachDefaultSystem (system: { })
-    ;
+      utils.lib.eachDefaultSystem (system: { });
   }
   {
     escapeSingleline = libStr.escape [
@@ -207,8 +200,7 @@
         [
           "''\${"
           "'''"
-        ]
-    ;
+        ];
     test =
       foo
         [
@@ -224,8 +216,7 @@
           1
           2
           3 # multiline
-        ]
-    ;
+        ];
     looooooooong =
       (toINI
         {
@@ -248,8 +239,7 @@
             aaaaaaaa
           ;
         }
-        sections
-    ;
+        sections;
   }
 
   # Test breakup behavior at different line lengths
@@ -347,7 +337,6 @@
         (lib.take 3)
         # Quote all entries
         (map (x: ''"'' + x + ''"''))
-      ]
-    ;
+      ];
   }
 ]

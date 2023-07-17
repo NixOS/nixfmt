@@ -30,8 +30,7 @@
     a =
       with b;
       # comment
-      1
-    ;
+      1;
   }
   {
     a = with b; 1;
@@ -61,7 +60,6 @@
       makeBinPath ([
         rsync
         util-linux
-      ])
-    ;
+      ]);
   }
 ]

@@ -126,7 +126,7 @@ instance Pretty Binder where
         = base $ group $ hcat selectors
                  <> nest 2 (hardspace <> pretty assign <> inner) <> pretty semicolon
         where
-          inner =
+        inner =
             case expr of
               -- Absorbable term. Always start on the same line, keep semicolon attatched
               (Term t) | isAbsorbable t -> hardspace <> prettyTermWide t
@@ -140,36 +140,36 @@ instance Pretty Binder where
               (Term _) -> group' False (line <> pretty expr)
               -- Function call
               -- Absorb if all arguments except the last fit into the line, start on new line otherwise
-              (Application f a) -> prettyApp hardline line line' mempty f a
+              (Application f a) -> prettyApp hardline line mempty mempty f a
               -- Absorb function declarations but only those with simple parameter(s)
               (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> hardspace <> group expr
               -- With expression with absorbable body: Try to absorb and keep the semicolon attached, spread otherwise
-              (With _ _ _ (Term t)) | isAbsorbable t -> softline <> group' False (pretty expr <> softline')
+              (With _ _ _ (Term t)) | isAbsorbable t -> softline <> group expr
               -- Special case `//` operations to be more compact in some cases
               -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
               (Operation (Term t) (Ann [] TUpdate Nothing) b) | isAbsorbable t ->
-                group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TUpdate <> hardspace <> pretty b <> line'
+                group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TUpdate <> hardspace <> pretty b
               -- Case 2a: LHS fits onto first line, RHS is an absorbable term
               (Operation l (Ann [] TUpdate Nothing) (Term t)) | isAbsorbable t ->
-                group' False $ line <> pretty l <> line <> group' True (pretty TUpdate <> hardspace <> prettyTermWide t) <> line'
+                group' False $ line <> pretty l <> line <> group' True (pretty TUpdate <> hardspace <> prettyTermWide t)
               -- Case 2b: LHS fits onto first line, RHS is a function application
               (Operation l (Ann [] TUpdate Nothing) (Application f a)) ->
-                line <> (group $ pretty l) <> line <> prettyApp hardline (pretty TUpdate <> hardspace) line' hardline f a
+                line <> (group l) <> line <> prettyApp hardline (pretty TUpdate <> hardspace) mempty hardline f a
               -- Special case `++` operations to be more compact in some cases
               -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
               (Operation (Term t) (Ann [] TConcat Nothing) b) | isAbsorbable t ->
-                group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TConcat <> hardspace <> pretty b <> line'
+                group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TConcat <> hardspace <> pretty b
               -- Case 2a: LHS fits onto first line, RHS is an absorbable term
               (Operation l (Ann [] TConcat Nothing) (Term t)) | isAbsorbable t ->
-                group' False $ line <> pretty l <> line <> group' True (pretty TConcat <> hardspace <> prettyTermWide t) <> line'
+                group' False $ line <> pretty l <> line <> group' True (pretty TConcat <> hardspace <> prettyTermWide t)
               -- Case 2b: LHS fits onto first line, RHS is a function application
               (Operation l (Ann [] TConcat Nothing) (Application f a)) ->
-                line <> (group $ pretty l) <> line <> prettyApp hardline (pretty TConcat <> hardspace) line' hardline f a
+                line <> (group l) <> line <> prettyApp hardline (pretty TConcat <> hardspace) mempty hardline f a
               -- Everything else:
               -- If it fits on one line, it fits
               -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
               -- Otherwise, start on new line, expand fully (including the semicolon)
-              _ -> line <> group' False (pretty expr <> line')
+              _ -> line <> group expr
 
 -- Pretty a set
 -- while we already pretty eagerly expand sets with more than one element,
@@ -457,7 +457,7 @@ instance Pretty Expression where
           inPart = groupWithStart (Ann [] in_ Nothing) $ hardline
               -- Take our trailing and inject it between `in` and body
               <> pretty (concat binderComments ++ leading ++ convertTrailing trailing')
-              <> pretty expr <> hardline
+              <> pretty expr
 
     pretty (Assert assert cond semicolon expr)
         = base (pretty assert <> hardspace
@@ -465,11 +465,16 @@ instance Pretty Expression where
           <> absorbSet expr
 
     pretty (If if_ cond then_ expr0 else_ expr1)
-        = base $ group $
+        = base $ group' False $
             -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
             groupWithStart if_ (line <> nest 2 (pretty cond) <> line <> pretty then_)
             <> (surroundWith line $ nest 2 $ group expr0)
             <> pretty else_ <> absorbElse expr1
+            -- This trailing line' is a bit of a hack. It makes sure that the semicolon in binders gets placed onto
+            -- a new line if the items ends with a (multiline) if.
+            -- Normally this should only be the case when in binders as this might interfere with other syntax constructs,
+            -- but because our style always puts a new line after multiline Ifs it turns out to work just fine ^^
+            <> line'
 
     pretty (Abstraction (IDParameter param) colon body)
         = pretty param <> pretty colon <> absorbAbs 1 body
@@ -519,8 +524,8 @@ instance Pretty Expression where
             -- Extract comment before the first operand and move it out, to prevent force-expanding the expression
             (operationWithoutComment, comment') = mapFirstToken' (\(Ann leading token trailing') -> (Ann [] token trailing', leading)) operation
           in
-            pretty comment' <> (group $
-                (concat . map prettyOperation . (flatten Nothing)) operationWithoutComment)
+            pretty comment' <> (group' False $
+                ((concat . map prettyOperation . (flatten Nothing)) operationWithoutComment) <> line')
 
     pretty (MemberCheck expr qmark sel)
         = pretty expr <> softline

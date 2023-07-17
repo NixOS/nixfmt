@@ -54,8 +54,7 @@ in
               }
             );
           }
-        )
-      ;
+        );
       # We don't want to evaluate all of linuxPackages for the manual
       # - some of it might not even evaluate correctly.
       defaultText = literalExpression "pkgs.linuxPackages";
@@ -275,16 +274,14 @@ in
               # x86 RTC needed by the stage 2 init script.
               "rtc_cmos"
             ]
-          )
-      ;
+          );
 
       boot.initrd.kernelModules =
         optionals config.boot.initrd.includeDefaultModules
           [
             # For LVM.
             "dm_mod"
-          ]
-      ;
+          ];
     })
 
     (mkIf (!config.boot.isContainer) {
@@ -301,8 +298,7 @@ in
         ++ optionals config.boot.vesa [
           "vga=0x317"
           "nomodeset"
-        ]
-      ;
+        ];
 
       boot.kernel.sysctl."kernel.printk" = mkDefault config.boot.consoleLogLevel;
 
