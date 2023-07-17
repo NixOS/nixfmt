@@ -19,7 +19,7 @@ import qualified Data.Text as Text
 -- import Debug.Trace (traceShowId)
 import Nixfmt.Predoc
   (Doc, Pretty, base, emptyline, group, group', hardline, hardspace, hcat, line, line',
-  nest, newline, pretty, sepBy, surroundWith, softline, softline', text, comment, textWidth)
+  nest, newline, pretty, sepBy, surroundWith, softline, softline', text, comment, trailing, textWidth)
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
@@ -50,8 +50,8 @@ moveTrailingCommentUp a = a
 -- if the first argument has some leading comments they will be put before
 -- the group
 groupWithStart :: HasCallStack => Pretty a => Ann a -> Doc -> Doc
-groupWithStart (Ann leading a trailing) b
-    = pretty leading <> group (pretty a <> pretty trailing <> b)
+groupWithStart (Ann leading a trailing') b
+    = pretty leading <> group (pretty a <> pretty trailing' <> b)
 
 instance Pretty TrailingComment where
     pretty (TrailingComment c)
@@ -88,14 +88,14 @@ instance Pretty [Trivium] where
     pretty trivia = hardline <> hcat trivia
 
 instance Pretty a => Pretty (Ann a) where
-    pretty (Ann leading x trailing)
-        = pretty leading <> pretty x <> pretty trailing
+    pretty (Ann leading x trailing')
+        = pretty leading <> pretty x <> pretty trailing'
 
 instance Pretty SimpleSelector where
     pretty (IDSelector i)              = pretty i
     pretty (InterpolSelector interpol) = pretty interpol
-    pretty (StringSelector (Ann leading s trailing))
-        = pretty leading <> prettySimpleString s <> pretty trailing
+    pretty (StringSelector (Ann leading s trailing'))
+        = pretty leading <> prettySimpleString s <> pretty trailing'
 
 instance Pretty Selector where
     pretty (Selector dot sel Nothing)
@@ -207,8 +207,8 @@ prettyTerm (Selection term@(Parenthesized _ _ _) selectors) = pretty term <> sof
 prettyTerm (Selection term selectors) = pretty term <> line' <> hcat selectors
 
 -- Empty list
-prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trailing))
-    = pretty leading <> pretty paropen <> hardspace <> pretty parclose <> pretty trailing
+prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trailing'))
+    = pretty leading <> pretty paropen <> hardspace <> pretty parclose <> pretty trailing'
 
 -- Singleton list
 -- Expand unless absorbable term or single line
@@ -350,7 +350,7 @@ prettyApp commentPre pre post commentPost f a
         absorbLast arg = group' False $ nest 2 $ pretty arg
 
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
-        (fWithoutComment, comment') = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) f
+        (fWithoutComment, comment') = mapFirstToken' (\(Ann leading token trailing') -> (Ann [] token trailing', leading)) f
         in
         (if null comment' then mempty else commentPre)
         <> pretty comment' <> (group' False $
@@ -408,7 +408,7 @@ instance Pretty Expression where
     -- Let bindings are always fully expanded (no single-line form)
     -- We also take the comments around the `in` (trailing, leading and detached binder comments)
     -- and move them down to the first token of the body
-    pretty (Let let_ binders (Ann leading in_ trailing) expr)
+    pretty (Let let_ binders (Ann leading in_ trailing') expr)
         = base $ letPart <> hardline <> inPart
         where
           -- Convert the TrailingComment to a Trivium, if present
@@ -433,7 +433,7 @@ instance Pretty Expression where
           letBody = nest 2 $ prettyItems hardline (Items bindersWithoutComments)
           inPart = groupWithStart (Ann [] in_ Nothing) $ hardline
               -- Take our trailing and inject it between `in` and body
-              <> pretty (concat binderComments ++ leading ++ convertTrailing trailing)
+              <> pretty (concat binderComments ++ leading ++ convertTrailing trailing')
               <> pretty expr <> hardline
 
     pretty (Assert assert cond semicolon expr)
@@ -494,7 +494,7 @@ instance Pretty Expression where
                 line <> pretty (moveTrailingCommentUp op') <> nest 2 (absorbOperation expr)
 
             -- Extract comment before the first operand and move it out, to prevent force-expanding the expression
-            (operationWithoutComment, comment') = mapFirstToken' (\(Ann leading token trailing) -> (Ann [] token trailing, leading)) operation
+            (operationWithoutComment, comment') = mapFirstToken' (\(Ann leading token trailing') -> (Ann [] token trailing', leading)) operation
           in
             pretty comment' <> (group $
                 (concat . map prettyOperation . (flatten Nothing)) operationWithoutComment)

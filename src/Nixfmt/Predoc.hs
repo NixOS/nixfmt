@@ -11,6 +11,7 @@
 module Nixfmt.Predoc
     ( text
     , comment
+    , trailing
     , sepBy
     , surroundWith
     , hcat
@@ -91,11 +92,15 @@ data DocAnn
     | Base
     deriving (Show, Eq)
 
+-- Comments do not count towards some line length limits
+-- Trailing tokens have the property that they will only exist in expanded groups, and "swallowed" in compact groups
+data TextAnn = Regular | Comment | Trailing
+    deriving (Show, Eq)
+
 -- | Single document element. Documents are modeled as lists of these elements
 -- in order to make concatenation simple.
 data DocE
-    -- Mark comments with a flag, to not count them to line length limits
-    = Text Bool Text
+    = Text TextAnn Text
     | Spacing Spacing
     | Node DocAnn Doc
     deriving (Show, Eq)
@@ -126,11 +131,16 @@ instance (Pretty a, Pretty b, Pretty c) => Pretty (a, b, c) where
 
 text :: Text -> Doc
 text "" = []
-text t  = [Text False t]
+text t  = [Text Regular t]
 
 comment :: Text -> Doc
 comment "" = []
-comment t  = [Text True t]
+comment t  = [Text Comment t]
+
+-- Text tokens that are only needed in expanded groups
+trailing :: Text -> Doc
+trailing "" = []
+trailing t = [Text Trailing t]
 
 -- | Group document elements together (see Node Group documentation)
 -- Must not contain non-hard whitespace (e.g. line, softline' etc.) at the start of the end.
@@ -276,8 +286,8 @@ mergeSpacings _            y            = y
 mergeLines :: Doc -> Doc
 mergeLines []                           = []
 mergeLines (Spacing a : Spacing b : xs) = mergeLines $ Spacing (mergeSpacings a b) : xs
-mergeLines (Text isComment a : Text isComment' b : xs) | isComment == isComment'
-    = mergeLines $ Text isComment (a <> b) : xs
+mergeLines (Text ann a : Text ann' b : xs) | ann == ann'
+    = mergeLines $ Text ann (a <> b) : xs
 mergeLines (Node ann xs : ys)           = Node ann (mergeLines xs) : mergeLines ys
 mergeLines (x : xs)                     = x : mergeLines xs
 
@@ -329,8 +339,9 @@ fits :: Int -> Doc -> Maybe Text
 fits c _ | c < 0 = Nothing
 fits _ [] = Just ""
 fits c (x:xs) = case x of
-    Text False t         -> (t<>) <$> fits (c - textWidth t) xs
-    Text True t          -> (t<>) <$> fits c xs
+    Text Regular t       -> (t<>) <$> fits (c - textWidth t) xs
+    Text Comment t       -> (t<>) <$> fits c xs
+    Text Trailing _      -> fits c xs
     Spacing Softbreak    -> fits c xs
     Spacing Break        -> fits c xs
     Spacing Softspace    -> (" "<>) <$> fits (c - 1) xs
@@ -345,8 +356,8 @@ fits c (x:xs) = case x of
 -- width 0, which always forces line breaks when possible.
 firstLineWidth :: Doc -> Int
 firstLineWidth []                       = 0
-firstLineWidth (Text False t : xs)      = textWidth t + firstLineWidth xs
-firstLineWidth (Text True _ : xs)       = firstLineWidth xs
+firstLineWidth (Text Comment _ : xs)    = firstLineWidth xs
+firstLineWidth (Text _ t : xs)          = textWidth t + firstLineWidth xs
 firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
 firstLineWidth (Spacing _ : _)          = 0
 firstLineWidth (Node _ xs : ys)         = firstLineWidth (xs ++ ys)
@@ -357,8 +368,8 @@ firstLineFits :: Int -> Int -> Doc -> Bool
 firstLineFits targetWidth maxWidth docs = go maxWidth docs
     where go c _ | c < 0                = False
           go c []                       = maxWidth - c <= targetWidth
-          go c (Text False t : xs)      = go (c - textWidth t) xs
-          go c (Text True _ : xs)       = go c xs
+          go c (Text Regular t : xs)    = go (c - textWidth t) xs
+          go c (Text _ _ : xs)          = go c xs
           go c (Spacing Hardspace : xs) = go (c - 1) xs
           go c (Spacing _ : _)          = maxWidth - c <= targetWidth
           go c (Node (Group _) ys : xs)     =
@@ -422,8 +433,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Chunk 0 $ Node (Group False) 
             putNL = put (0, ti)
         in
         case x of
-        Text False t         -> putCC (nc + textWidth t) $> [lineStart, t]
-        Text True t          -> putCC (nc + textWidth t) $> [lineStart, t]
+        Text _ t             -> putCC (nc + textWidth t) $> [lineStart, t]
 
         -- This code treats whitespace as "expanded"
         -- A new line resets the column counter and sets the target indentation as current indentation
