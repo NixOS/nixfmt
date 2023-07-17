@@ -19,7 +19,7 @@ import qualified Data.Text as Text
 -- import Debug.Trace (traceShowId)
 import Nixfmt.Predoc
   (Doc, Pretty, base, emptyline, group, group', hardline, hardspace, hcat, line, line',
-  nest, newline, pretty, sepBy, softline, softline', text, comment, textWidth)
+  nest, newline, pretty, sepBy, surroundWith, softline, softline', text, comment, textWidth)
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
@@ -165,8 +165,8 @@ prettySet _ (Nothing, Ann [] paropen Nothing, Items [], parclose@(Ann [] _ _))
 -- but apart from that always expand.
 prettySet wide (krec, Ann pre paropen post, binders, parclose)
     = base $ pretty (fmap (, hardspace) krec) <>
-        pretty (Ann pre paropen Nothing) <> sep
-        <> nest 2 (pretty post <> prettyItems hardline binders) <> sep
+        pretty (Ann pre paropen Nothing)
+        <> (surroundWith sep $ nest 2 $ pretty post <> prettyItems hardline binders)
         <> pretty parclose
     where
         sep = if wide && not (null (unItems binders)) then hardline else line
@@ -197,17 +197,17 @@ prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trail
 prettyTerm (List paropen@(Ann _ _ Nothing) (Items [item@(CommentedItem iComment item')]) parclose@(Ann [] _ _))
         = base $ groupWithStart paropen $
             (if isAbsorbable item' && null iComment then
-                (hardspace <> pretty item' <> hardspace)
+                surroundWith hardspace item'
             else
-                (line <> nest 2 (pretty item) <> line)
+                surroundWith line $ nest 2 item
             )
             <> pretty parclose
 
 -- General list (len >= 2)
 -- Always expand
 prettyTerm (List (Ann pre paropen post) items parclose) =
-    base $ pretty (Ann pre paropen Nothing) <> hardline
-    <> nest 2 ((pretty post) <> prettyItems hardline items) <> hardline
+    base $ pretty (Ann pre paropen Nothing)
+    <> (surroundWith hardline $ nest 2 $ pretty post <> prettyItems hardline items)
     <> pretty parclose
 
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
@@ -326,9 +326,9 @@ prettyApp commentPre pre post commentPost f a
         absorbLast (Term t) | isAbsorbable t
             = group' True $ nest 2 $ prettyTerm t
         absorbLast (Term (Parenthesized (Ann pre' open post') expr close))
-            = group' True $ nest 2 $ base $ pretty (Ann pre' open Nothing) <> line'
-                <> group (nest 2 (pretty post' <> pretty expr))
-                <> line' <> pretty close
+            = group' True $ nest 2 $ base $ pretty (Ann pre' open Nothing)
+                <> (surroundWith line' $ group $ nest 2 $ pretty post' <> pretty expr)
+                <> pretty close
         absorbLast arg = group' False $ nest 2 $ pretty arg
 
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
@@ -426,8 +426,8 @@ instance Pretty Expression where
     pretty (If if_ cond then_ expr0 else_ expr1)
         = base $ group $
             -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
-            (groupWithStart if_ (line <> nest 2 (pretty cond) <> line <> pretty then_))
-            <> line <> nest 2 (group expr0) <> line
+            groupWithStart if_ (line <> nest 2 (pretty cond) <> line <> pretty then_)
+            <> (surroundWith line $ nest 2 $ group expr0)
             <> pretty else_ <> absorbElse expr1
 
     pretty (Abstraction (IDParameter param) colon body)
@@ -468,7 +468,7 @@ instance Pretty Expression where
             -- Force nested operations to start on a new line
             absorbOperation x@(Operation _ _ _) = group' False $ line <> pretty x
             -- Force applications to start on a new line if more than the last argument is multiline
-            absorbOperation (Application f a) = group $ hardspace <> prettyApp hardline line mempty mempty f a
+            absorbOperation (Application f a) = group $ prettyApp hardline line mempty mempty f a
             absorbOperation x = hardspace <> pretty x
 
             prettyOperation :: (Maybe Leaf, Expression) -> Doc

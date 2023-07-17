@@ -12,6 +12,7 @@ module Nixfmt.Predoc
     ( text
     , comment
     , sepBy
+    , surroundWith
     , hcat
     , base
     , group
@@ -156,15 +157,16 @@ group' prio = pure . Node (Group prio) . pretty
 -- the line, rather than the indentation it should have used: If multiple
 -- indentation levels start on the same line, only the last indentation level
 -- will be applied on the next line. This prevents unnecessary nesting.
-nest :: HasCallStack => Int -> Doc -> Doc
+nest :: HasCallStack => Pretty a => Int -> a -> Doc
 nest level x = pure . Node (Nest level) $
-    if x /= [] && (isSoftSpacing (head x) || isSoftSpacing (last x)) then
-       error $ "nest should not start or end with whitespace; " <> show x
+    if x' /= [] && (isSoftSpacing (head x') || isSoftSpacing (last x')) then
+       error $ "nest should not start or end with whitespace; " <> show x'
     else
-        x
+        x'
+    where x' = pretty x
 
-base :: Doc -> Doc
-base = pure . Node Base
+base :: Pretty a => a -> Doc
+base = pure . Node Base . pretty
 
 -- | Line break or nothing (soft)
 softline' :: Doc
@@ -196,6 +198,9 @@ emptyline = [Spacing Emptyline]
 
 newline :: Doc
 newline = [Spacing (Newlines 1)]
+
+surroundWith :: Pretty a => Doc -> a -> Doc
+surroundWith outside inner = outside <> pretty inner <> outside
 
 sepBy :: Pretty a => Doc -> [a] -> Doc
 sepBy separator = mconcat . intersperse separator . map pretty
