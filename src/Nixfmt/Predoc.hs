@@ -110,12 +110,6 @@ type Doc = [DocE]
 class Pretty a where
     pretty :: a -> Doc
 
---instance Pretty Text where
---    pretty = pure . (Text False)
-
---instance Pretty String where
---    pretty = pure . (Text False) . pack
-
 instance Pretty Doc where
     pretty = id
 
@@ -250,25 +244,43 @@ unexpandSpacing (x:xs) = x : unexpandSpacing xs
 spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
 spanEnd p = fmap reverse . span p . reverse
 
--- | Fix up a Doc in multiple stages:
--- - First, some spacings are moved out of Groups and Nests and empty Groups and
---   Nests are removed.
--- - Merge consecutive spacings. When merging across group/nest boundaries, the merged
---   spacing will be on the "inside" (part of the group).
---   - This may move hard spacing in, so we need to move them out again
+-- | Fix up a Doc:
+-- - Move some spacings (those which are not relevant for group calculations)
+--   out of the start/end of Groups and Nests if possible.
+--   This is especially important because it moves out hardlines from comments out of groups,
+--   which would otherwise wrongly cause them to expand.
+-- - Merge consecutive spacings.
+-- - Spacings are not merged across Group or Nest boundaries, although this may happen for those
+--   spacings that are moved.
+-- - Remove empty Groups and Nests
+-- After running, any nodes are guaranteed to start/end with at most one whitespace element respectively.
 fixup :: Doc -> Doc
-fixup = concatMap moveLinesOut . mergeLines' . mergeLines . concatMap moveLinesOut
-
-moveLinesOut :: DocE -> Doc
-moveLinesOut (Node ann xs) =
-    let movedOut     = concatMap moveLinesOut xs
-        (pre, rest)  = span isHardSpacing movedOut
+fixup [] = []
+-- Merge consecutive spacings
+fixup (Spacing a : Spacing b : xs) = fixup $ Spacing (mergeSpacings a b) : xs
+-- Merge consecutive texts
+fixup (Text ann a : Text ann' b : xs) | ann == ann' = fixup $ Text ann (a <> b) : xs
+-- Handle node, with leading spacing to potentially merge with
+fixup (Spacing a : Node ann xs : ys) =
+    let
+        -- Recurse onto xs, split out leading and trailing whitespace into pre and post.
+        (pre, rest)  = span isHardSpacing $ fixup xs
         (post, body) = spanEnd isHardSpacing rest
-    in case body of
-            [] -> pre ++ post
-            _  -> pre ++ (Node ann body : post)
-
-moveLinesOut x = [x]
+    in if null body then
+        -- Dissolve empty node
+        fixup $ (Spacing a : pre) ++ post ++ ys
+    else
+        fixup (Spacing a : pre) ++ [Node ann body] ++ fixup (post ++ ys)
+-- Handle node, almost the same thing
+fixup (Node ann xs : ys) =
+    let
+        (pre, rest)  = span isHardSpacing $ fixup xs
+        (post, body) = spanEnd isHardSpacing rest
+    in if null body then
+        fixup $ pre ++ post ++ ys
+    else
+        fixup pre ++ [Node ann body] ++ fixup (post ++ ys)
+fixup (x : xs) = x : fixup xs
 
 mergeSpacings :: Spacing -> Spacing -> Spacing
 mergeSpacings x y | x > y               = mergeSpacings y x
@@ -280,42 +292,6 @@ mergeSpacings Emptyline    (Newlines x) = Newlines (x + 2)
 mergeSpacings Hardspace    (Newlines x) = Newlines x
 mergeSpacings _            (Newlines x) = Newlines (x + 1)
 mergeSpacings _            y            = y
-
--- Merge whitespace and text elements across the document, but not across Node boundaries.
--- After running, any nodes are guaranteed to start/end with at most one whitespace element respectively.
-mergeLines :: Doc -> Doc
-mergeLines []                           = []
-mergeLines (Spacing a : Spacing b : xs) = mergeLines $ Spacing (mergeSpacings a b) : xs
-mergeLines (Text ann a : Text ann' b : xs) | ann == ann'
-    = mergeLines $ Text ann (a <> b) : xs
-mergeLines (Node ann xs : ys)           = Node ann (mergeLines xs) : mergeLines ys
-mergeLines (x : xs)                     = x : mergeLines xs
-
-startsWithWhitespace :: Doc -> Bool
-startsWithWhitespace (s : _) | isSoftSpacing s = True
-startsWithWhitespace ((Node _ inner) : _) = startsWithWhitespace inner
-startsWithWhitespace _ = False
-
-endsWithWhitespace :: Doc -> Bool
-endsWithWhitespace (s : []) | isSoftSpacing s = True
-endsWithWhitespace ((Node _ inner) : []) = endsWithWhitespace inner
-endsWithWhitespace (_ : xs) = endsWithWhitespace xs
-endsWithWhitespace _ = False
-
--- Merge whitespace across group borders
-mergeLines' :: Doc -> Doc
-mergeLines' [] = []
--- Merge things that got moved together
-mergeLines' (Spacing a : Spacing b : xs) = mergeLines' $ Spacing (mergeSpacings a b) : xs
--- Move spacing in front of groups in if they can be merged
-mergeLines' (Spacing a : Node ann (xs) : ys) | startsWithWhitespace xs =
-    mergeLines' $ Node ann (Spacing a : xs) : ys
--- Merge spacings after groups in if they can be merged
-mergeLines' (Node ann xs : Spacing a : ys) | endsWithWhitespace xs =
-    mergeLines' $ Node ann (xs ++ [Spacing a]) : ys
-mergeLines' (Node ann xs : ys) =
-    Node ann (mergeLines' xs) : mergeLines' ys
-mergeLines' (x : xs) = x : mergeLines' xs
 
 layout :: Pretty a => Int -> a -> Text
 layout w = (<>"\n") . Text.strip . layoutGreedy w . fixup . pretty
@@ -338,6 +314,9 @@ textWidth = Text.length
 fits :: Int -> Doc -> Maybe Text
 fits c _ | c < 0 = Nothing
 fits _ [] = Just ""
+-- This case is impossible in the input thanks to fixup, but may happen
+-- due to our recursion on nodes below
+fits c (Spacing a:Spacing b:xs) = fits c (Spacing (mergeSpacings a b):xs)
 fits c (x:xs) = case x of
     Text Regular t       -> (t<>) <$> fits (c - textWidth t) xs
     Text Comment t       -> (t<>) <$> fits c xs
@@ -358,9 +337,12 @@ firstLineWidth :: Doc -> Int
 firstLineWidth []                       = 0
 firstLineWidth (Text Comment _ : xs)    = firstLineWidth xs
 firstLineWidth (Text _ t : xs)          = textWidth t + firstLineWidth xs
+-- This case is impossible in the input thanks to fixup, but may happen
+-- due to our recursion on nodes below
+firstLineWidth (Spacing a : Spacing b : xs) = firstLineWidth (Spacing (mergeSpacings a b):xs)
 firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
 firstLineWidth (Spacing _ : _)          = 0
-firstLineWidth (Node _ xs : ys)         = firstLineWidth (xs ++ ys)
+firstLineWidth (Node _ xs : ys)         = firstLineWidth $ xs ++ ys
 
 -- | Check if the first line in a document fits a target width given
 -- a maximum width, without breaking up groups.
@@ -370,6 +352,9 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
           go c []                       = maxWidth - c <= targetWidth
           go c (Text Regular t : xs)    = go (c - textWidth t) xs
           go c (Text _ _ : xs)          = go c xs
+          -- This case is impossible in the input thanks to fixup, but may happen
+          -- due to our recursion on nodes below
+          go c (Spacing a : Spacing b : xs) = go c $ Spacing (mergeSpacings a b) : xs
           go c (Spacing Hardspace : xs) = go (c - 1) xs
           go c (Spacing _ : _)          = maxWidth - c <= targetWidth
           go c (Node (Group _) ys : xs)     =
@@ -420,46 +405,48 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Chunk 0 $ Node (Group False) 
     -- First argument: chunk to render. This will recurse into nests/groups if the chunk is one.
     -- Second argument: lookahead of following chunks
     goOne :: Chunk -> [Chunk] -> State (Int, Int) [Text]
-    goOne (Chunk ti x) xs = get >>= \(cc,ci) ->
+    goOne (Chunk ti x) xs = get >>= \(cc, ci) ->
         let
+            xs' = map unChunk xs
+
+            -- The last printed character was a line break
             needsIndent = (cc == 0)
-            -- next column, if we print some non-whitespace characters
-            nc = if needsIndent then ti else cc
             -- Start of line indentation, if necessary
             lineStart = if needsIndent then indent ti else ""
 
             -- Some state helpers
-            putCC cc' = put (cc', ci)
+            putText ts = put (cc + sum (map textWidth ts), ci) $> ts
             putNL = put (0, ti)
-        in
-        case x of
-        Text _ t             -> putCC (nc + textWidth t) $> [lineStart, t]
+        in case x of
+        Text _ t             -> putText [lineStart, t]
 
         -- This code treats whitespace as "expanded"
         -- A new line resets the column counter and sets the target indentation as current indentation
-        Spacing Break        -> putNL $> [newlines 1]
-        Spacing Space        -> putNL $> [newlines 1]
-        Spacing Hardspace    -> putCC (cc + 1) $> [" "]
-        Spacing Hardline     -> putNL $> [newlines 1]
-        Spacing Emptyline    -> putNL $> [newlines 2]
-        Spacing (Newlines n) -> putNL $> [newlines n]
+        Spacing sp ->
+            -- We know that the last printed character was a line break (cc == 0),
+            -- therefore drop any leading whitespace within the group to avoid duplicate newlines
+            if needsIndent then
+                pure []
+            else case sp of
+                Break        -> putNL $> [newlines 1]
+                Space        -> putNL $> [newlines 1]
+                Hardspace    -> putText [" "]
+                Hardline     -> putNL $> [newlines 1]
+                Emptyline    -> putNL $> [newlines 2]
+                (Newlines n) -> putNL $> [newlines n]
+                Softbreak
+                    | firstLineFits (tw - cc + ci) (tw - ti) xs'
+                                            -> pure []
+                    | otherwise             -> putNL $> [newlines 1]
+                Softspace
+                    | firstLineFits (tw - cc + ci - 1) (tw - ti) xs'
+                                            -> putText [" "]
+                    | otherwise             -> putNL $> [newlines 1]
 
-        Spacing Softbreak
-            | firstLineFits (tw - nc + ci) (tw - ti) (map unChunk xs)
-                               -> pure []
-            | otherwise        -> putNL $> [newlines 1]
-
-        Spacing Softspace
-            | firstLineFits (tw - nc + ci - 1) (tw - ti) (map unChunk xs)
-                               -> putCC (cc + 1) $> [" "]
-            | otherwise        -> putNL $> [newlines 1]
-
-        Node (Nest l) ys     -> do { put (cc, (if needsIndent then ti + l else ci)); go (map (Chunk (ti + l)) ys) xs }
+        Node (Nest l) ys     -> put (cc, if cc == 0 then ti + l else ci) >> go (map (Chunk (ti + l)) ys) xs
         Node Base ys         -> go (map (Chunk ci) ys) xs
         Node (Group _) ys    ->
             let
-                xs' = map unChunk xs
-
                 -- fromMaybe lifted to (StateT s Maybe)
                 fromMaybeState :: State s a -> StateT s Maybe a -> State s a
                 fromMaybeState l r = state $ \s -> fromMaybe (runState l s) (runStateT r s)
@@ -492,10 +479,20 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Chunk 0 $ Node (Group False) 
     -- Any whitespace within the group is treated as "compact".
     -- Return Nothing on failure, i.e. if the group would require a line break
     goGroup :: Int -> Doc -> Doc -> StateT (Int, Int) Maybe [Text]
-    goGroup ti grp rest = StateT $ \(cc,ci) ->
+    -- In general groups are never empty as empty groups are removed in `fixup`, however this also
+    -- gets called for pre and post of priority groups, which may be empty.
+    goGroup _ [] _ = pure []
+    goGroup ti grp rest = StateT $ \(cc, ci) ->
         if cc == 0 then
-            let i = ti + firstLineIndent grp in
-            fits (tw - firstLineWidth rest) grp
+            let
+                -- We know that the last printed character was a line break (cc == 0),
+                -- therefore drop any leading whitespace within the group to avoid duplicate newlines
+                grp' = case head grp of
+                    Spacing _ -> tail grp
+                    _ -> grp
+                i = ti + firstLineIndent grp'
+            in
+            fits (tw - firstLineWidth rest) grp'
             <&> \t -> ([indent i, t], (i + textWidth t, ci))
         else
             fits (tw + (ci - cc) - firstLineWidth rest) grp
