@@ -9,6 +9,8 @@
 
 ## Unreleased
 
+## 0.6.0
+
 * Fix escaping of interpolations after dollar signs.
 * Fix nixfmt trying to allocate temp files that aren't used.
 * Nixfmt now accepts the '-' argument to read from stdin.
