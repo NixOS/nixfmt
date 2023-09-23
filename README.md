@@ -48,11 +48,6 @@ Haskell dependencies will be built by Cabal.
 * `nixfmt file.nix` – format the file in place
 
 
-## For Contributors
-
-We welcome issues and pull requests on GitHub.
-
-
 ## About Serokell
 
 `nixfmt` is maintained and funded with :heart: by
