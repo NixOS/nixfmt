@@ -11,6 +11,7 @@
 
 * Fix escaping of interpolations after dollar signs.
 * Fix nixfmt trying to allocate temp files that aren't used.
+* Don't write if files didn't change, fixing treefmt compatibility
 * Nixfmt now accepts the '-' argument to read from stdin.
 * `nixfmt [dir]` now recursively formats nix files in that directory.
 * Float and int literal parsing now matches nix.
