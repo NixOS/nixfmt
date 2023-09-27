@@ -16,9 +16,13 @@
       url = "github:edolstra/flake-compat";
       flake = false;
     };
+    serokell-nix = {
+      url = "github:serokell/serokell.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-stable, flake-utils, ... }:
+  outputs = { self, nixpkgs, nixpkgs-stable, flake-utils, serokell-nix, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlay = self: super: {
@@ -31,7 +35,7 @@
 
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [ overlay ];
+          overlays = [ overlay serokell-nix.overlay ];
         };
 
         pkgs-stable = import nixpkgs-stable {
@@ -96,5 +100,10 @@
         };
 
         devShells.default = self.packages.${system}.nixfmt-shell;
+
+        checks = {
+          hlint = pkgs.build.haskell.hlint ./.;
+          stylish-haskell = pkgs.build.haskell.stylish-haskell ./.;
+        };
       });
 }

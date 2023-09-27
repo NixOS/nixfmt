@@ -1,0 +1,58 @@
+# © 2019-2023 Serokell <hi@serokell.io>
+# © 2019-2023 Lars Jellema <lars.jellema@gmail.com>
+#
+# SPDX-License-Identifier: MPL-2.0
+
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  CDN_DISTRIBUTION_ID: E13UN1J1JFIWUZ
+  CDN_BUCKET: s3://nixfmt.serokell.io
+
+jobs:
+  check:
+    runs-on: [self-hosted, nix]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: reuse lint
+        run: nix shell .#packages.x86_64-linux.reuse -c reuse lint
+
+      # - name: hlint
+      #   run: nix build -L .#checks.x86_64-linux.hlint
+      #   if: success() || failure()
+
+      # - name: stylish-haskell
+      #   run: nix build -L .#checks.x86_64-linux.stylish-haskell
+      #   if: success() || failure()
+
+      - name: build nixfmt
+        run: nix build -L .#nixfmt-static
+        if: success() || failure()
+
+      - name: build webdemo
+        run: nix build -L .#nixfmt-webdemo
+        if: success() || failure()
+
+      - name: build awscli
+        run: nix shell .#awscli
+        if: success() || failure()
+
+  deploy:
+    runs-on: [self-hosted, nix]
+    if: ${{ github.ref == 'refs/heads/master' }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: deploy webdemo
+        run: |
+          nix build .#nixfmt-webdemo
+          nix shell .#awscli -c aws s3 cp --recursive result/ "$CDN_BUCKET"
+          # delete files that don't exist anymore, use `--size-only` so behavior won't depend on local file timestamps
+          nix shell .#awscli -c aws s3 sync --delete --size-only result/ "$CDN_BUCKET"
+          nix shell .#awscli -c aws cloudfront create-invalidation --distribution-id "$CDN_DISTRIBUTION_ID" --paths '/*'
