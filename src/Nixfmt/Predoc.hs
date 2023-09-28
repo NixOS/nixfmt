@@ -230,6 +230,14 @@ isHardSpacing (Spacing Emptyline) = True
 isHardSpacing (Spacing (Newlines _)) = True
 isHardSpacing _           = False
 
+-- Check if an element is a comment
+-- Some comments are nested as nodes with multiple elements.
+-- Therefore nodes are counted as comments if they only contain comments or hard spacings
+isComment :: DocE -> Bool
+isComment (Text Comment _) = True
+isComment (Node _ inner) = all (\x -> isComment x || isHardSpacing x) inner
+isComment _ = False
+
 --- Manually force a group to its compact layout, by replacing all relevant whitespace.
 --- Does recurse into inner groups.
 unexpandSpacing :: Doc -> Doc
@@ -260,21 +268,25 @@ fixup [] = []
 fixup (Spacing a : Spacing b : xs) = fixup $ Spacing (mergeSpacings a b) : xs
 -- Merge consecutive texts
 fixup (Text ann a : Text ann' b : xs) | ann == ann' = fixup $ Text ann (a <> b) : xs
--- Handle node, with leading spacing to potentially merge with
-fixup (Spacing a : Node ann xs : ys) =
+-- Handle node, with stuff in front of it to potentially merge with
+fixup (a@(Spacing _) : Node ann xs : ys) =
     let
+        moveComment = case ann of { Nest _ -> False; _ -> True }
         -- Recurse onto xs, split out leading and trailing whitespace into pre and post.
-        (pre, rest)  = span isHardSpacing $ fixup xs
+        -- For the leading side, also move out comments out of groups, they are kinda the same thing
+        -- (We could move out trailing comments too but it would make no difference)
+        (pre, rest)  = span (\x -> isHardSpacing x || (moveComment && isComment x)) $ fixup xs
         (post, body) = spanEnd isHardSpacing rest
     in if null body then
         -- Dissolve empty node
-        fixup $ (Spacing a : pre) ++ post ++ ys
+        fixup $ (a : pre) ++ post ++ ys
     else
-        fixup (Spacing a : pre) ++ [Node ann body] ++ fixup (post ++ ys)
--- Handle node, almost the same thing
+        fixup (a : pre) ++ [Node ann body] ++ fixup (post ++ ys)
+-- Handle node, almost the same thing as above
 fixup (Node ann xs : ys) =
     let
-        (pre, rest)  = span isHardSpacing $ fixup xs
+        moveComment = case ann of { Nest _ -> False; _ -> True }
+        (pre, rest)  = span (\x -> isHardSpacing x || (moveComment && isComment x)) $ fixup xs
         (post, body) = spanEnd isHardSpacing rest
     in if null body then
         fixup $ pre ++ post ++ ys
@@ -489,6 +501,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Chunk 0 $ Node (Group False) 
                 -- therefore drop any leading whitespace within the group to avoid duplicate newlines
                 grp' = case head grp of
                     Spacing _ -> tail grp
+                    Node ann@(Group _) ((Spacing _) : inner) -> (Node ann inner) : tail grp
                     _ -> grp
                 i = ti + firstLineIndent grp'
             in

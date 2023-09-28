@@ -1,4 +1,23 @@
+let
+  inherit lib;
+in
 [
+  (
+    { lib, }:
+    let
+      foo = 1;
+    in
+    foo
+  )
+  (
+    /* Collection of functions useful for debugging
+      Some comment */
+    { lib }:
+    let
+      foo = 1;
+    in
+    foo
+  )
   (a: b: /*c*/ d)
   ({}: b: /*c*/ d)
   (a: {}: /*c*/ d)

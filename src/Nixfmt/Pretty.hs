@@ -23,15 +23,14 @@ import Nixfmt.Predoc
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
-  StringPart(..), Term(..), Token(..), TrailingComment(..), Trivia, Trivium(..),
+  StringPart(..), Term(..), Token(..), TrailingComment(..), Trivium(..),
   Whole(..), tokenText, mapFirstToken')
 import Nixfmt.Util (commonIndentation, isSpaces, replaceMultiple)
-import GHC.Stack (HasCallStack)
 
 prettyCommentLine :: Text -> Doc
 prettyCommentLine l
     | Text.null l = emptyline
-    | otherwise   = text l <> hardline
+    | otherwise   = comment l <> hardline
 
 toLineComment :: TrailingComment -> Trivium
 toLineComment (TrailingComment c) = LineComment $ " " <> c
@@ -45,14 +44,6 @@ moveTrailingCommentUp :: Ann a -> Ann a
 moveTrailingCommentUp (Ann pre a (Just post)) = Ann (pre ++ [toLineComment post]) a Nothing
 moveTrailingCommentUp a = a
 
--- Make sure a group is not expanded because the token that starts it has
--- leading comments. This will render both arguments as a group, but
--- if the first argument has some leading comments they will be put before
--- the group
-groupWithStart :: HasCallStack => Pretty a => Ann a -> Doc -> Doc
-groupWithStart (Ann leading a trailing') b
-    = pretty leading <> group (pretty a <> pretty trailing' <> b)
-
 instance Pretty TrailingComment where
     pretty (TrailingComment c)
         = hardspace <> comment ("# " <> c) <> hardline
@@ -63,9 +54,9 @@ instance Pretty Trivium where
     pretty (BlockComment c)
         | all ("*" `isPrefixOf`) (tail c) = hcat (map toLineComment' c)
         | otherwise
-            = base $ text "/*" <> hardspace
+            = base $ comment "/*" <> hardspace
               <> nest 3 (hcat (map prettyCommentLine c))
-              <> text "*/" <> hardline
+              <> comment "*/" <> hardline
 
 instance Pretty a => Pretty (Item a) where
     pretty (DetachedComments trivia) = pretty trivia
@@ -213,7 +204,8 @@ prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trail
 -- Singleton list
 -- Expand unless absorbable term or single line
 prettyTerm (List paropen@(Ann _ _ Nothing) (Items [item@(CommentedItem iComment item')]) parclose@(Ann [] _ _))
-        = base $ groupWithStart paropen $
+        = base $ group $
+            pretty paropen <>
             (if isAbsorbable item' && null iComment then
                 surroundWith hardspace item'
             else
@@ -232,7 +224,7 @@ prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, i
 
 -- Parenthesized application
 prettyTerm (Parenthesized (Ann pre paropen post) (Application f a) parclose)
-    = base $ groupWithStart (Ann pre paropen Nothing) $ nest 2 (
+    = base $ group $ pretty (Ann pre paropen Nothing) <> nest 2 (
             -- Move comment trailing on '(' to next line, combine with comment from application
             case pretty post of { [] -> []; c -> hardline <> c }
             <> base (prettyApp hardline mempty line' hardline f a)
@@ -241,7 +233,7 @@ prettyTerm (Parenthesized (Ann pre paropen post) (Application f a) parclose)
 
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose)
-    = base $ groupWithStart paropen (lineL <> nest 2 (group expr) <> lineR <> pretty parclose)
+    = base $ group $ pretty paropen <> lineL <> nest 2 (group expr) <> lineR <> pretty parclose
   where
     (lineL, lineR) =
       case expr of
@@ -313,8 +305,9 @@ instance Pretty Parameter where
 
     -- { stuff }:
     pretty (SetParameter bopen attrs bclose) =
-        groupWithStart bopen $
-            (surroundWith sep $ nest 2 (sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments $ attrs))
+        group $
+            pretty bopen
+            <> (surroundWith sep $ nest 2 (sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments $ attrs))
             <> pretty bclose
         where
         -- pretty all ParamAttrs, but make the trailing comma of the last element specially
@@ -452,9 +445,9 @@ instance Pretty Expression where
                 ([], [])
                 (unItems binders)
 
-          letPart = groupWithStart let_ $ hardline <> letBody
+          letPart = group $ pretty let_ <> hardline <> letBody
           letBody = nest 2 $ prettyItems hardline (Items bindersWithoutComments)
-          inPart = groupWithStart (Ann [] in_ Nothing) $ hardline
+          inPart = group $ pretty (Ann [] in_ Nothing) <> hardline
               -- Take our trailing and inject it between `in` and body
               <> pretty (concat binderComments ++ leading ++ convertTrailing trailing')
               <> pretty expr
@@ -467,7 +460,7 @@ instance Pretty Expression where
     pretty (If if_ cond then_ expr0 else_ expr1)
         = base $ group' False $
             -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
-            groupWithStart if_ (line <> nest 2 (pretty cond) <> line <> pretty then_)
+            group (pretty if_ <> line <> nest 2 (pretty cond) <> line <> pretty then_)
             <> (surroundWith line $ nest 2 $ group expr0)
             <> pretty else_ <> absorbElse expr1
             -- This trailing line' is a bit of a hack. It makes sure that the semicolon in binders gets placed onto
@@ -491,7 +484,7 @@ instance Pretty Expression where
     pretty (Application f a)
         = prettyApp mempty mempty mempty mempty f a
 
-    -- binary operators
+    -- not chainable binary operators: <, >, <=, >=, ==, !=
     pretty (Operation a op@(Ann _ op' _) b)
         | op' == TLess || op' == TGreater || op' == TLessEqual || op' == TGreaterEqual || op' == TEqual || op' == TUnequal
         = pretty a <> softline <> pretty op <> hardspace <> pretty b
@@ -520,12 +513,9 @@ instance Pretty Expression where
             -- The others
             prettyOperation ((Just op'), expr) =
                 line <> pretty (moveTrailingCommentUp op') <> nest 2 (absorbOperation expr)
-
-            -- Extract comment before the first operand and move it out, to prevent force-expanding the expression
-            (operationWithoutComment, comment') = mapFirstToken' (\(Ann leading token trailing') -> (Ann [] token trailing', leading)) operation
           in
-            pretty comment' <> (group' False $
-                ((concat . map prettyOperation . (flatten Nothing)) operationWithoutComment) <> line')
+            group' False $
+                ((concat . map prettyOperation . (flatten Nothing)) operation) <> line'
 
     pretty (MemberCheck expr qmark sel)
         = pretty expr <> softline

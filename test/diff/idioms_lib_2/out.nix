@@ -11,8 +11,7 @@ rec {
   */
   id =
     # The value to return
-    x:
-    x;
+    x: x;
 
   /* The constant function
 
