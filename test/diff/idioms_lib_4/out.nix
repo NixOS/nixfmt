@@ -641,12 +641,14 @@ rec {
 
     androideabi = { };
     android = {
-      assertions = [ {
-        assertion = platform: !platform.isAarch32;
-        message = ''
-          The "android" ABI is not for 32-bit ARM. Use "androideabi" instead.
-        '';
-      } ];
+      assertions = [
+        {
+          assertion = platform: !platform.isAarch32;
+          message = ''
+            The "android" ABI is not for 32-bit ARM. Use "androideabi" instead.
+          '';
+        }
+      ];
     };
 
     gnueabi = {

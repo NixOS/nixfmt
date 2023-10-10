@@ -1,9 +1,11 @@
 [
-  [ {
-    # multiline
-    foo = "bar";
-    foo2 = "barbar";
-  } ]
+  [
+    {
+      # multiline
+      foo = "bar";
+      foo2 = "barbar";
+    }
+  ]
   [
     (
       if foo then
@@ -72,14 +74,20 @@
     # e
   ]
 
-  [ [
-    multi
-    line
-  ] ]
+  [
+    [
+      multi
+      line
+    ]
+  ]
   [ [ [ singleton ] ] ]
   [ [ [ { } ] ] ]
-  [ [ [
-    { }
-    multiline
-  ] ] ]
+  [
+    [
+      [
+        { }
+        multiline
+      ]
+    ]
+  ]
 ]

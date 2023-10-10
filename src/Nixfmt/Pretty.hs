@@ -201,23 +201,11 @@ prettyTerm (Selection term selectors) = pretty term <> line' <> hcat selectors
 prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trailing'))
     = pretty leading <> pretty paropen <> hardspace <> pretty parclose <> pretty trailing'
 
--- Singleton list
--- Expand unless absorbable term or single line
-prettyTerm (List paropen@(Ann _ _ Nothing) (Items [item@(CommentedItem iComment item')]) parclose@(Ann [] _ _))
-        = base $ group $
-            pretty paropen <>
-            (if isAbsorbable item' && null iComment then
-                surroundWith hardspace item'
-            else
-                surroundWith line $ nest 2 item
-            )
-            <> pretty parclose
-
--- General list (len >= 2)
--- Always expand
+-- General list
+-- Always expand if len > 1
 prettyTerm (List (Ann pre paropen post) items parclose) =
     base $ pretty (Ann pre paropen Nothing)
-    <> (surroundWith hardline $ nest 2 $ pretty post <> prettyItems hardline items)
+    <> (surroundWith line $ nest 2 $ pretty post <> prettyItems hardline items)
     <> pretty parclose
 
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)

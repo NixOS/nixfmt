@@ -828,10 +828,12 @@ in
       }
 
       {
-        assertions = [ {
-          assertion = cfg.database.createLocally -> cfg.config.dbtype == "mysql";
-          message = "services.nextcloud.config.dbtype must be set to mysql if services.nextcloud.database.createLocally is set to true.";
-        } ];
+        assertions = [
+          {
+            assertion = cfg.database.createLocally -> cfg.config.dbtype == "mysql";
+            message = "services.nextcloud.config.dbtype must be set to mysql if services.nextcloud.database.createLocally is set to true.";
+          }
+        ];
       }
 
       {
@@ -1154,12 +1156,14 @@ in
           enable = true;
           package = lib.mkDefault pkgs.mariadb;
           ensureDatabases = [ cfg.config.dbname ];
-          ensureUsers = [ {
-            name = cfg.config.dbuser;
-            ensurePermissions = {
-              "${cfg.config.dbname}.*" = "ALL PRIVILEGES";
-            };
-          } ];
+          ensureUsers = [
+            {
+              name = cfg.config.dbuser;
+              ensurePermissions = {
+                "${cfg.config.dbname}.*" = "ALL PRIVILEGES";
+              };
+            }
+          ];
           initialScript = pkgs.writeText "mysql-init" ''
             CREATE USER '${cfg.config.dbname}'@'localhost' IDENTIFIED BY '${
               builtins.readFile (cfg.config.dbpassFile)

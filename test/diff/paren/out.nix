@@ -1,11 +1,13 @@
 [
   (
     done
-    // listToAttrs [ {
-      # multline
-      name = entry;
-      value = 1;
-    } ]
+    // listToAttrs [
+      {
+        # multline
+        name = entry;
+        value = 1;
+      }
+    ]
   )
 ]
   (

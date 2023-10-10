@@ -317,10 +317,12 @@ let
   typeCheck =
     type: value:
     let
-      merged = lib.mergeDefinitions [ ] type [ {
-        file = lib.unknownModule;
-        inherit value;
-      } ];
+      merged = lib.mergeDefinitions [ ] type [
+        {
+          file = lib.unknownModule;
+          inherit value;
+        }
+      ];
       eval = builtins.tryEval (builtins.deepSeq merged.mergedValue null);
     in
     eval.success;
