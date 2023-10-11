@@ -69,8 +69,7 @@ rec {
     else if isFloat v then
       libStr.floatToString v
     else
-      err "this value is" (toString v)
-  ;
+      err "this value is" (toString v);
 
   # Generate a line of key k and value v, separated by
   # character sep. If sep appears in k, it is escaped.
@@ -103,8 +102,7 @@ rec {
         if listsAsDuplicateKeys then
           k: v: map (mkLine k) (if lib.isList v then v else [ v ])
         else
-          k: v: [ (mkLine k v) ]
-      ;
+          k: v: [ (mkLine k v) ];
     in
     attrs:
     libStr.concatStrings (lib.concatLists (libAttr.mapAttrsToList mkLines attrs));
@@ -156,8 +154,7 @@ rec {
         ''
           [${mkSectionName sectName}]
         ''
-        + toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } sectValues
-      ;
+        + toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } sectValues;
     in
     # map input to ini sections
     mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
@@ -216,8 +213,7 @@ rec {
       else
         (toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } globalSection) + "\n"
     )
-    + (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; } sections)
-  ;
+    + (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; } sections);
 
   # Generate a git-config file from an attrset.
   #
@@ -252,8 +248,7 @@ rec {
         if containsQuote || subsections == [ ] then
           name
         else
-          ''${section} "${subsection}"''
-      ;
+          ''${section} "${subsection}"'';
 
       # generation for multiple ini values
       mkKeyValue =
@@ -273,8 +268,7 @@ rec {
             else if length path > 1 then
               { ${concatStringsSep "." (lib.reverseList (tail path))}.${head path} = value; }
             else
-              { ${head path} = value; }
-          ;
+              { ${head path} = value; };
         in
         attrs:
         lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs));
@@ -321,8 +315,7 @@ rec {
           else
             const "<unevaluated>"
         else
-          id
-      ;
+          id;
       mapAny =
         with builtins;
         depth: v:
@@ -334,8 +327,7 @@ rec {
         else if isList v then
           map evalNext v
         else
-          transform (depth + 1) v
-      ;
+          transform (depth + 1) v;
     in
     mapAny 0;
 
@@ -368,16 +360,14 @@ rec {
 
                 ${indent}  ''
             else
-              " "
-          ;
+              " ";
           outroSpace =
             if multiline then
               ''
 
                 ${indent}''
             else
-              " "
-          ;
+              " ";
         in
         if isInt v then
           toString v
@@ -417,8 +407,7 @@ rec {
               + introSpace
               + concatStringsSep introSpace (lib.init escapedLines)
               + (if lastLine == "" then outroSpace else introSpace + lastLine)
-              + "''"
-            ;
+              + "''";
           in
           if multiline && length lines > 1 then multilineResult else singlelineResult
         else if true == v then
@@ -473,8 +462,7 @@ rec {
             + outroSpace
             + "}"
         else
-          abort "generators.toPretty: should never happen (v = ${v})"
-      ;
+          abort "generators.toPretty: should never happen (v = ${v})";
     in
     go indent;
 
@@ -502,8 +490,7 @@ rec {
         else if isFloat x then
           float ind x
         else
-          abort "generators.toPlist: should never happen (v = ${v})"
-      ;
+          abort "generators.toPlist: should never happen (v = ${v})";
 
       literal = ind: x: ind + x;
 
@@ -586,6 +573,5 @@ rec {
     else if v == null then
       abort "generators.toDhall: cannot convert a null to Dhall"
     else
-      builtins.toJSON v
-  ;
+      builtins.toJSON v;
 }

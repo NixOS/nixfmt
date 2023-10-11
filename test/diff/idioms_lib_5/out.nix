@@ -37,8 +37,7 @@ let
     if lib.mutuallyExclusive allowlist blocklist then
       true
     else
-      throw "allowlistedLicenses and blocklistedLicenses are not mutually exclusive."
-  ;
+      throw "allowlistedLicenses and blocklistedLicenses are not mutually exclusive.";
 
   hasLicense = attrs: attrs ? meta.license;
 
@@ -48,8 +47,7 @@ let
     hasLicense attrs
     && lib.lists.any (l: builtins.elem l allowlist) (
       lib.lists.toList attrs.meta.license
-    )
-  ;
+    );
 
   hasBlocklistedLicense =
     assert areLicenseListsValid;
@@ -57,16 +55,14 @@ let
     hasLicense attrs
     && lib.lists.any (l: builtins.elem l blocklist) (
       lib.lists.toList attrs.meta.license
-    )
-  ;
+    );
 
   allowBroken =
     config.allowBroken || builtins.getEnv "NIXPKGS_ALLOW_BROKEN" == "1";
 
   allowUnsupportedSystem =
     config.allowUnsupportedSystem
-    || builtins.getEnv "NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM" == "1"
-  ;
+    || builtins.getEnv "NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM" == "1";
 
   isUnfree = licenses: lib.lists.any (l: !l.free or true) licenses;
 
@@ -106,8 +102,7 @@ let
     attrs:
     !(isMarkedInsecure attrs)
     || allowInsecurePredicate attrs
-    || builtins.getEnv "NIXPKGS_ALLOW_INSECURE" == "1"
-  ;
+    || builtins.getEnv "NIXPKGS_ALLOW_INSECURE" == "1";
 
   isNonSource = sourceTypes: lib.lists.any (t: !t.isSource) sourceTypes;
 
@@ -131,8 +126,7 @@ let
     attrs:
     hasNonSourceProvenance attrs
     && !allowNonSource
-    && !allowNonSourcePredicate attrs
-  ;
+    && !allowNonSourcePredicate attrs;
 
   showLicenseOrSourceType =
     value: toString (map (v: v.shortName or "unknown") (lib.lists.toList value));
@@ -242,8 +236,7 @@ let
              ];
            }
 
-    ''
-  ;
+    '';
 
   remediateOutputsToInstall =
     attrs:
@@ -283,8 +276,7 @@ let
             Package ‘${getName attrs}’ in ${pos_str meta} ${errormsg}, refusing to evaluate.
 
           ''
-          + (builtins.getAttr reason remediation) attrs
-      ;
+          + (builtins.getAttr reason remediation) attrs;
 
       handler =
         if config ? handleEvalIssue then config.handleEvalIssue reason else throw;
@@ -306,8 +298,7 @@ let
           "Package ${getName attrs} in ${pos_str meta} ${errormsg}, continuing anyway."
           + (lib.optionalString (remediationMsg != "") ''
 
-            ${remediationMsg}'')
-      ;
+            ${remediationMsg}'');
       isEnabled = lib.findFirst (x: x == reason) null showWarnings;
     in
     if isEnabled != null then builtins.trace msg true else true;
@@ -362,8 +353,7 @@ let
           x == { }
           || ( # Accept {} for tests that are unsupported
             isDerivation x && x ? meta.timeout
-          )
-        ;
+          );
         merge = lib.options.mergeOneOption;
       }
     );
@@ -403,8 +393,7 @@ let
     else
       ''
         key 'meta.${k}' is unrecognized; expected one of: 
-          [${lib.concatMapStringsSep ", " (x: "'${x}'") (lib.attrNames metaTypes)}]''
-  ;
+          [${lib.concatMapStringsSep ", " (x: "'${x}'") (lib.attrNames metaTypes)}]'';
   checkMeta =
     meta:
     lib.optionals config.checkMeta (
@@ -529,8 +518,7 @@ let
         # -----
         else
           { valid = "yes"; }
-      )
-  ;
+      );
 
   # The meta attribute is passed in the resulting attribute set,
   # but it's not part of the actual derivation, i.e., it's not
@@ -578,8 +566,7 @@ let
             ++ outputs
           ))
         ]
-        ++ lib.optional (hasOutput "man") "man"
-      ;
+        ++ lib.optional (hasOutput "man") "man";
     }
     // attrs.meta or { }
     # Fill `meta.position` to identify the source location of the package.
@@ -602,10 +589,8 @@ let
             lib.all (d: d.meta.available or true) references
           else
             true
-        )
-      ;
-    }
-  ;
+        );
+    };
 
   assertValidity =
     { meta, attrs }:
@@ -627,8 +612,7 @@ let
           yes = true;
         }
         .${validity.valid};
-    }
-  ;
+    };
 in
 {
   inherit assertValidity commonMeta;

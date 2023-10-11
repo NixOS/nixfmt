@@ -371,8 +371,7 @@ in
           (isYes "MODULES")
           (isYes "BINFMT_ELF")
         ]
-        ++ (optional (randstructSeed != "") (isYes "GCC_PLUGIN_RANDSTRUCT"))
-      ;
+        ++ (optional (randstructSeed != "") (isYes "GCC_PLUGIN_RANDSTRUCT"));
 
       # nixpkgs kernels are assumed to have all required features
       assertions =
@@ -387,8 +386,7 @@ in
               assertion = attrs.assertion cfg;
               inherit (attrs) message;
             })
-            config.system.requiredKernelConfig
-      ;
+            config.system.requiredKernelConfig;
     })
   ];
 }

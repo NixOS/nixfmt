@@ -16,8 +16,7 @@ let
     if system == "i686-freebsd" || system == "x86_64-freebsd" then
       "/usr/local/bin/bash"
     else
-      "/bin/bash"
-  ;
+      "/bin/bash";
 
   path =
     (lib.optionals (system == "i686-solaris") [ "/usr/gnu" ])
@@ -27,8 +26,7 @@ let
       "/"
       "/usr"
       "/usr/local"
-    ]
-  ;
+    ];
 
   prehookBase = ''
     # Disable purity tests; it's allowed (even needed) to link to
@@ -123,8 +121,7 @@ let
         else if system == "x86_64-cygwin" then
           prehookCygwin
         else
-          prehookBase
-      ;
+          prehookBase;
 
       extraNativeBuildInputs =
         extraNativeBuildInputs
@@ -135,8 +132,7 @@ let
             extraNativeBuildInputsCygwin
           else
             [ ]
-        )
-      ;
+        );
 
       initialPath = extraPath ++ path;
 

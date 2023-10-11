@@ -133,8 +133,7 @@
       ++ (optionals condition [
         more
         items
-      ])
-    ;
+      ]);
     b = with pkgs; [
       a
       lot
@@ -195,8 +194,7 @@
           secret-config.ssh-hosts
       // {
         foo = "bar";
-      }
-    ;
+      };
     programs.ssh.knownHosts3 =
       lib.mapAttrs (
         host_name: publicKey: {
@@ -225,8 +223,7 @@
       )
       // {
         foo = "bar";
-      }
-    ;
+      };
     programs.ssh.knownHosts5 =
       someStuff
       // lib.mapAttrs (

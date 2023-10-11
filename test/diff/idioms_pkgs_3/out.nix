@@ -155,8 +155,7 @@
 assert stdenv.cc.libc or null != null;
 assert pipewireSupport
   -> !waylandSupport || !webrtcSupport
-  -> throw "${pname}: pipewireSupport requires both wayland and webrtc support."
-;
+  -> throw "${pname}: pipewireSupport requires both wayland and webrtc support.";
 
 let
   inherit (lib) enableFeature;
@@ -182,8 +181,7 @@ let
         if ltoSupport then
           buildPackages.rustc.llvmPackages.bintools
         else
-          stdenv.cc.bintools
-      ;
+          stdenv.cc.bintools;
     }
   );
 
@@ -264,16 +262,14 @@ buildStdenv.mkDerivation ({
       lib.optional (lib.versionAtLeast version "111")
         ./env_var_for_system_dir-ff111.patch
     ++ lib.optional (lib.versionAtLeast version "96") ./no-buildconfig-ffx96.patch
-    ++ extraPatches
-  ;
+    ++ extraPatches;
 
   postPatch =
     ''
       rm -rf obj-x86_64-pc-linux-gnu
       patchShebangs mach build
     ''
-    + extraPostPatch
-  ;
+    + extraPostPatch;
 
   # Ignore trivial whitespace changes in patches, this fixes compatibility of
   # ./env_var_for_system_dir.patch with Firefox >=65 without having to track
@@ -310,8 +306,7 @@ buildStdenv.mkDerivation ({
       patchelf
     ]
     ++ lib.optionals pgoSupport [ xvfb-run ]
-    ++ extraNativeBuildInputs
-  ;
+    ++ extraNativeBuildInputs;
 
   setOutputFlags = false; # `./mach configure` doesn't understand `--*dir=` flags.
 
@@ -382,8 +377,7 @@ buildStdenv.mkDerivation ({
     ''
     + lib.optionalString (enableOfficialBranding && !stdenv.is32bit) ''
       export MOZILLA_OFFICIAL=1
-    ''
-  ;
+    '';
 
   # firefox has a different definition of configurePlatforms from nixpkgs, see configureFlags
   configurePlatforms = [ ];
@@ -453,8 +447,7 @@ buildStdenv.mkDerivation ({
     ]
     ++ lib.optional enableOfficialBranding "--enable-official-branding"
     ++ lib.optional (branding != null) "--with-branding=${branding}"
-    ++ extraConfigureFlags
-  ;
+    ++ extraConfigureFlags;
 
   buildInputs =
     [
@@ -505,8 +498,7 @@ buildStdenv.mkDerivation ({
       libdrm
     ]
     ++ lib.optional jemallocSupport jemalloc
-    ++ extraBuildInputs
-  ;
+    ++ extraBuildInputs;
 
   profilingPhase = lib.optionalString pgoSupport ''
     # Package up Firefox for profiling
@@ -554,8 +546,7 @@ buildStdenv.mkDerivation ({
     ''
     + ''
       cd mozobj
-    ''
-  ;
+    '';
 
   postInstall =
     ''
@@ -570,8 +561,7 @@ buildStdenv.mkDerivation ({
 
       # Needed to find Mozilla runtime
       gappsWrapperArgs+=(--argv0 "$out/bin/.${binaryName}-wrapped")
-    ''
-  ;
+    '';
 
   postFixup = lib.optionalString crashreporterSupport ''
     patchelf --add-rpath "${

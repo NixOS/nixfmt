@@ -196,8 +196,7 @@ rec {
     if pathExists suffixFile then
       lib.strings.fileContents suffixFile
     else
-      "pre-git"
-  ;
+      "pre-git";
 
   /* Attempts to return the the current revision of nixpkgs and
      returns the supplied default value otherwise.
@@ -216,8 +215,7 @@ rec {
     else if lib.pathExists revisionFile then
       lib.fileContents revisionFile
     else
-      default
-  ;
+      default;
 
   nixpkgsVersion =
     builtins.trace "`lib.nixpkgsVersion` is deprecated, use `lib.version` instead!"
@@ -263,8 +261,7 @@ rec {
     else if a > b then
       1
     else
-      0
-  ;
+      0;
 
   /* Split type into two subtypes by predicate `p`, take all elements
      of the first subtype to be less than all the elements of the
@@ -300,8 +297,7 @@ rec {
     else if p b then
       1
     else
-      no a b
-  ;
+      no a b;
 
   /* Reads a JSON file.
 
@@ -352,8 +348,7 @@ rec {
         abort "NIX_ABORT_ON_WARN=true; warnings are treated as unrecoverable errors."
       )
     else
-      msg: builtins.trace "[1;31mwarning: ${msg}[0m"
-  ;
+      msg: builtins.trace "[1;31mwarning: ${msg}[0m";
 
   /* Like warn, but only warn when the first argument is `true`.
 
@@ -436,8 +431,7 @@ rec {
     if f ? __functor then
       f.__functionArgs or (lib.functionArgs (f.__functor f))
     else
-      builtins.functionArgs f
-  ;
+      builtins.functionArgs f;
 
   /* Check whether something is a function or something
      annotated with function args.
@@ -470,8 +464,7 @@ rec {
             "14" = "E";
             "15" = "F";
           }
-          .${toString d}
-      ;
+          .${toString d};
     in
     lib.concatMapStrings toHexDigit (toBaseDigits 16 i);
 
@@ -496,8 +489,7 @@ rec {
             r = i - ((i / base) * base);
             q = (i - r) / base;
           in
-          [ r ] ++ go q
-      ;
+          [ r ] ++ go q;
     in
     assert (base >= 2);
     assert (i >= 0);

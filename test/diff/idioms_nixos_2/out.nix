@@ -37,8 +37,7 @@ let
         ++ optional cfg.caching.redis redis
         ++ optional cfg.caching.memcached memcached
       )
-      ++ cfg.phpExtraExtensions all
-    ; # Enabled by user
+      ++ cfg.phpExtraExtensions all; # Enabled by user
     extraConfig = toKeyValue phpOptions;
   };
 
@@ -803,8 +802,7 @@ in
             See <https://docs.nextcloud.com/server/latest/admin_manual/configuration_files/encryption_configuration.html#disabling-encryption> on how to achieve this.
 
             For more context, here is the implementing pull request: https://github.com/NixOS/nixpkgs/pull/198470
-          '')
-        ;
+          '');
 
         services.nextcloud.package =
           with pkgs;
@@ -1134,8 +1132,7 @@ in
                 "listen.owner" = config.services.nginx.user;
                 "listen.group" = config.services.nginx.group;
               }
-              // cfg.poolSettings
-            ;
+              // cfg.poolSettings;
             extraConfig = cfg.poolConfig;
           };
         };

@@ -132,8 +132,7 @@ in
                     =
 
                     mergeEqualOption;
-                }
-            ;
+                };
 
             apply
 
@@ -179,8 +178,7 @@ in
 
                               ++
 
-                                kernelPatches
-                            ;
+                                kernelPatches;
 
                             features
 
