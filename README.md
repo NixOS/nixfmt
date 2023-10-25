@@ -10,7 +10,7 @@
 
 You are encouraged to test this out on your code and submit any undesirable formatting you find as an issue
 
-[![Build Status](https://badge.buildkite.com/b37f73adea391439e63288e8fd3b47f4b98fb9640bb864ccfa.svg)](https://buildkite.com/serokell/nixfmt)
+![Build Status](https://github.com/serokell/nixfmt/actions/workflows/main.yml/badge.svg?branch=master)
 
 ## Installation
 
