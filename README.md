@@ -11,7 +11,6 @@
 You are encouraged to test this out on your code and submit any undesirable formatting you find as an issue
 
 [![Build Status](https://badge.buildkite.com/b37f73adea391439e63288e8fd3b47f4b98fb9640bb864ccfa.svg)](https://buildkite.com/serokell/nixfmt)
-[![Cachix](https://img.shields.io/badge/cachix-nixfmt-blue.svg)](https://nixfmt.cachix.org)
 
 ## Installation
 
@@ -21,8 +20,6 @@ You are encouraged to test this out on your code and submit any undesirable form
 
 - To get the most recent version, install from master:
 
-      # Optional: use cachix to get cached builds even for master
-      cachix use nixfmt
       nix-env -f https://github.com/serokell/nixfmt/archive/master.tar.gz -i
 
 - Nix with flakes
