@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE TypeFamilies, TypeApplications, ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies, TypeApplications, ScopedTypeVariables, TypeOperators #-}
 
 module Nixfmt.Parser.Float (floatParse) where
 
