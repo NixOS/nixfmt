@@ -24,6 +24,7 @@ module Nixfmt.Predoc
     , hardline
     , emptyline
     , newline
+    , DocE
     , Doc
     , Pretty
     , pretty
