@@ -9,6 +9,9 @@
 
 ## Unreleased
 
+* Parsing fixes
+  * Quotes in inherit statements (like `inherit "or";`) are now supported.
+
 ## 0.6.0 -- 2023-10-31
 
 * Fix escaping of interpolations after dollar signs.

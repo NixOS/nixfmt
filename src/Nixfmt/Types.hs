@@ -57,11 +57,12 @@ data SimpleSelector
     deriving (Eq, Show)
 
 data Selector
-    = Selector (Maybe Leaf) SimpleSelector (Maybe (Leaf, Term))
+    -- `.selector`
+    = Selector (Maybe Leaf) SimpleSelector
     deriving (Eq, Show)
 
 data Binder
-    = Inherit Leaf (Maybe Term) [Leaf] Leaf
+    = Inherit Leaf (Maybe Term) [SimpleSelector] Leaf
     | Assignment [Selector] Leaf Expression Leaf
     deriving (Eq, Show)
 
@@ -71,7 +72,7 @@ data Term
     | Path Path
     | List Leaf [Term] Leaf
     | Set (Maybe Leaf) Leaf [Binder] Leaf
-    | Selection Term [Selector]
+    | Selection Term [Selector] (Maybe (Leaf, Term))
     | Parenthesized Leaf Expression Leaf
     deriving (Eq, Show)
 

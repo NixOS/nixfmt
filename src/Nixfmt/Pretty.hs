@@ -11,7 +11,7 @@ module Nixfmt.Pretty where
 import Prelude hiding (String)
 
 import Data.Char (isSpace)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isNothing)
 import Data.Text (Text, isPrefixOf, isSuffixOf, stripPrefix)
 import qualified Data.Text as Text
   (dropEnd, empty, init, isInfixOf, last, null, strip, takeWhile)
@@ -62,12 +62,8 @@ instance Pretty SimpleSelector where
         = prettySimpleString s <> pretty trailing <> pretty leading
 
 instance Pretty Selector where
-    pretty (Selector dot sel Nothing)
+    pretty (Selector dot sel)
         = pretty dot <> pretty sel
-
-    pretty (Selector dot sel (Just (kw, def)))
-        = pretty dot <> pretty sel
-          <> hardspace <> pretty kw <> hardspace <> pretty def
 
 instance Pretty Binder where
     pretty (Inherit inherit Nothing ids semicolon)
@@ -89,7 +85,9 @@ prettyTerm :: Term -> Doc
 prettyTerm (Token t) = pretty t
 prettyTerm (String s) = pretty s
 prettyTerm (Path p) = pretty p
-prettyTerm (Selection term selectors) = pretty term <> hcat selectors
+prettyTerm (Selection term selectors Nothing) = pretty term <> hcat selectors
+prettyTerm (Selection term selectors (Just (kw, def))) =
+    pretty term <> hcat selectors <> hardspace <> pretty kw <> hardspace <> pretty def
 
 prettyTerm (List (Ann paropen Nothing []) [] parclose)
     = pretty paropen <> hardspace <> pretty parclose
@@ -264,13 +262,13 @@ instance Pretty [Token] where
 -- STRINGS
 
 isSimpleSelector :: Selector -> Bool
-isSimpleSelector (Selector _ (IDSelector _) Nothing) = True
-isSimpleSelector _                                   = False
+isSimpleSelector (Selector _ (IDSelector _)) = True
+isSimpleSelector _                           = False
 
 isSimple :: Expression -> Bool
 isSimple (Term (Token (Ann (Identifier _) Nothing []))) = True
-isSimple (Term (Selection t selectors))
-    = isSimple (Term t) && all isSimpleSelector selectors
+isSimple (Term (Selection t selectors def))
+    = isSimple (Term t) && all isSimpleSelector selectors && isNothing def
 isSimple _ = False
 
 hasQuotes :: [StringPart] -> Bool
