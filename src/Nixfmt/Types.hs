@@ -4,12 +4,13 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE DeriveFoldable, OverloadedStrings, RankNTypes, LambdaCase #-}
+{-# LANGUAGE DeriveFoldable, OverloadedStrings, RankNTypes, LambdaCase, TupleSections #-}
 
 module Nixfmt.Types where
 
 import Prelude hiding (String)
 
+import Data.List.NonEmpty as NonEmpty
 import Control.Monad.State (StateT)
 import Data.Bifunctor (first)
 import Data.Foldable (toList)
@@ -56,7 +57,7 @@ newtype Items a = Items { unItems :: [Item a] }
     deriving (Show)
 
 instance Eq a => Eq (Items a) where
-    (==) = (==) `on` concatMap toList . unItems
+    (==) = (==) `on` concatMap Data.Foldable.toList . unItems
 
 type Leaf = Ann Token
 
@@ -141,11 +142,46 @@ class LanguageElement a where
     -- returned. This is useful for getting/extracting values
     mapFirstToken' :: (forall b. Ann b -> (Ann b, c)) -> a -> (a, c)
 
+    -- Map the last token of that expression, no matter how deep it sits
+    -- in the AST. This is useful for modifying comments
+    mapLastToken :: (forall b. Ann b -> Ann b) -> a -> a
+    mapLastToken f a = fst (mapLastToken' (\x -> (f x, ())) a)
+
+    -- Same as mapLastToken, but the mapping function also yields a value that may be
+    -- returned. This is useful for getting/extracting values
+    mapLastToken' :: (forall b. Ann b -> (Ann b, c)) -> a -> (a, c)
+
+instance LanguageElement (Ann a) where
+    mapFirstToken' f = f
+    mapLastToken' f = f
+
+instance LanguageElement SimpleSelector where
+    mapFirstToken' f = \case
+        (IDSelector name) -> first IDSelector $ f name
+        (InterpolSelector name) -> first InterpolSelector $ f name
+        (StringSelector name) -> first StringSelector $ f name
+
+    mapLastToken' = mapFirstToken'
+
+instance LanguageElement Selector where
+    mapFirstToken' f = \case
+        (Selector Nothing ident def) -> first (\ident' -> Selector Nothing ident' def) $ mapFirstToken' f ident
+        (Selector (Just dot) ident def) -> first (\dot' -> Selector (Just dot') ident def) $ mapFirstToken' f dot
+
+    mapLastToken' f = \case
+        (Selector dot ident Nothing) -> first (\ident' -> Selector dot ident' Nothing) $ mapLastToken' f ident
+        (Selector dot ident (Just (qmark, def))) -> first (Selector dot ident . Just . (qmark,)) $ mapLastToken' f def
+
 instance LanguageElement Parameter where
     mapFirstToken' f = \case
         (IDParameter name) -> first IDParameter (f name)
         (SetParameter open items close) -> first (\open' -> SetParameter open' items close) (f open)
         (ContextParameter first' at second) -> first (\first'' -> ContextParameter first'' at second) (mapFirstToken' f first')
+
+    mapLastToken' f = \case
+        (IDParameter name) -> first IDParameter (f name)
+        (SetParameter open items close) -> first (SetParameter open items) (f close)
+        (ContextParameter first' at second) -> first (ContextParameter first' at) (mapLastToken' f second)
 
 instance LanguageElement Term where
     mapFirstToken' f = \case
@@ -157,6 +193,16 @@ instance LanguageElement Term where
         (Set Nothing open items close) -> first (\open' -> Set Nothing open' items close) (f open)
         (Selection term selector) -> first (\term' -> Selection term' selector) (mapFirstToken' f term)
         (Parenthesized open expr close) -> first (\open' -> Parenthesized open' expr close) (f open)
+
+    mapLastToken' f = \case
+        (Token leaf) -> first Token (f leaf)
+        (String string) -> first String (f string)
+        (Path path) -> first Path (f path)
+        (List open items close) -> first (List open items) (f close)
+        (Set rec open items close) -> first (Set rec open items) (f close)
+        (Selection term []) -> first (\term' -> Selection term' []) (mapLastToken' f term)
+        (Selection term sels) -> first (Selection term . NonEmpty.toList) (mapLastToken' f $ NonEmpty.fromList sels)
+        (Parenthesized open expr close) -> first (Parenthesized open expr) (f close)
 
 instance LanguageElement Expression where
     mapFirstToken' f = \case
@@ -172,9 +218,32 @@ instance LanguageElement Expression where
         (Negation not_ expr) -> first (\not_' -> Negation not_' expr) (f not_)
         (Inversion tilde expr) -> first (\tilde' -> Inversion tilde' expr) (f tilde)
 
+    mapLastToken' f = \case
+        (Term term) -> first Term (mapLastToken' f term)
+        (With with expr0 semicolon expr1) -> first (With with expr0 semicolon) (mapLastToken' f expr1)
+        (Let let_ items in_ body) -> first (Let let_ items in_) (mapLastToken' f body)
+        (Assert assert cond semicolon body) -> first (Assert assert cond semicolon) (mapLastToken' f body)
+        (If if_ expr0 then_ expr1 else_ expr2) -> first (If if_ expr0 then_ expr1 else_) (mapLastToken' f expr2)
+        (Abstraction param colon body) -> first (Abstraction param colon) (mapLastToken' f body)
+        (Application g a) -> first (Application g) (mapLastToken' f a)
+        (Operation left op right) -> first (Operation left op) (mapLastToken' f right)
+        (MemberCheck name dot []) -> first (\dot' -> MemberCheck name dot' []) (mapLastToken' f dot)
+        (MemberCheck name dot sels) -> first (MemberCheck name dot . NonEmpty.toList) (mapLastToken' f $ NonEmpty.fromList sels)
+        (Negation not_ expr) -> first (Negation not_) (mapLastToken' f expr)
+        (Inversion tilde expr) -> first (Inversion tilde) (mapLastToken' f expr)
+
 instance LanguageElement a => LanguageElement (Whole a) where
     mapFirstToken' f (Whole a trivia)
         = first (\a' -> Whole a' trivia) (mapFirstToken' f a)
+
+    mapLastToken' f (Whole a trivia)
+        = first (\a' -> Whole a' trivia) (mapLastToken' f a)
+
+instance LanguageElement a => LanguageElement (NonEmpty a) where
+    mapFirstToken' f (x :| _) = first pure $ mapFirstToken' f x
+
+    mapLastToken' f (x :| []) = first pure $ mapLastToken' f x
+    mapLastToken' f (x :| xs) = first ((x :|) . NonEmpty.toList) $ mapLastToken' f (NonEmpty.fromList xs)
 
 data Token
     = Integer    Int
