@@ -137,32 +137,20 @@ let
       # TODO(@Ericson2314): Stop using legacy dep attribute names
 
       #                                 host offset -> target offset
-      depsBuildBuild ? [ ] # -1 -> -1
-      ,
-      depsBuildBuildPropagated ? [ ] # -1 -> -1
-      ,
-      nativeBuildInputs ? [ ] # -1 ->  0  N.B. Legacy name
-      ,
-      propagatedNativeBuildInputs ? [ ] # -1 ->  0  N.B. Legacy name
-      ,
-      depsBuildTarget ? [ ] # -1 ->  1
-      ,
-      depsBuildTargetPropagated ? [ ] # -1 ->  1
-      ,
+      depsBuildBuild ? [ ], # -1 -> -1
+      depsBuildBuildPropagated ? [ ], # -1 -> -1
+      nativeBuildInputs ? [ ], # -1 ->  0  N.B. Legacy name
+      propagatedNativeBuildInputs ? [ ], # -1 ->  0  N.B. Legacy name
+      depsBuildTarget ? [ ], # -1 ->  1
+      depsBuildTargetPropagated ? [ ], # -1 ->  1
 
-      depsHostHost ? [ ] # 0 ->  0
-      ,
-      depsHostHostPropagated ? [ ] # 0 ->  0
-      ,
-      buildInputs ? [ ] # 0 ->  1  N.B. Legacy name
-      ,
-      propagatedBuildInputs ? [ ] # 0 ->  1  N.B. Legacy name
-      ,
+      depsHostHost ? [ ], # 0 ->  0
+      depsHostHostPropagated ? [ ], # 0 ->  0
+      buildInputs ? [ ], # 0 ->  1  N.B. Legacy name
+      propagatedBuildInputs ? [ ], # 0 ->  1  N.B. Legacy name
 
-      depsTargetTarget ? [ ] # 1 ->  1
-      ,
-      depsTargetTargetPropagated ? [ ] # 1 ->  1
-      ,
+      depsTargetTarget ? [ ], # 1 ->  1
+      depsTargetTargetPropagated ? [ ], # 1 ->  1
 
       checkInputs ? [ ],
       installCheckInputs ? [ ],
@@ -193,9 +181,8 @@ let
 
       # TODO(@Ericson2314): Make unconditional / resolve #33599
       # InstallCheck phase
-      doInstallCheck ? config.doCheckByDefault or false
+      doInstallCheck ? config.doCheckByDefault or false,
 
-      ,
       # TODO(@Ericson2314): Make always true and remove / resolve #178468
       strictDeps ? if config.strictDepsByDefault then
         true
@@ -236,9 +223,8 @@ let
       # but for anything complex, be prepared to debug if enabling.
       __structuredAttrs ? config.structuredAttrsByDefault or false,
 
-      env ? { }
+      env ? { },
 
-      ,
       ...
     }@attrs:
 

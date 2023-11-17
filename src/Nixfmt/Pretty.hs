@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE FlexibleInstances, OverloadedStrings, RankNTypes, TupleSections #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings, RankNTypes, TupleSections, LambdaCase #-}
 
 module Nixfmt.Pretty where
 
@@ -24,7 +24,7 @@ import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
   StringPart(..), Term(..), Token(..), TrailingComment(..), Trivium(..),
-  Whole(..), tokenText, mapFirstToken')
+  Whole(..), tokenText, mapFirstToken', mapLastToken')
 import Nixfmt.Util (commonIndentation, isSpaces, replaceMultiple)
 
 prettyCommentLine :: Text -> Doc
@@ -258,28 +258,49 @@ instance Pretty ParamAttr where
     pretty (ParamEllipsis ellipsis)
         = pretty ellipsis
 
--- Move comments around and inject trailing commas everywhere
-moveParamAttrComment :: ParamAttr -> ParamAttr
--- Simple parameter, move comment around
 -- Move comments around when switching from leading comma to trailing comma style:
 -- `, name # foo` → `name, #foo`
-moveParamAttrComment (ParamAttr (Ann trivia name (Just comment')) Nothing (Just (Ann trivia' comma Nothing)))
-    = ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann trivia' comma (Just comment')))
--- Simple parameter, move comment around and add trailing comma
--- Same as above, but also add trailing comma
-moveParamAttrComment (ParamAttr (Ann trivia name (Just comment')) Nothing Nothing)
-    = ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann [] TComma (Just comment')))
--- Other cases, just inject a trailing comma
-moveParamAttrComment (ParamAttr name def Nothing)
-    = ParamAttr name def (Just (Ann [] TComma Nothing))
+-- This only works for lines where the comma does not already have comments associated with it
+-- This assumes that all items already have a trailing comma from earlier pre-processing
+moveParamAttrComment :: ParamAttr -> ParamAttr
+-- Simple parameter
+moveParamAttrComment (ParamAttr (Ann trivia name (Just comment')) Nothing (Just (Ann [] comma Nothing)))
+    = ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann [] comma (Just comment')))
+-- Parameter with default value
+moveParamAttrComment (ParamAttr name (Just (qmark, def)) (Just (Ann [] comma Nothing)))
+    = ParamAttr name (Just (qmark, def')) (Just (Ann [] comma comment'))
+    where
+        -- Extract comment at the end of the line
+        (def', comment') = mapLastToken' (\case
+            (Ann trivia t (Just comment'')) -> (Ann trivia t Nothing, Just comment'')
+            ann -> (ann, Nothing)
+            ) def
 moveParamAttrComment x = x
 
 -- When a `, name` entry has some line comments before it, they are actually attached to the comment
 -- of the preceding item. Move them to the next one
+-- Also adds the trailing comma on the last element if necessary
 moveParamsComments :: [ParamAttr] -> [ParamAttr]
 moveParamsComments
-    ((ParamAttr name maybeDefault (Just (Ann trivia comma Nothing))) : (ParamAttr (Ann [] name' Nothing) maybeDefault' maybeComma') : xs)
-    = (ParamAttr name maybeDefault (Just (Ann [] comma Nothing))) : moveParamsComments ((ParamAttr (Ann trivia name' Nothing) maybeDefault' maybeComma') : xs)
+    -- , name1
+    -- # comment
+    -- , name2
+    ((ParamAttr name maybeDefault (Just (Ann trivia comma Nothing))) :
+     (ParamAttr (Ann trivia' name' Nothing) maybeDefault' maybeComma') :
+    xs)
+    = (ParamAttr name maybeDefault (Just (Ann [] comma Nothing)))
+    : moveParamsComments ((ParamAttr (Ann (trivia ++ trivia') name' Nothing) maybeDefault' maybeComma') : xs)
+-- This may seem like a nonsensical case, but keep in mind that blank lines also count as comments (trivia)
+moveParamsComments
+    -- , name
+    -- # comment
+    -- ellipsis
+    [(ParamAttr name maybeDefault (Just (Ann trivia comma Nothing)))
+    ,(ParamEllipsis (Ann trivia' name' trailing'))]
+    = [(ParamAttr name maybeDefault (Just (Ann [] comma Nothing)))
+    , (ParamEllipsis (Ann (trivia ++ trivia') name' trailing'))]
+-- Inject a trailing comma on the last element if nessecary
+moveParamsComments [(ParamAttr name def Nothing)] = [ParamAttr name def (Just (Ann [] TComma Nothing))]
 moveParamsComments (x : xs) = x : moveParamsComments xs
 moveParamsComments [] = []
 
@@ -295,10 +316,11 @@ instance Pretty Parameter where
     pretty (SetParameter bopen attrs bclose) =
         group $
             pretty bopen
-            <> (surroundWith sep $ nest 2 (sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments $ attrs))
+            <> (surroundWith sep $ nest 2 $ sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments $ attrs)
             <> pretty bclose
         where
-        -- pretty all ParamAttrs, but make the trailing comma of the last element specially
+        -- pretty all ParamAttrs, but mark the trailing comma of the last element specially
+        -- This is so that the trailing comma will only be printed in the expanded form
         handleTrailingComma :: [ParamAttr] -> [Doc]
         handleTrailingComma [] = []
         -- That's the case we're interested in
