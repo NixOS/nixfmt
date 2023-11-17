@@ -28,9 +28,7 @@
                 (
                   e:
                   ''
-                    iifname "${cfg.upstreamIface}" tcp dport ${
-                      builtins.toString e.sourcePort
-                    } dnat to ${e.destination}''
+                    iifname "${cfg.upstreamIface}" tcp dport ${builtins.toString e.sourcePort} dnat to ${e.destination}''
                 )
                 tcpPortMap
             )
@@ -42,9 +40,7 @@
                 (
                   e:
                   ''
-                    ifname "${cfg.upstreamIface}" udp dport ${
-                      builtins.toString e.sourcePort
-                    } dnat to ${e.destination}''
+                    ifname "${cfg.upstreamIface}" udp dport ${builtins.toString e.sourcePort} dnat to ${e.destination}''
                 )
                 udpPortMap
             )

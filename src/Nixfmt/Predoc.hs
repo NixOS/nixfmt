@@ -31,6 +31,7 @@ module Nixfmt.Predoc
     , Pretty
     , pretty
     , fixup
+    , unexpandSpacing'
     , layout
     , textWidth
     ) where
@@ -239,7 +240,7 @@ isComment (Node _ inner) = all (\x -> isComment x || isHardSpacing x) inner
 isComment _ = False
 
 --- Manually force a group to its compact layout, by replacing all relevant whitespace.
---- Does recurse into inner groups.
+--- Does not recurse into inner groups.
 unexpandSpacing :: Doc -> Doc
 unexpandSpacing [] = []
 unexpandSpacing ((Spacing Space):xs) = Spacing Hardspace : unexpandSpacing xs
@@ -251,6 +252,22 @@ unexpandSpacing (x:xs) = x : unexpandSpacing xs
 
 spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
 spanEnd p = fmap reverse . span p . reverse
+
+-- Manually force a group to its compact layout, by replacing all relevant whitespace.
+-- Does recurse into inner groups.
+-- An optional maximum line length limit may be specified.
+-- Fails if the doc contains hardlines or exceeds the length limit
+unexpandSpacing' :: Maybe Int -> Doc -> Maybe Doc
+unexpandSpacing' (Just n) _ | n < 0 = Nothing
+unexpandSpacing' _ [] = Just []
+unexpandSpacing' n (txt@(Text _ t):xs) = (txt :) <$> unexpandSpacing' (n <&> (subtract $ textWidth t)) xs
+unexpandSpacing' n (Spacing Hardspace:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> (subtract 1)) xs
+unexpandSpacing' n (Spacing Space:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> (subtract 1)) xs
+unexpandSpacing' n (Spacing Softspace:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> (subtract 1)) xs
+unexpandSpacing' n (Spacing Break:xs) = unexpandSpacing' n xs
+unexpandSpacing' n (Spacing Softbreak:xs) = unexpandSpacing' n xs
+unexpandSpacing' _ (Spacing _:_) = Nothing
+unexpandSpacing' n ((Node _ xs):ys) = unexpandSpacing' n $ xs <> ys
 
 -- | Fix up a Doc:
 -- - Move some spacings (those which are not relevant for group calculations)

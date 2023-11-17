@@ -14,12 +14,13 @@ import Data.Char (isSpace)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, isPrefixOf, isSuffixOf, stripPrefix)
 import qualified Data.Text as Text
-  (dropEnd, empty, init, isInfixOf, last, null, strip, takeWhile)
+  (dropEnd, empty, init, isInfixOf, last, null, strip, takeWhile, all)
 
 -- import Debug.Trace (traceShowId)
 import Nixfmt.Predoc
   (Doc, Pretty, base, emptyline, group, group', hardline, hardspace, hcat, line, line',
-  nest, newline, pretty, sepBy, surroundWith, softline, softline', text, comment, trailing, textWidth)
+  nest, newline, pretty, sepBy, surroundWith, softline, softline', text, comment, trailing, textWidth,
+  unexpandSpacing')
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
@@ -609,20 +610,35 @@ isSimpleString parts
 
 instance Pretty StringPart where
     pretty (TextPart t) = text t
+
+    -- Absorb terms
+    -- This is exceedingly rare (why would one do this anyways?); one instance in the entire Nixpkgs
     pretty (Interpolation (Whole (Term t) []))
         | isAbsorbable t
             = group $ text "${" <> prettyTerm t <> text "}"
 
+    -- For "simple" interpolations (see isSimple, but mostly just identifiers),
+    -- force onto one line, regardless of length
     pretty (Interpolation (Whole expr []))
         | isSimple expr
-            = text "${" <> pretty expr <> text "}"
+            = text "${" <> fromMaybe (pretty expr) (unexpandSpacing' Nothing (pretty expr)) <> text "}"
 
-    pretty (Interpolation whole)
-        = group $ text "${" <> line'
-            <> nest 2 (pretty whole) <> line'
-            <> text "}"
+    -- For interpolations, we try to render the content, to see how long it will be.
+    -- If the interpolation is single-line and shorter than 30 characters, we force it
+    -- onto that line, even if this would make it go over the line limit.
+    pretty (Interpolation whole) =
+        group $ text "${" <> inner <> text "}"
+        where
+        whole' = pretty whole
+        inner = fromMaybe
+            -- default
+            (surroundWith line' $ nest 2 $ whole')
+            -- force on one line if possible
+            (unexpandSpacing' (Just 30) whole')
 
 instance Pretty [StringPart] where
+    -- When the interpolation is the only thing on the string line,
+    -- then absorb the content (i.e. don't surround with line')
     pretty [Interpolation expr]
         = group $ text "${" <> pretty expr <> text "}"
 

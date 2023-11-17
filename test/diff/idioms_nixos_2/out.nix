@@ -756,12 +756,8 @@ in
             upgradeWarning = major: nixos: ''
               A legacy Nextcloud install (from before NixOS ${nixos}) may be installed.
 
-              After nextcloud${
-                toString major
-              } is installed successfully, you can safely upgrade
-              to ${toString (major + 1)}. The latest version available is nextcloud${
-                toString latest
-              }.
+              After nextcloud${toString major} is installed successfully, you can safely upgrade
+              to ${toString (major + 1)}. The latest version available is nextcloud${toString latest}.
 
               Please note that Nextcloud doesn't support upgrades across multiple major versions
               (i.e. an upgrade from 16 is possible to 17, but not 16 to 18).
@@ -1271,9 +1267,7 @@ in
               add_header Referrer-Policy no-referrer;
             ''}
             ${optionalString (cfg.https) ''
-              add_header Strict-Transport-Security "max-age=${
-                toString cfg.nginx.hstsMaxAge
-              }; includeSubDomains" always;
+              add_header Strict-Transport-Security "max-age=${toString cfg.nginx.hstsMaxAge}; includeSubDomains" always;
             ''}
             client_max_body_size ${cfg.maxUploadSize};
             fastcgi_buffers 64 4K;

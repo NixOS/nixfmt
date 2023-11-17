@@ -748,9 +748,7 @@ let
             (
               n: v:
               assert assertMsg (isString v || isBool v || isInt v || isDerivation v)
-                  "The ‘env’ attribute set can only contain derivation, string, boolean or integer attributes. The ‘${n}’ attribute is of type ${
-                    builtins.typeOf v
-                  }.";
+                  "The ‘env’ attribute set can only contain derivation, string, boolean or integer attributes. The ‘${n}’ attribute is of type ${builtins.typeOf v}.";
               v
             )
             env;

@@ -564,9 +564,7 @@ buildStdenv.mkDerivation ({
     '';
 
   postFixup = lib.optionalString crashreporterSupport ''
-    patchelf --add-rpath "${
-      lib.makeLibraryPath [ curl ]
-    }" $out/lib/${binaryName}/crashreporter
+    patchelf --add-rpath "${lib.makeLibraryPath [ curl ]}" $out/lib/${binaryName}/crashreporter
   '';
 
   doInstallCheck = true;

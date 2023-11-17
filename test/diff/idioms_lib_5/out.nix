@@ -181,9 +181,7 @@ let
   flakeNote = "\n Note: For `nix shell`, `nix build`, `nix develop` or any other Nix 2.4+\n (Flake) command, `--impure` must be passed in order to read this\n environment variable.\n    ";
 
   remediate_allowlist = allow_attr: rebuild_amendment: attrs: ''
-    a) To temporarily allow ${
-      remediation_phrase allow_attr
-    }, you can use an environment variable
+    a) To temporarily allow ${remediation_phrase allow_attr}, you can use an environment variable
        for a single invocation of the nix tools.
 
          $ export ${remediation_env_var allow_attr}=1
