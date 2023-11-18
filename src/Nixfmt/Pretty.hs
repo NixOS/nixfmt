@@ -11,7 +11,7 @@ module Nixfmt.Pretty where
 import Prelude hiding (String)
 
 import Data.Char (isSpace)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust, fromJust)
 import Data.Text (Text, isPrefixOf, isSuffixOf, stripPrefix)
 import qualified Data.Text as Text
   (dropEnd, empty, init, isInfixOf, last, null, strip, takeWhile, all)
@@ -378,11 +378,17 @@ prettyApp commentPre pre post commentPost f a
 
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
         (fWithoutComment, comment') = mapFirstToken' (\(Ann leading token trailing') -> (Ann [] token trailing', leading)) f
-        in
+
+        renderedF = pre <> group (absorbApp fWithoutComment)
+        renderedFUnexpanded = unexpandSpacing' Nothing renderedF
+      in
         (if null comment' then mempty else commentPre)
-        <> pretty comment' <> (group' False $
-            pre <> group (absorbApp fWithoutComment) <> line <> absorbLast a <> post)
-        <> (if null comment' then mempty else commentPost)
+        <> pretty comment' <> (
+            if isSimple (Application f a) && isJust (renderedFUnexpanded) then
+                (group' False $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a <> post)
+            else
+                (group' False $ renderedF <> line <> absorbLast a <> post)
+        ) <> (if null comment' then mempty else commentPost)
 
 isAbstractionWithAbsorbableTerm :: Expression -> Bool
 isAbstractionWithAbsorbableTerm (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t = True

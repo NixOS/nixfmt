@@ -308,8 +308,7 @@ rec {
         depth:
         if depthLimit != null && depth > depthLimit then
           if throwOnDepthLimit then
-            throw
-              "Exceeded maximum eval-depth limit of ${toString depthLimit} while trying to evaluate with `generators.withRecursion'!"
+            throw "Exceeded maximum eval-depth limit of ${toString depthLimit} while trying to evaluate with `generators.withRecursion'!"
           else
             const "<unevaluated>"
         else

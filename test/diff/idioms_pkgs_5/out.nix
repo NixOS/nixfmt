@@ -328,8 +328,7 @@ let
           else if isList dep then
             checkDependencyList' ([ index ] ++ positions) name dep
           else
-            throw
-              "Dependency is not of a valid type: ${
+            throw "Dependency is not of a valid type: ${
                 concatMapStrings (ix: "element ${toString ix} of ") ([ index ] ++ positions)
               }${name} for ${attrs.name or attrs.pname}"
         );
@@ -356,12 +355,8 @@ let
           ++ optionals doInstallCheck installCheckInputs;
         nativeBuildInputs' =
           nativeBuildInputs
-          ++
-            optional separateDebugInfo'
-              ../../build-support/setup-hooks/separate-debug-info.sh
-          ++
-            optional stdenv.hostPlatform.isWindows
-              ../../build-support/setup-hooks/win-dll-link.sh
+          ++ optional separateDebugInfo' ../../build-support/setup-hooks/separate-debug-info.sh
+          ++ optional stdenv.hostPlatform.isWindows ../../build-support/setup-hooks/win-dll-link.sh
           ++ optionals doCheck nativeCheckInputs
           ++ optionals doInstallCheck nativeInstallCheckInputs;
 
@@ -704,24 +699,16 @@ let
             # having to wait while nix builds a derivation that might not be used.
             # See also https://github.com/NixOS/nix/issues/4629
             optionalAttrs (attrs ? disallowedReferences) {
-              disallowedReferences =
-                map unsafeDerivationToUntrackedOutpath
-                  attrs.disallowedReferences;
+              disallowedReferences = map unsafeDerivationToUntrackedOutpath attrs.disallowedReferences;
             }
           // optionalAttrs (attrs ? disallowedRequisites) {
-            disallowedRequisites =
-              map unsafeDerivationToUntrackedOutpath
-                attrs.disallowedRequisites;
+            disallowedRequisites = map unsafeDerivationToUntrackedOutpath attrs.disallowedRequisites;
           }
           // optionalAttrs (attrs ? allowedReferences) {
-            allowedReferences =
-              mapNullable unsafeDerivationToUntrackedOutpath
-                attrs.allowedReferences;
+            allowedReferences = mapNullable unsafeDerivationToUntrackedOutpath attrs.allowedReferences;
           }
           // optionalAttrs (attrs ? allowedRequisites) {
-            allowedRequisites =
-              mapNullable unsafeDerivationToUntrackedOutpath
-                attrs.allowedRequisites;
+            allowedRequisites = mapNullable unsafeDerivationToUntrackedOutpath attrs.allowedRequisites;
           };
 
         meta = checkMeta.commonMeta {
@@ -738,8 +725,7 @@ let
           let
             overlappingNames = attrNames (builtins.intersectAttrs env derivationArg);
           in
-          assert assertMsg envIsExportable
-              "When using structured attributes, `env` must be an attribute set of environment variables.";
+          assert assertMsg envIsExportable "When using structured attributes, `env` must be an attribute set of environment variables.";
           assert assertMsg (overlappingNames == [ ])
               "The ‘env’ attribute set cannot contain any attributes passed to derivation. The following attributes are overlapping: ${concatStringsSep ", " overlappingNames}";
           mapAttrs
