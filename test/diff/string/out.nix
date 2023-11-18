@@ -62,9 +62,7 @@
     [${mkSectionName sectName}]
   ''
   ###
-  "-couch_ini ${cfg.package}/etc/default.ini ${configFile} ${
-    pkgs.writeText "couchdb-extra.ini" cfg.extraConfig
-  } ${cfg.configFile}"
+  "-couch_ini ${cfg.package}/etc/default.ini ${configFile} ${pkgs.writeText "couchdb-extra.ini" cfg.extraConfig} ${cfg.configFile}"
   ###
   ''exec i3-input -F "mark %s" -l 1 -P 'Mark: ' ''
   ###

@@ -547,9 +547,14 @@ isSimpleSelector (Selector _ (IDSelector _) Nothing) = True
 isSimpleSelector _                                   = False
 
 isSimple :: Expression -> Bool
+isSimple (Term (String (Ann [] _ Nothing))) = True
+isSimple (Term (Path (Ann [] _ Nothing))) = True
 isSimple (Term (Token (Ann [] (Identifier _) Nothing))) = True
 isSimple (Term (Selection t selectors))
     = isSimple (Term t) && all isSimpleSelector selectors
+-- Function applications of simple terms are simple up to two arguments
+isSimple (Application (Application (Application _ _) _) _) = False
+isSimple (Application f a) = isSimple f && isSimple a
 isSimple _ = False
 
 hasQuotes :: [StringPart] -> Bool

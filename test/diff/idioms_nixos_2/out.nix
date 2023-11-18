@@ -928,9 +928,7 @@ in
                   }
                   'datadirectory' => '${datadir}/data',
                   'skeletondirectory' => '${cfg.skeletonDirectory}',
-                  ${
-                    optionalString cfg.caching.apcu "'memcache.local' => '\\OC\\Memcache\\APCu',"
-                  }
+                  ${optionalString cfg.caching.apcu "'memcache.local' => '\\OC\\Memcache\\APCu',"}
                   'log_type' => '${cfg.logType}',
                   'loglevel' => '${builtins.toString cfg.logLevel}',
                   ${

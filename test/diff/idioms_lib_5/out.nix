@@ -246,13 +246,9 @@ let
           expectedOutputs;
     in
     ''
-      The package ${getName attrs} has set meta.outputsToInstall to: ${
-        builtins.concatStringsSep ", " expectedOutputs
-      }
+      The package ${getName attrs} has set meta.outputsToInstall to: ${builtins.concatStringsSep ", " expectedOutputs}
 
-      however ${getName attrs} only has the outputs: ${
-        builtins.concatStringsSep ", " actualOutputs
-      }
+      however ${getName attrs} only has the outputs: ${builtins.concatStringsSep ", " actualOutputs}
 
       and is missing the following ouputs:
 
@@ -471,9 +467,7 @@ let
           {
             valid = "no";
             reason = "non-source";
-            errormsg = "contains elements not built from source (‘${
-                showSourceType attrs.meta.sourceProvenance
-              }’)";
+            errormsg = "contains elements not built from source (‘${showSourceType attrs.meta.sourceProvenance}’)";
           }
         else if !allowBroken && attrs.meta.broken or false then
           {
