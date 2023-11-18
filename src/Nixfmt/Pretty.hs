@@ -657,10 +657,10 @@ instance Pretty [StringPart] where
     -- interpolations, make sure to indent based on the indentation of the line
     -- in the string.
     pretty (TextPart t : parts)
-        = text t <> nest indentation (hcat parts)
+        = text t <> base (nest indentation (hcat parts))
         where indentation = textWidth $ Text.takeWhile isSpace t
 
-    pretty parts = hcat parts
+    pretty parts = base $ hcat parts
 
 instance Pretty [[StringPart]] where
     pretty parts
