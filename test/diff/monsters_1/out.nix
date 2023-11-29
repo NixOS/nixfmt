@@ -124,7 +124,7 @@ stdenv.mkDerivation
           inherit
             # foo
             src
-          ;
+            ;
           # foo
           name
             # foo

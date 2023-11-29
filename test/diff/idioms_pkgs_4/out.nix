@@ -143,7 +143,7 @@ let
         cc
         overrides
         config
-      ;
+        ;
     };
 in
 

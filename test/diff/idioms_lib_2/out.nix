@@ -171,7 +171,7 @@ rec {
     seq
     deepSeq
     genericClosure
-  ;
+    ;
 
   ## nixpkgs version strings
 

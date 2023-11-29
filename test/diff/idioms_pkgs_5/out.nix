@@ -38,7 +38,7 @@ let
     splitString
     subtractLists
     unique
-  ;
+    ;
 
   checkMeta = import ./check-meta.nix {
     inherit lib config;
@@ -342,7 +342,7 @@ let
             hardeningDisable
             hardeningEnable
             supportedHardeningFlags
-          ;
+            ;
         }
       )
     else
@@ -717,7 +717,7 @@ let
             attrs
             pos
             references
-          ;
+            ;
         };
         validity = checkMeta.assertValidity { inherit meta attrs; };
 

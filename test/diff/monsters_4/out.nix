@@ -72,7 +72,7 @@ stdenv.mkDerivation # Foo
           # Foo
           inherit # Foo
             src
-          ; # Foo
+            ; # Foo
           name # Foo
             = # Foo
             "${pname}-${version}"; # Foo

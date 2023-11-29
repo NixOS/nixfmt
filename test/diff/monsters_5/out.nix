@@ -21,7 +21,7 @@ let
     (config.boot)
 
     kernelPatches
-  ;
+    ;
 
   inherit
 
@@ -30,14 +30,14 @@ let
     features
 
     randstructSeed
-  ;
+    ;
 
   inherit
 
     (config.boot.kernelPackages)
 
     kernel
-  ;
+    ;
 
   kernelModulesConf
 
@@ -163,7 +163,7 @@ in
                             inherit
 
                               randstructSeed
-                            ;
+                              ;
 
                             kernelPatches
 
