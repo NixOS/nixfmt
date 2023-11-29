@@ -702,7 +702,11 @@ prettySimpleString parts = group $
 
 prettyIndentedString :: [[StringPart]] -> Doc
 prettyIndentedString parts = group $ base $
-    text "''" <> line'
+    text "''"
+    -- Usually the `''` is followed by a potential line break.
+    -- However, for single-line strings it should be omitted, because often times a line break will
+    -- not reduce the indentation at all
+    <> (case parts of { _:_:_ -> line'; _ -> mempty })
     <> nest 2 (sepBy newline (map (prettyLine escape unescapeInterpol) parts))
     <> text "''"
     where escape = replaceMultiple
