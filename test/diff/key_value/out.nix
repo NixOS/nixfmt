@@ -41,7 +41,7 @@ rec {
       1 # d
     ;
   };
-  j = a: { b = 1; };
+  j = a: {b = 1;};
   k = a: {
     b = 1;
     c = 2;
@@ -55,8 +55,8 @@ rec {
       b = 1;
       c = 2;
     };
-  n = pkgs: { };
-  o = { pkgs, ... }: { };
+  n = pkgs: {};
+  o = {pkgs, ...}: {};
 
   a
     # b
@@ -66,5 +66,5 @@ rec {
   # d
   ;
 
-  p = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa { } a;
+  p = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {} a;
 }

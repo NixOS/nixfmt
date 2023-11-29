@@ -14,12 +14,12 @@
 # e.g. exhaustive cases. Its more a sanity check to make sure nobody defines
 # systems that overlap with existing ones and won't notice something amiss.
 #
-{ lib }:
+{lib}:
 with lib.lists;
 with lib.types;
 with lib.attrsets;
 with lib.strings;
-with (import ./inspect.nix { inherit lib; }).predicates;
+with (import ./inspect.nix {inherit lib;}).predicates;
 
 let
   inherit (lib.options) mergeOneOption;
@@ -29,7 +29,7 @@ let
     mapAttrs (
       name: value:
       assert type.check value;
-      setType type.name ({ inherit name; } // value)
+      setType type.name ({inherit name;} // value)
     );
 in
 
@@ -46,8 +46,8 @@ rec {
   types.significantByte = enum (attrValues significantBytes);
 
   significantBytes = setTypes types.openSignificantByte {
-    bigEndian = { };
-    littleEndian = { };
+    bigEndian = {};
+    littleEndian = {};
   };
 
   ################################################################################
@@ -453,14 +453,14 @@ rec {
   types.vendor = enum (attrValues vendors);
 
   vendors = setTypes types.openVendor {
-    apple = { };
-    pc = { };
+    apple = {};
+    pc = {};
     # Actually matters, unlocking some MinGW-w64-specific options in GCC. See
     # bottom of https://sourceforge.net/p/mingw-w64/wiki2/Unicode%20apps/
-    w64 = { };
+    w64 = {};
 
-    none = { };
-    unknown = { };
+    none = {};
+    unknown = {};
   };
 
   ################################################################################
@@ -474,13 +474,13 @@ rec {
   types.execFormat = enum (attrValues execFormats);
 
   execFormats = setTypes types.openExecFormat {
-    aout = { }; # a.out
-    elf = { };
-    macho = { };
-    pe = { };
-    wasm = { };
+    aout = {}; # a.out
+    elf = {};
+    macho = {};
+    pe = {};
+    wasm = {};
 
-    unknown = { };
+    unknown = {};
   };
 
   ################################################################################
@@ -494,8 +494,8 @@ rec {
   types.kernelFamily = enum (attrValues kernelFamilies);
 
   kernelFamilies = setTypes types.openKernelFamily {
-    bsd = { };
-    darwin = { };
+    bsd = {};
+    darwin = {};
   };
 
   ################################################################################
@@ -552,7 +552,7 @@ rec {
       };
       linux = {
         execFormat = elf;
-        families = { };
+        families = {};
       };
       netbsd = {
         execFormat = elf;
@@ -562,7 +562,7 @@ rec {
       };
       none = {
         execFormat = unknown;
-        families = { };
+        families = {};
       };
       openbsd = {
         execFormat = elf;
@@ -572,31 +572,31 @@ rec {
       };
       solaris = {
         execFormat = elf;
-        families = { };
+        families = {};
       };
       wasi = {
         execFormat = wasm;
-        families = { };
+        families = {};
       };
       redox = {
         execFormat = elf;
-        families = { };
+        families = {};
       };
       windows = {
         execFormat = pe;
-        families = { };
+        families = {};
       };
       ghcjs = {
         execFormat = unknown;
-        families = { };
+        families = {};
       };
       genode = {
         execFormat = elf;
-        families = { };
+        families = {};
       };
       mmixware = {
         execFormat = unknown;
-        families = { };
+        families = {};
       };
     }
     // {
@@ -619,8 +619,8 @@ rec {
   types.abi = enum (attrValues abis);
 
   abis = setTypes types.openAbi {
-    cygnus = { };
-    msvc = { };
+    cygnus = {};
+    msvc = {};
 
     # Note: eabi is specific to ARM and PowerPC.
     # On PowerPC, this corresponds to PPCEABI.
@@ -633,9 +633,9 @@ rec {
     };
 
     # Other architectures should use ELF in embedded situations.
-    elf = { };
+    elf = {};
 
-    androideabi = { };
+    androideabi = {};
     android = {
       assertions = [
         {
@@ -699,7 +699,7 @@ rec {
     musleabihf = {
       float = "hard";
     };
-    musl = { };
+    musl = {};
 
     uclibceabi = {
       float = "soft";
@@ -707,9 +707,9 @@ rec {
     uclibceabihf = {
       float = "hard";
     };
-    uclibc = { };
+    uclibc = {};
 
-    unknown = { };
+    unknown = {};
   };
 
   ################################################################################

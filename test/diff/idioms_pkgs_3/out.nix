@@ -9,14 +9,14 @@
   branding ? null,
   src,
   unpackPhase ? null,
-  extraPatches ? [ ],
+  extraPatches ? [],
   extraPostPatch ? "",
-  extraNativeBuildInputs ? [ ],
-  extraConfigureFlags ? [ ],
-  extraBuildInputs ? [ ],
-  extraMakeFlags ? [ ],
-  extraPassthru ? { },
-  tests ? [ ],
+  extraNativeBuildInputs ? [],
+  extraConfigureFlags ? [],
+  extraBuildInputs ? [],
+  extraMakeFlags ? [],
+  extraPassthru ? {},
+  tests ? [],
 }:
 
 {
@@ -188,7 +188,7 @@ let
   # Compile the wasm32 sysroot to build the RLBox Sandbox
   # https://hacks.mozilla.org/2021/12/webassembly-and-back-again-fine-grained-sandboxing-in-firefox-95/
   # We only link c++ libs here, our compiler wrapper can find wasi libc and crt itself.
-  wasiSysRoot = runCommand "wasi-sysroot" { } ''
+  wasiSysRoot = runCommand "wasi-sysroot" {} ''
     mkdir -p $out/lib/wasm32-wasi
     for lib in ${pkgsCross.wasi32.llvmPackages.libcxx}/lib/* ${pkgsCross.wasi32.llvmPackages.libcxxabi}/lib/*; do
       ln -s $lib $out/lib/wasm32-wasi
@@ -196,7 +196,7 @@ let
   '';
 
   distributionIni = pkgs.writeText "distribution.ini" (
-    lib.generators.toINI { } {
+    lib.generators.toINI {} {
       # Some light branding indicating this build uses our distro preferences
       Global = {
         id = "nixos";
@@ -237,7 +237,7 @@ buildStdenv.mkDerivation ({
 
   inherit src unpackPhase meta;
 
-  outputs = [ "out" ] ++ lib.optionals crashreporterSupport [ "symbols" ];
+  outputs = ["out"] ++ lib.optionals crashreporterSupport ["symbols"];
 
   # Add another configure-build-profiling run before the final configure phase if we build with pgo
   preConfigurePhases = lib.optionals pgoSupport [
@@ -305,7 +305,7 @@ buildStdenv.mkDerivation ({
       dump_syms
       patchelf
     ]
-    ++ lib.optionals pgoSupport [ xvfb-run ]
+    ++ lib.optionals pgoSupport [xvfb-run]
     ++ extraNativeBuildInputs;
 
   setOutputFlags = false; # `./mach configure` doesn't understand `--*dir=` flags.
@@ -380,7 +380,7 @@ buildStdenv.mkDerivation ({
     '';
 
   # firefox has a different definition of configurePlatforms from nixpkgs, see configureFlags
-  configurePlatforms = [ ];
+  configurePlatforms = [];
 
   configureFlags =
     [
@@ -485,7 +485,7 @@ buildStdenv.mkDerivation ({
       zip
       zlib
     ]
-    ++ [ (if (lib.versionAtLeast version "103") then nss_latest else nss_esr) ]
+    ++ [(if (lib.versionAtLeast version "103") then nss_latest else nss_esr)]
     ++ lib.optional alsaSupport alsa-lib
     ++ lib.optional jackSupport libjack2
     ++ lib.optional pulseaudioSupport libpulseaudio # only headers are needed
@@ -562,7 +562,7 @@ buildStdenv.mkDerivation ({
     '';
 
   postFixup = lib.optionalString crashreporterSupport ''
-    patchelf --add-rpath "${lib.makeLibraryPath [ curl ]}" $out/lib/${binaryName}/crashreporter
+    patchelf --add-rpath "${lib.makeLibraryPath [curl]}" $out/lib/${binaryName}/crashreporter
   '';
 
   doInstallCheck = true;
@@ -587,7 +587,7 @@ buildStdenv.mkDerivation ({
     inherit wasiSysRoot;
   } // extraPassthru;
 
-  hardeningDisable = [ "format" ]; # -Werror=format-security
+  hardeningDisable = ["format"]; # -Werror=format-security
 
   # the build system verifies checksums of the bundled rust sources
   # ./third_party/rust is be patched by our libtool fixup code in stdenv
@@ -602,5 +602,5 @@ buildStdenv.mkDerivation ({
   # on aarch64 this is also required
   dontUpdateAutotoolsGnuConfigScripts = true;
 
-  requiredSystemFeatures = [ "big-parallel" ];
+  requiredSystemFeatures = ["big-parallel"];
 })

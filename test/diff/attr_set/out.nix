@@ -1,12 +1,12 @@
 [
-  { }
+  {}
   {
     # a
   }
-  { a = 1; }
-  { a = 1; }
+  {a = 1;}
+  {a = 1;}
 
-  { b = 1; }
+  {b = 1;}
   {
     b = 1; # c
   }
@@ -19,7 +19,7 @@
     b = 1; # c
   }
 
-  rec { c = 1; }
+  rec {c = 1;}
   rec {
     c = 1; # d
   }
@@ -60,7 +60,7 @@
                 a = rec {
                   a = {
                     a = rec {
-                      a = { };
+                      a = {};
                     };
                   };
                 };
@@ -123,13 +123,13 @@
         some
         flags # multiline
       ]
-      ++ [ short ]
+      ++ [short]
       ++ [
         more
         stuff # multiline
       ]
-      ++ (if foo then [ bar ] else [ baz ])
-      ++ [ ]
+      ++ (if foo then [bar] else [baz])
+      ++ []
       ++ (optionals condition [
         more
         items
@@ -142,13 +142,9 @@
     ];
   }
   {
-    systemd.initrdBi = lib.mkIf config.boot.initrd.services.lvm.enable [ pkgs.vdo ];
-    systemd.initrdBin = lib.mkIf config.boot.initrd.services.lvm.enable [
-      pkgs.vdo
-    ];
-    systemd.initrdBin_ = lib.mkIf config.boot.initrd.services.lvm.enable [
-      pkgs.vdo
-    ];
+    systemd.initrdBi = lib.mkIf config.boot.initrd.services.lvm.enable [pkgs.vdo];
+    systemd.initrdBin = lib.mkIf config.boot.initrd.services.lvm.enable [pkgs.vdo];
+    systemd.initrdBin_ = lib.mkIf config.boot.initrd.services.lvm.enable [pkgs.vdo];
     systemd.initrdBin__ = lib.mkIf config.boot.initrd.services.lvm.enable [
       pkgs.vdo
     ];

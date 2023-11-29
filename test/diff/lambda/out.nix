@@ -3,7 +3,7 @@ let
 in
 [
   (
-    { lib }:
+    {lib}:
     let
       foo = 1;
     in
@@ -13,7 +13,7 @@ in
     /* Collection of functions useful for debugging
        Some comment
     */
-    { lib }:
+    {lib}:
     let
       foo = 1;
     in
@@ -24,13 +24,13 @@ in
     d
   )
   (
-    { }:
+    {}:
     b: # c
     d
   )
   (
     a:
-    { }: # c
+    {}: # c
     d
   )
   (a: d)
@@ -52,27 +52,27 @@ in
   (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
   (
     {
-      pkgs ? import ./.. { },
+      pkgs ? import ./.. {},
       locationsXml,
     }:
     null
   )
   (
     a: b: c:
-    { }:
+    {}:
     a: b: c:
     a
   )
 
   (
-    { pkgs, ... }:
+    {pkgs, ...}:
     {
       # Stuff
     }
   )
 
   (
-    { pkgs, ... }:
+    {pkgs, ...}:
     let
     in
     pkgs
@@ -80,7 +80,7 @@ in
 
   (
     a:
-    { b, ... }:
+    {b, ...}:
     c: {
       # Stuff
     }
@@ -88,7 +88,7 @@ in
 
   (
     a:
-    { b, c, ... }:
+    {b, c, ...}:
     d: {
       # Stuff
     }
