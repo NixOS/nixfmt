@@ -37,12 +37,15 @@ newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
 
 data Ann a
     = Ann Trivia a (Maybe TrailingComment)
-    deriving (Show)
 
 -- | Equality of annotated syntax is defined as equality of their corresponding
 -- semantics, thus ignoring the annotations.
 instance Eq a => Eq (Ann a) where
     Ann _ x _ == Ann _ y _ = x == y
+
+-- Trivia is ignored for Eq, so also don't show
+instance Show a => Show (Ann a) where
+    show (Ann _ a _) = show a
 
 data Item a
     -- | An item with a list of line comments that apply to it. There is no
@@ -106,7 +109,22 @@ data Parameter
     = IDParameter Leaf
     | SetParameter Leaf [ParamAttr] Leaf
     | ContextParameter Parameter Leaf Parameter
-    deriving (Eq, Show)
+    deriving (Show)
+
+instance Eq Parameter where
+    (IDParameter l) == (IDParameter r) = l == r
+    (SetParameter l1 l2 l3) == (SetParameter r1 r2 r3) =
+        l1 == r1
+        && cmp l2 r2
+        && l3 == r3
+        where
+            -- Compare two lists of paramters, but for the last argument don't compare whether or not there is a trailing comma
+            cmp [] [] = True
+            cmp [(ParamAttr x1 x2 _)] [(ParamAttr y1 y2 _)] = x1 == y1 && x2 == y2
+            cmp (x:xs) (y:ys) = x == y && cmp xs ys
+            cmp _ _ = False
+    (ContextParameter l1 l2 l3) == (ContextParameter r1 r2 r3) = l1 == r1 && l2 == r2 && l3 == r3
+    _ == _ = False
 
 data Expression
     = Term Term

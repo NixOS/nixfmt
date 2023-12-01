@@ -19,7 +19,7 @@ import qualified Data.Text as Text
 -- import Debug.Trace (traceShowId)
 import Nixfmt.Predoc
   (Doc, Pretty, base, emptyline, group, group', hardline, hardspace, hcat, line, line',
-  nest, newline, pretty, sepBy, surroundWith, softline, softline', text, comment, trailing, textWidth,
+  nest, newline, pretty, sepBy, surroundWith, softline, softline', text, comment, trailingComment, trailing, textWidth,
   unexpandSpacing')
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
@@ -47,7 +47,7 @@ moveTrailingCommentUp a = a
 
 instance Pretty TrailingComment where
     pretty (TrailingComment c)
-        = hardspace <> comment ("# " <> c) <> hardline
+        = hardspace <> trailingComment ("# " <> c) <> hardline
 
 instance Pretty Trivium where
     pretty EmptyLine        = emptyline

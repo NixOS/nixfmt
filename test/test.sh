@@ -41,7 +41,7 @@ for file in test/diff/**/in.nix; do
   outfile="$(dirname "$file")/out.nix"
 
   echo "Checking $file …"
-  out="$(nixfmt < "$file")"
+  out="$(nixfmt --verify < "$file")"
 
   if diff --color=always --unified "$outfile" <(echo "$out"); then
     echo "[OK]"

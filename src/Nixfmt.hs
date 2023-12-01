@@ -11,6 +11,7 @@ module Nixfmt
     , formatVerify
     ) where
 
+import Data.Function ((&))
 import Data.Bifunctor (bimap, first)
 import Data.Text (Text, unpack)
 import qualified Text.Megaparsec as Megaparsec (parse)
@@ -35,13 +36,16 @@ formatVerify :: Width -> FilePath -> Text -> Either String Text
 formatVerify width path unformatted = do
     unformattedParsed <- parse unformatted
     let formattedOnce = layout width unformattedParsed
-    formattedOnceParsed <- parse formattedOnce
+    formattedOnceParsed <- flip first (parse formattedOnce) $
+        (\x -> pleaseReport "Fails to parse after formatting.\n" <> x <> "\n\nAfter Formatting:\n" <> unpack formattedOnce)
     let formattedTwice = layout width formattedOnceParsed
     if formattedOnceParsed /= unformattedParsed
-    then pleaseReport "Parses differently after formatting."
+    then Left $ pleaseReport "Parses differently after formatting." &
+        \x -> (x <> "\n\nBefore formatting:\n" <> (show unformattedParsed) <> "\n\nAfter formatting:\n" <> (show formattedOnceParsed))
     else if formattedOnce /= formattedTwice
-    then flip first (pleaseReport "Nixfmt is not idempotent.") $ \x -> (x <> "\nAfter one formatting:\n" <> unpack formattedOnce <> "\nAfter two:\n" <> unpack formattedTwice)
+    then Left $ pleaseReport "Nixfmt is not idempotent." &
+        \x -> (x <> "\n\nAfter one formatting:\n" <> unpack formattedOnce <> "\n\nAfter two:\n" <> unpack formattedTwice)
     else Right formattedOnce
     where
         parse = first errorBundlePretty . Megaparsec.parse file path
-        pleaseReport x = Left $ path <> ": " <> x <> " This is a bug in nixfmt. Please report it at https://github.com/serokell/nixfmt"
+        pleaseReport x = path <> ": " <> x <> " This is a bug in nixfmt. Please report it at https://github.com/serokell/nixfmt"

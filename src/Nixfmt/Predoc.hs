@@ -11,6 +11,7 @@
 module Nixfmt.Predoc
     ( text
     , comment
+    , trailingComment
     , trailing
     , sepBy
     , surroundWith
@@ -95,7 +96,10 @@ data DocAnn
 
 -- Comments do not count towards some line length limits
 -- Trailing tokens have the property that they will only exist in expanded groups, and "swallowed" in compact groups
-data TextAnn = Regular | Comment | Trailing
+-- Trailing comments are like comments, but marked differently for special treatment further down the line
+-- (The difference is that trailing comments are guaranteed to be single "# text" tokens, while all other comments
+-- may be composite and multi-line)
+data TextAnn = Regular | Comment | TrailingComment | Trailing
     deriving (Show, Eq)
 
 -- | Single document element. Documents are modeled as lists of these elements
@@ -131,6 +135,11 @@ text t  = [Text Regular t]
 comment :: Text -> Doc
 comment "" = []
 comment t  = [Text Comment t]
+
+-- Comment at the end of a line
+trailingComment :: Text -> Doc
+trailingComment "" = []
+trailingComment t  = [Text TrailingComment t]
 
 -- Text tokens that are only needed in expanded groups
 trailing :: Text -> Doc
@@ -236,6 +245,7 @@ isHardSpacing _           = False
 -- Therefore nodes are counted as comments if they only contain comments or hard spacings
 isComment :: DocE -> Bool
 isComment (Text Comment _) = True
+isComment (Text TrailingComment _) = True
 isComment (Node _ inner) = all (\x -> isComment x || isHardSpacing x) inner
 isComment _ = False
 
@@ -340,31 +350,36 @@ textWidth :: Text -> Int
 textWidth = Text.length
 
 -- | Attempt to fit a list of documents in a single line of a specific width.
-fits :: Int -> Doc -> Maybe Text
-fits c _ | c < 0 = Nothing
-fits _ [] = Just ""
+-- ni — next indentation. Only used for trailing comment calculations
+-- c — allowed width
+fits :: Int -> Int -> Doc -> Maybe Text
+fits _ c _ | c < 0 = Nothing
+fits _ _ [] = Just ""
 -- This case is impossible in the input thanks to fixup, but may happen
 -- due to our recursion on nodes below
-fits c (Spacing a:Spacing b:xs) = fits c (Spacing (mergeSpacings a b):xs)
-fits c (x:xs) = case x of
-    Text Regular t       -> (t<>) <$> fits (c - textWidth t) xs
-    Text Comment t       -> (t<>) <$> fits c xs
-    Text Trailing _      -> fits c xs
-    Spacing Softbreak    -> fits c xs
-    Spacing Break        -> fits c xs
-    Spacing Softspace    -> (" "<>) <$> fits (c - 1) xs
-    Spacing Space        -> (" "<>) <$> fits (c - 1) xs
-    Spacing Hardspace    -> (" "<>) <$> fits (c - 1) xs
+fits ni c (Spacing a:Spacing b:xs) = fits ni c (Spacing (mergeSpacings a b):xs)
+fits ni c (x:xs) = case x of
+    Text Regular t       -> (t<>) <$> fits (ni - textWidth t) (c - textWidth t) xs
+    Text Comment t       -> (t<>) <$> fits ni c xs
+    Text TrailingComment t | ni == 0 -> ((" " <> t) <>) <$> fits ni c xs
+                         | otherwise -> (t<>) <$> fits ni c xs
+    Text Trailing _      -> fits ni c xs
+    Spacing Softbreak    -> fits ni c xs
+    Spacing Break        -> fits ni c xs
+    Spacing Softspace    -> (" "<>) <$> fits (ni - 1) (c - 1) xs
+    Spacing Space        -> (" "<>) <$> fits (ni - 1) (c - 1) xs
+    Spacing Hardspace    -> (" "<>) <$> fits (ni - 1) (c - 1) xs
     Spacing Hardline     -> Nothing
     Spacing Emptyline    -> Nothing
     Spacing (Newlines _) -> Nothing
-    Node _ ys            -> fits c $ ys ++ xs
+    Node _ ys            -> fits ni c $ ys ++ xs
 
 -- | Find the width of the first line in a list of documents, using target
 -- width 0, which always forces line breaks when possible.
 firstLineWidth :: Doc -> Int
 firstLineWidth []                       = 0
 firstLineWidth (Text Comment _ : xs)    = firstLineWidth xs
+firstLineWidth (Text TrailingComment _ : xs) = firstLineWidth xs
 firstLineWidth (Text _ t : xs)          = textWidth t + firstLineWidth xs
 -- This case is impossible in the input thanks to fixup, but may happen
 -- due to our recursion on nodes below
@@ -387,20 +402,41 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
           go c (Spacing Hardspace : xs) = go (c - 1) xs
           go c (Spacing _ : _)          = maxWidth - c <= targetWidth
           go c (Node (Group _) ys : xs)     =
-              case fits (c - firstLineWidth xs) ys of
+              case fits 0 (c - firstLineWidth xs) ys of
                    Nothing -> go c (ys ++ xs)
                    Just t  -> go (c - textWidth t) xs
 
           go c (Node _ ys : xs)         = go c (ys ++ xs)
 
 -- Calculate the amount of indentation until the first token
+-- This assumes the input to be an unexpanded group at the start of a new line
 firstLineIndent :: Doc -> Int
 firstLineIndent ((Node (Nest n) xs) : _) = n + firstLineIndent xs
 firstLineIndent ((Node _ xs) : _) = firstLineIndent xs
 firstLineIndent _ = 0
 
+-- From a current indent and following tokens, calculate the effective indent of the next text token
+nextIndent :: Int -> [Chunk] -> Int
+nextIndent _ (Chunk ti (Text _ _) : _) = ti
+nextIndent _ (Chunk _ (Spacing s) : Chunk ti (Node (Nest l) ys) : xs)
+    | s == Break || s == Space || s == Hardline
+    = nextIndent (ti + l) (map (Chunk (ti+l)) ys ++ xs)
+nextIndent _ (Chunk ti (Spacing s) : xs)
+    | s == Break || s == Space || s == Hardline
+    = nextIndent ti xs
+nextIndent _ (Chunk _ (Spacing Emptyline) : _) = 0
+nextIndent _ (Chunk _ (Spacing (Newlines _)) : _) = 0
+nextIndent _ (Chunk ti (Spacing Softbreak) : xs) = nextIndent ti xs
+nextIndent _ (Chunk ti (Spacing Softspace) : xs) = nextIndent ti xs
+nextIndent ci (Chunk ti (Node (Nest l) ys) : xs) = nextIndent ci (map (Chunk (ti+l)) ys ++ xs)
+nextIndent ci (Chunk _ (Node Base ys) : xs) = nextIndent ci (map (Chunk ci) ys ++ xs)
+nextIndent ci (Chunk ti (Node _ ys) : xs) = nextIndent ci (map (Chunk ti) ys ++ xs)
+nextIndent ci (_:xs) = nextIndent ci xs
+nextIndent _ [] = 0
+
 -- | A document element with target indentation
 data Chunk = Chunk Int DocE
+    deriving (Show)
 
 -- | Create `n` newlines
 newlines :: Int -> Text
@@ -447,6 +483,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Chunk 0 $ Node (Group False) 
             putText ts = put (cc + sum (map textWidth ts), ci) $> ts
             putNL = put (0, ti)
         in case x of
+        Text TrailingComment t | not needsIndent && cc == nextIndent ci xs -> putText [" ", t]
         Text _ t             -> putText [lineStart, t]
 
         -- This code treats whitespace as "expanded"
@@ -522,8 +559,8 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Chunk 0 $ Node (Group False) 
                     _ -> grp
                 i = ti + firstLineIndent grp'
             in
-            fits (tw - firstLineWidth rest) grp'
+            fits ((nextIndent ci (map (Chunk ci) rest)) - ci) (tw - firstLineWidth rest) grp'
             <&> \t -> ([indent i, t], (i + textWidth t, ci))
         else
-            fits (tw + (ci - cc) - firstLineWidth rest) grp
+            fits ((nextIndent ci (map (Chunk ci) rest)) - cc) (tw + (ci - cc) - firstLineWidth rest) grp
             <&> \t -> ([t], (cc + textWidth t, ci))

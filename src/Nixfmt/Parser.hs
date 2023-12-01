@@ -146,9 +146,10 @@ isEmptyLine [TextPart t] = isSpaces t
 isEmptyLine _            = False
 
 -- | Drop the first line of a string if it is empty.
+-- However, don't drop it if it is the only line (empty string)
 fixFirstLine :: [[StringPart]] -> [[StringPart]]
 fixFirstLine []       = []
-fixFirstLine (x : xs) = if isEmptyLine x' then xs else x' : xs
+fixFirstLine (x : xs) = if isEmptyLine x' && not (null xs) then xs else x' : xs
     where x' = normalizeLine x
 
 -- | Empty the last line if it contains only spaces.
