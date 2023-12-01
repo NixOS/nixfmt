@@ -224,7 +224,7 @@ prettyTerm (Parenthesized (Ann pre paropen post) (Application f a) parclose)
 
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose)
-    = base $ group $ pretty paropen <> lineL <> nest 2 (group expr) <> lineR <> pretty parclose
+    = base $ group $ pretty (moveTrailingCommentUp paropen) <> lineL <> nest 2 (group expr) <> lineR <> pretty parclose
   where
     (lineL, lineR) =
       case expr of
@@ -313,12 +313,12 @@ instance Pretty Parameter where
 
     -- {}:
     pretty (SetParameter bopen [] bclose)
-        = group $ pretty bopen <> pretty bclose
+        = group $ pretty (moveTrailingCommentUp bopen) <> pretty bclose
 
     -- { stuff }:
     pretty (SetParameter bopen attrs bclose) =
         group $
-            pretty bopen
+            pretty (moveTrailingCommentUp bopen)
             <> (surroundWith sep $ nest 2 $ sepBy (sep<>hardspace) $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments $ attrs)
             <> pretty bclose
         where
@@ -379,7 +379,9 @@ prettyApp commentPre pre post commentPost f a
         absorbLast arg = group' False $ nest 2 $ pretty arg
 
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
-        (fWithoutComment, comment') = mapFirstToken' (\(Ann leading token trailing') -> (Ann [] token trailing', leading)) f
+        (fWithoutComment, comment') = mapFirstToken'
+            ((\(Ann leading token trailing') -> (Ann [] token trailing', leading)) . moveTrailingCommentUp)
+            f
 
         renderedF = pre <> group (absorbApp fWithoutComment)
         renderedFUnexpanded = unexpandSpacing' Nothing renderedF

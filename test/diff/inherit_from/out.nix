@@ -157,79 +157,72 @@
   }
   {
     inherit
-      (  # b
-        c
-      )
+      # b
+      (c)
       f
       h
       ;
   }
   {
     inherit
-      (  # b
-        c
-      )
+      # b
+      (c)
       f
       h # i
       ;
   }
   {
     inherit
-      (  # b
-        c
-      )
+      # b
+      (c)
       f # g
       h
       ;
   }
   {
     inherit
-      (  # b
-        c
-      )
+      # b
+      (c)
       f # g
       h # i
       ;
   }
   {
     inherit
-      (  # b
-        c
-      ) # e
+      # b
+      (c) # e
       f
       h
       ;
   }
   {
     inherit
-      (  # b
-        c
-      ) # e
+      # b
+      (c) # e
       f
       h # i
       ;
   }
   {
     inherit
-      (  # b
-        c
-      ) # e
+      # b
+      (c) # e
       f # g
       h
       ;
   }
   {
     inherit
-      (  # b
-        c
-      ) # e
+      # b
+      (c) # e
       f # g
       h # i
       ;
   }
   {
     inherit
-      (  # b
+      # b
+      (
         c # d
       )
       f
@@ -238,7 +231,8 @@
   }
   {
     inherit
-      (  # b
+      # b
+      (
         c # d
       )
       f
@@ -247,7 +241,8 @@
   }
   {
     inherit
-      (  # b
+      # b
+      (
         c # d
       )
       f # g
@@ -256,7 +251,8 @@
   }
   {
     inherit
-      (  # b
+      # b
+      (
         c # d
       )
       f # g
@@ -265,7 +261,8 @@
   }
   {
     inherit
-      (  # b
+      # b
+      (
         c # d
       ) # e
       f
@@ -274,7 +271,8 @@
   }
   {
     inherit
-      (  # b
+      # b
+      (
         c # d
       ) # e
       f
@@ -283,7 +281,8 @@
   }
   {
     inherit
-      (  # b
+      # b
+      (
         c # d
       ) # e
       f # g
@@ -292,7 +291,8 @@
   }
   {
     inherit
-      (  # b
+      # b
+      (
         c # d
       ) # e
       f # g
@@ -429,79 +429,72 @@
   }
   {
     inherit # a
-      (  # b
-        c
-      )
+      # b
+      (c)
       f
       h
       ;
   }
   {
     inherit # a
-      (  # b
-        c
-      )
+      # b
+      (c)
       f
       h # i
       ;
   }
   {
     inherit # a
-      (  # b
-        c
-      )
+      # b
+      (c)
       f # g
       h
       ;
   }
   {
     inherit # a
-      (  # b
-        c
-      )
+      # b
+      (c)
       f # g
       h # i
       ;
   }
   {
     inherit # a
-      (  # b
-        c
-      ) # e
+      # b
+      (c) # e
       f
       h
       ;
   }
   {
     inherit # a
-      (  # b
-        c
-      ) # e
+      # b
+      (c) # e
       f
       h # i
       ;
   }
   {
     inherit # a
-      (  # b
-        c
-      ) # e
+      # b
+      (c) # e
       f # g
       h
       ;
   }
   {
     inherit # a
-      (  # b
-        c
-      ) # e
+      # b
+      (c) # e
       f # g
       h # i
       ;
   }
   {
     inherit # a
-      (  # b
+      # b
+      (
         c # d
       )
       f
@@ -510,7 +503,8 @@
   }
   {
     inherit # a
-      (  # b
+      # b
+      (
         c # d
       )
       f
@@ -519,7 +513,8 @@
   }
   {
     inherit # a
-      (  # b
+      # b
+      (
         c # d
       )
       f # g
@@ -528,7 +523,8 @@
   }
   {
     inherit # a
-      (  # b
+      # b
+      (
         c # d
       )
       f # g
@@ -537,7 +533,8 @@
   }
   {
     inherit # a
-      (  # b
+      # b
+      (
         c # d
       ) # e
       f
@@ -546,7 +543,8 @@
   }
   {
     inherit # a
-      (  # b
+      # b
+      (
         c # d
       ) # e
       f
@@ -555,7 +553,8 @@
   }
   {
     inherit # a
-      (  # b
+      # b
+      (
         c # d
       ) # e
       f # g
@@ -564,7 +563,8 @@
   }
   {
     inherit # a
-      (  # b
+      # b
+      (
         c # d
       ) # e
       f # g

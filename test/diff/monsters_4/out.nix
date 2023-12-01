@@ -1,4 +1,5 @@
-{  # Foo
+# Foo
+{
   stdenv # Foo
   , # Foo
   lib # Foo
@@ -43,28 +44,28 @@ stdenv.mkDerivation # Foo
       "0.0.5"; # Foo
     src # Foo
       = # Foo
-      fetchFromGitLab # Foo
-        {
-          # Foo
-          domain # Foo
-            = # Foo
-            "gitlab.gnome.org"; # Foo
-          group # Foo
-            = # Foo
-            "World"; # Foo
-          owner # Foo
-            = # Foo
-            "design"; # Foo
-          repo # Foo
-            = # Foo
-            "contrast"; # Foo
-          rev # Foo
-            = # Foo
-            version; # Foo
-          sha256 # Foo
-            = # Foo
-            "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0="; # Foo
-        }; # Foo
+      # Foo
+      fetchFromGitLab {
+        # Foo
+        domain # Foo
+          = # Foo
+          "gitlab.gnome.org"; # Foo
+        group # Foo
+          = # Foo
+          "World"; # Foo
+        owner # Foo
+          = # Foo
+          "design"; # Foo
+        repo # Foo
+          = # Foo
+          "contrast"; # Foo
+        rev # Foo
+          = # Foo
+          version; # Foo
+        sha256 # Foo
+          = # Foo
+          "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0="; # Foo
+      }; # Foo
     cargoDeps # Foo
       = # Foo
       rustPlatform.fetchCargoTarball # Foo
