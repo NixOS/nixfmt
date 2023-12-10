@@ -166,14 +166,14 @@ let
       #
       # TODO(@Ericson2314): Make [ "build" "host" ] always the default / resolve #87909
       configurePlatforms ? optionals
-          (
-            stdenv.hostPlatform != stdenv.buildPlatform
-            || config.configurePlatformsByDefault
-          )
-          [
-            "build"
-            "host"
-          ],
+        (
+          stdenv.hostPlatform != stdenv.buildPlatform
+          || config.configurePlatformsByDefault
+        )
+        [
+          "build"
+          "host"
+        ],
 
       # TODO(@Ericson2314): Make unconditional / resolve #33599
       # Check phase
@@ -494,7 +494,7 @@ let
                 else
                   # we cannot coerce null to a string below
                   assert assertMsg (attrs ? version && attrs.version != null)
-                      "The ‘version’ attribute cannot be null.";
+                    "The ‘version’ attribute cannot be null.";
                   "${attrs.pname}${staticMarker}${hostSuffix}-${attrs.version}"
               );
           })
@@ -725,12 +725,12 @@ let
           in
           assert assertMsg envIsExportable "When using structured attributes, `env` must be an attribute set of environment variables.";
           assert assertMsg (overlappingNames == [])
-              "The ‘env’ attribute set cannot contain any attributes passed to derivation. The following attributes are overlapping: ${concatStringsSep ", " overlappingNames}";
+            "The ‘env’ attribute set cannot contain any attributes passed to derivation. The following attributes are overlapping: ${concatStringsSep ", " overlappingNames}";
           mapAttrs
             (
               n: v:
               assert assertMsg (isString v || isBool v || isInt v || isDerivation v)
-                  "The ‘env’ attribute set can only contain derivation, string, boolean or integer attributes. The ‘${n}’ attribute is of type ${builtins.typeOf v}.";
+                "The ‘env’ attribute set can only contain derivation, string, boolean or integer attributes. The ‘${n}’ attribute is of type ${builtins.typeOf v}.";
               v
             )
             env;

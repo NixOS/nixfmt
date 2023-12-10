@@ -11,10 +11,10 @@ module Nixfmt.Pretty where
 import Prelude hiding (String)
 
 import Data.Char (isSpace)
-import Data.Maybe (fromMaybe, isJust, fromJust)
+import Data.Maybe (fromMaybe, isJust, fromJust, maybeToList)
 import Data.Text (Text, isPrefixOf, isSuffixOf, stripPrefix)
 import qualified Data.Text as Text
-  (dropEnd, empty, init, isInfixOf, last, null, strip, takeWhile, all)
+  (dropEnd, empty, init, isInfixOf, last, null, strip, takeWhile)
 
 -- import Debug.Trace (traceShowId)
 import Nixfmt.Predoc
@@ -25,7 +25,7 @@ import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
   StringPart(..), Term(..), Token(..), TrailingComment(..), Trivium(..),
-  Whole(..), tokenText, mapFirstToken', mapLastToken')
+  Whole(..), tokenText, mapFirstToken, mapFirstToken', mapLastToken')
 import Nixfmt.Util (commonIndentation, isSpaces, replaceMultiple)
 
 prettyCommentLine :: Text -> Doc
@@ -134,7 +134,7 @@ instance Pretty Binder where
               (Term _) -> group' False (line <> pretty expr)
               -- Function call
               -- Absorb if all arguments except the last fit into the line, start on new line otherwise
-              (Application f a) -> prettyApp hardline line mempty mempty f a
+              (Application f a) -> prettyApp False line False f a
               -- Absorb function declarations but only those with simple parameter(s)
               (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> hardspace <> group expr
               -- With expression with absorbable body: Try to absorb and keep the semicolon attached, spread otherwise
@@ -148,7 +148,7 @@ instance Pretty Binder where
                 group' False $ line <> pretty l <> line <> group' True (pretty TUpdate <> hardspace <> prettyTermWide t)
               -- Case 2b: LHS fits onto first line, RHS is a function application
               (Operation l (Ann [] TUpdate Nothing) (Application f a)) ->
-                line <> (group l) <> line <> prettyApp hardline (pretty TUpdate <> hardspace) mempty mempty f a
+                line <> (group l) <> line <> prettyApp False (pretty TUpdate <> hardspace) False f a
               -- Special case `++` operations to be more compact in some cases
               -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
               (Operation (Term t) (Ann [] TConcat Nothing) b) | isAbsorbable t ->
@@ -158,7 +158,7 @@ instance Pretty Binder where
                 group' False $ line <> pretty l <> line <> group' True (pretty TConcat <> hardspace <> prettyTermWide t)
               -- Case 2b: LHS fits onto first line, RHS is a function application
               (Operation l (Ann [] TConcat Nothing) (Application f a)) ->
-                line <> (group l) <> line <> prettyApp hardline (pretty TConcat <> hardspace) mempty mempty f a
+                line <> (group l) <> line <> prettyApp False (pretty TConcat <> hardspace) False f a
               -- Everything else:
               -- If it fits on one line, it fits
               -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
@@ -214,12 +214,9 @@ prettyTerm (List (Ann pre paropen post) items parclose) =
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
 
 -- Parenthesized application
-prettyTerm (Parenthesized (Ann pre paropen post) (Application f a) parclose)
-    = base $ group $ pretty (Ann pre paropen Nothing) <> nest 2 (
-            -- Move comment trailing on '(' to next line, combine with comment from application
-            case pretty post of { [] -> []; c -> hardline <> c }
-            <> base (prettyApp hardline mempty line' hardline f a)
-            <> case pretty post of  { [] -> mempty; _ -> hardline }
+prettyTerm (Parenthesized paropen (Application f a) parclose)
+    = base $ group $ pretty (moveTrailingCommentUp paropen) <> nest 2 (
+            base $ prettyApp True mempty True f a
         ) <> pretty parclose
 
 -- Parentheses
@@ -364,17 +361,24 @@ instance Pretty Parameter where
 -- then start on a new line instead".
 -- Out of necessity, callers may also inject `commentPre` and `commentPost`, which will be added before/after the entire
 -- thing if the function has a comment associated with its first token
-prettyApp :: Doc -> Doc -> Doc -> Doc -> Expression -> Expression -> Doc
-prettyApp commentPre pre post commentPost f a
+prettyApp :: Bool -> Doc -> Bool -> Expression -> Expression -> Doc
+prettyApp indentFunction pre hasPost f a
     = let
         absorbApp (Application f' a') = (group $ absorbApp f') <> line <> (nest 2 (group a'))
-        absorbApp expr = pretty expr
+        absorbApp expr
+            | indentFunction && (null comment') = nest 2 $ group' False $ line' <> pretty expr
+            | otherwise = pretty expr
 
         absorbLast (Term t) | isAbsorbable t
             = group' True $ nest 2 $ prettyTerm t
         absorbLast (Term (Parenthesized (Ann pre' open post') expr close))
             = group' True $ nest 2 $ base $ pretty (Ann pre' open Nothing)
-                <> (surroundWith line' $ group $ nest 2 $ pretty post' <> pretty expr)
+                -- Move any tryiling comments on the opening parenthesis down into the body
+                <> (surroundWith line' $ group $ nest 2 $ base $
+                    mapFirstToken
+                        (\(Ann leading token trailing') -> (Ann (maybeToList (toLineComment <$> post') ++ leading) token trailing'))
+                        expr
+                )
                 <> pretty close
         absorbLast arg = group' False $ nest 2 $ pretty arg
 
@@ -385,14 +389,17 @@ prettyApp commentPre pre post commentPost f a
 
         renderedF = pre <> group (absorbApp fWithoutComment)
         renderedFUnexpanded = unexpandSpacing' Nothing renderedF
+
+        post = if hasPost then line' else mempty
       in
-        (if null comment' then mempty else commentPre)
-        <> pretty comment' <> (
+        pretty comment'
+        <> (
             if isSimple (Application f a) && isJust (renderedFUnexpanded) then
                 (group' False $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a <> post)
             else
                 (group' False $ renderedF <> line <> absorbLast a <> post)
-        ) <> (if null comment' then mempty else commentPost)
+        )
+        <> (if hasPost && not (null comment') then hardline else mempty)
 
 isAbstractionWithAbsorbableTerm :: Expression -> Bool
 isAbstractionWithAbsorbableTerm (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t = True
@@ -498,7 +505,7 @@ instance Pretty Expression where
         = pretty param <> pretty colon <> line <> pretty body
 
     pretty (Application f a)
-        = prettyApp mempty mempty mempty mempty f a
+        = base $ prettyApp False mempty False f a
 
     -- not chainable binary operators: <, >, <=, >=, ==, !=
     pretty (Operation a op@(Ann _ op' _) b)
@@ -520,7 +527,7 @@ instance Pretty Expression where
             -- Force nested operations to start on a new line
             absorbOperation x@(Operation _ _ _) = group' False $ line <> pretty x
             -- Force applications to start on a new line if more than the last argument is multiline
-            absorbOperation (Application f a) = group $ prettyApp hardline line mempty mempty f a
+            absorbOperation (Application f a) = group $ prettyApp False line False f a
             absorbOperation x = hardspace <> pretty x
 
             prettyOperation :: (Maybe Leaf, Expression) -> Doc

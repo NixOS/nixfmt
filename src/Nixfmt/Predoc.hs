@@ -41,10 +41,11 @@ import Data.List (intersperse)
 import Data.Function ((&))
 import Data.Functor ((<&>), ($>))
 import Data.Functor.Identity (runIdentity)
+import Data.Bifunctor (second)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (Text, concat, length, replicate, strip)
 import GHC.Stack (HasCallStack)
--- import Debug.Trace (traceShow, traceShowId)
+import Debug.Trace (traceShow, traceShowId)
 import Control.Applicative ((<|>))
 import Control.Monad.Trans.State.Strict (State, StateT, StateT(..), mapStateT, state, runState, evalState, get, put)
 
@@ -279,6 +280,11 @@ unexpandSpacing' n (Spacing Softbreak:xs) = unexpandSpacing' n xs
 unexpandSpacing' _ (Spacing _:_) = Nothing
 unexpandSpacing' n ((Node _ xs):ys) = unexpandSpacing' n $ xs <> ys
 
+simplifyNode :: DocAnn -> Doc -> Doc
+simplifyNode _ [] = []
+simplifyNode (Group False) [Node (Group False) body] = body
+simplifyNode _ x = x
+
 -- | Fix up a Doc:
 -- - Move some spacings (those which are not relevant for group calculations)
 --   out of the start/end of Groups and Nests if possible.
@@ -303,7 +309,7 @@ fixup (a@(Spacing _) : Node ann xs : ys) =
         -- For the leading side, also move out comments out of groups, they are kinda the same thing
         -- (We could move out trailing comments too but it would make no difference)
         (pre, rest)  = span (\x -> isHardSpacing x || (moveComment && isComment x)) $ fixup xs
-        (post, body) = spanEnd isHardSpacing rest
+        (post, body) = (second $ simplifyNode ann) $ spanEnd isHardSpacing rest
     in if null body then
         -- Dissolve empty node
         fixup $ (a : pre) ++ post ++ ys
@@ -314,7 +320,7 @@ fixup (Node ann xs : ys) =
     let
         moveComment = case ann of { Nest _ -> False; _ -> True }
         (pre, rest)  = span (\x -> isHardSpacing x || (moveComment && isComment x)) $ fixup xs
-        (post, body) = spanEnd isHardSpacing rest
+        (post, body) = (second $ simplifyNode ann) $ spanEnd isHardSpacing rest
     in if null body then
         fixup $ pre ++ post ++ ys
     else

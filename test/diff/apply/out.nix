@@ -340,4 +340,54 @@
         (map (x: ''"'' + x + ''"''))
       ];
   }
+  # Function calls with multiline functions
+  {
+    foo =
+      (callPackage ../generic-builders/manifest.nix {
+        # A lot of values here
+      }).overrideAttrs
+        (
+          prevAttrs: {
+            # stuff here
+          }
+        );
+    # Variant with a selection on the function without parentheses
+    foo2 =
+      {
+        # A lot of values here
+      }
+      .overrideAttrs
+        (
+          prevAttrs: {
+            # stuff here
+          }
+        );
+    # Also test within parenthesized function instead of just attribute sets
+    foo3 =
+      (
+        (callPackage ../generic-builders/manifest.nix {
+          # A lot of values here
+        }).overrideAttrs
+        stuff
+        (
+          prevAttrs: {
+            # stuff here
+          }
+        )
+      );
+    # Add a comment at a bad place
+    foo4 =
+      (
+        # comment
+        (callPackage ../generic-builders/manifest.nix {
+          # A lot of values here
+        }).overrideAttrs
+          stuff
+          (
+            prevAttrs: {
+              # stuff here
+            }
+          )
+      );
+  }
 ]
