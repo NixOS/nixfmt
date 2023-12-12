@@ -18,7 +18,7 @@ jobs:
   check:
     runs-on: [self-hosted, nix]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: reuse lint
         run: nix shell .#packages.x86_64-linux.reuse -c reuse lint
@@ -47,7 +47,7 @@ jobs:
     runs-on: [self-hosted, nix]
     if: ${{ github.ref == 'refs/heads/master' }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: deploy webdemo
         run: |
