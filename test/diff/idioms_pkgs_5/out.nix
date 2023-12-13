@@ -1,4 +1,4 @@
-{lib, config}:
+{ lib, config }:
 
 stdenv:
 
@@ -56,7 +56,7 @@ let
       # separate lines, because Nix would only show the last line of the comment.
 
       # An infinite recursion here can be caused by having the attribute names of expression `e` in `.overrideAttrs(finalAttrs: previousAttrs: e)` depend on `finalAttrs`. Only the attribute values of `e` can depend on `finalAttrs`.
-      args = rattrs (args // {inherit finalPackage overrideAttrs;});
+      args = rattrs (args // { inherit finalPackage overrideAttrs; });
       #              ^^^^
 
       overrideAttrs =
@@ -137,30 +137,30 @@ let
       # TODO(@Ericson2314): Stop using legacy dep attribute names
 
       #                                 host offset -> target offset
-      depsBuildBuild ? [], # -1 -> -1
-      depsBuildBuildPropagated ? [], # -1 -> -1
-      nativeBuildInputs ? [], # -1 ->  0  N.B. Legacy name
-      propagatedNativeBuildInputs ? [], # -1 ->  0  N.B. Legacy name
-      depsBuildTarget ? [], # -1 ->  1
-      depsBuildTargetPropagated ? [], # -1 ->  1
+      depsBuildBuild ? [ ], # -1 -> -1
+      depsBuildBuildPropagated ? [ ], # -1 -> -1
+      nativeBuildInputs ? [ ], # -1 ->  0  N.B. Legacy name
+      propagatedNativeBuildInputs ? [ ], # -1 ->  0  N.B. Legacy name
+      depsBuildTarget ? [ ], # -1 ->  1
+      depsBuildTargetPropagated ? [ ], # -1 ->  1
 
-      depsHostHost ? [], # 0 ->  0
-      depsHostHostPropagated ? [], # 0 ->  0
-      buildInputs ? [], # 0 ->  1  N.B. Legacy name
-      propagatedBuildInputs ? [], # 0 ->  1  N.B. Legacy name
+      depsHostHost ? [ ], # 0 ->  0
+      depsHostHostPropagated ? [ ], # 0 ->  0
+      buildInputs ? [ ], # 0 ->  1  N.B. Legacy name
+      propagatedBuildInputs ? [ ], # 0 ->  1  N.B. Legacy name
 
-      depsTargetTarget ? [], # 1 ->  1
-      depsTargetTargetPropagated ? [], # 1 ->  1
+      depsTargetTarget ? [ ], # 1 ->  1
+      depsTargetTargetPropagated ? [ ], # 1 ->  1
 
-      checkInputs ? [],
-      installCheckInputs ? [],
-      nativeCheckInputs ? [],
-      nativeInstallCheckInputs ? [],
+      checkInputs ? [ ],
+      installCheckInputs ? [ ],
+      nativeCheckInputs ? [ ],
+      nativeInstallCheckInputs ? [ ],
 
       # Configure Phase
-      configureFlags ? [],
-      cmakeFlags ? [],
-      mesonFlags ? [],
+      configureFlags ? [ ],
+      cmakeFlags ? [ ],
+      mesonFlags ? [ ],
       # Target is not included by default because most programs don't care.
       # Including it then would cause needless mass rebuilds.
       #
@@ -191,8 +191,8 @@ let
 
       enableParallelBuilding ? config.enableParallelBuildingByDefault,
 
-      meta ? {},
-      passthru ? {},
+      meta ? { },
+      passthru ? { },
       pos ? # position used in error messages and for meta.position
         (
           if attrs.meta.description or null != null then
@@ -203,17 +203,17 @@ let
             builtins.unsafeGetAttrPos "name" attrs
         ),
       separateDebugInfo ? false,
-      outputs ? ["out"],
+      outputs ? [ "out" ],
       __darwinAllowLocalNetworking ? false,
-      __impureHostDeps ? [],
-      __propagatedImpureHostDeps ? [],
+      __impureHostDeps ? [ ],
+      __propagatedImpureHostDeps ? [ ],
       sandboxProfile ? "",
       propagatedSandboxProfile ? "",
 
-      hardeningEnable ? [],
-      hardeningDisable ? [],
+      hardeningEnable ? [ ],
+      hardeningDisable ? [ ],
 
-      patches ? [],
+      patches ? [ ],
 
       __contentAddressed ?
         (!attrs ? outputHash) # Fixed-output drvs can't be content addressed too
@@ -223,7 +223,7 @@ let
       # but for anything complex, be prepared to debug if enabling.
       __structuredAttrs ? config.structuredAttrsByDefault or false,
 
-      env ? {},
+      env ? { },
 
       ...
     }@attrs:
@@ -277,7 +277,7 @@ let
           any (x: x == "fortify") hardeningDisable
         # disabling fortify implies fortify3 should also be disabled
         then
-          unique (hardeningDisable ++ ["fortify3"])
+          unique (hardeningDisable ++ [ "fortify3" ])
         else
           hardeningDisable;
       supportedHardeningFlags = [
@@ -308,7 +308,7 @@ let
           remove "pie" supportedHardeningFlags;
       enabledHardeningOptions =
         if builtins.elem "all" hardeningDisable' then
-          []
+          [ ]
         else
           subtractLists hardeningDisable' (defaultHardeningFlags ++ hardeningEnable);
       # hardeningDisable additionally supports "all".
@@ -316,7 +316,7 @@ let
         hardeningEnable ++ remove "all" hardeningDisable
       );
 
-      checkDependencyList = checkDependencyList' [];
+      checkDependencyList = checkDependencyList' [ ];
       checkDependencyList' =
         positions: name: deps:
         flip imap1 deps (
@@ -326,17 +326,17 @@ let
           then
             dep
           else if isList dep then
-            checkDependencyList' ([index] ++ positions) name dep
+            checkDependencyList' ([ index ] ++ positions) name dep
           else
             throw "Dependency is not of a valid type: ${
-              concatMapStrings (ix: "element ${toString ix} of ") ([index] ++ positions)
+              concatMapStrings (ix: "element ${toString ix} of ") ([ index ] ++ positions)
             }${name} for ${attrs.name or attrs.pname}"
         );
     in
     if builtins.length erroneousHardeningFlags != 0 then
       abort (
         "mkDerivation was called with unsupported hardening flags: "
-        + lib.generators.toPretty {} {
+        + lib.generators.toPretty { } {
           inherit
             erroneousHardeningFlags
             hardeningDisable
@@ -422,7 +422,7 @@ let
         ];
 
         computedSandboxProfile =
-          concatMap (input: input.__propagatedSandboxProfile or [])
+          concatMap (input: input.__propagatedSandboxProfile or [ ])
             (
               stdenv.extraNativeBuildInputs
               ++ stdenv.extraBuildInputs
@@ -430,11 +430,11 @@ let
             );
 
         computedPropagatedSandboxProfile =
-          concatMap (input: input.__propagatedSandboxProfile or [])
+          concatMap (input: input.__propagatedSandboxProfile or [ ])
             (concatLists propagatedDependencies);
 
         computedImpureHostDeps = unique (
-          concatMap (input: input.__propagatedImpureHostDeps or []) (
+          concatMap (input: input.__propagatedImpureHostDeps or [ ]) (
             stdenv.extraNativeBuildInputs
             ++ stdenv.extraBuildInputs
             ++ concatLists dependencies
@@ -442,7 +442,7 @@ let
         );
 
         computedPropagatedImpureHostDeps = unique (
-          concatMap (input: input.__propagatedImpureHostDeps or []) (
+          concatMap (input: input.__propagatedImpureHostDeps or [ ]) (
             concatLists propagatedDependencies
           )
         );
@@ -498,7 +498,7 @@ let
                   "${attrs.pname}${staticMarker}${hostSuffix}-${attrs.version}"
               );
           })
-          // optionalAttrs __structuredAttrs {env = checkedEnv;}
+          // optionalAttrs __structuredAttrs { env = checkedEnv; }
           // {
             builder = attrs.realBuilder or stdenv.shell;
             args =
@@ -634,12 +634,14 @@ let
           }
           //
             optionalAttrs
-              (hardeningDisable != [] || hardeningEnable != [] || stdenv.hostPlatform.isMusl)
-              {NIX_HARDENING_ENABLE = enabledHardeningOptions;}
+              (
+                hardeningDisable != [ ] || hardeningEnable != [ ] || stdenv.hostPlatform.isMusl
+              )
+              { NIX_HARDENING_ENABLE = enabledHardeningOptions; }
           //
             optionalAttrs (stdenv.hostPlatform.isx86_64 && stdenv.hostPlatform ? gcc.arch)
               {
-                requiredSystemFeatures = attrs.requiredSystemFeatures or [] ++ [
+                requiredSystemFeatures = attrs.requiredSystemFeatures or [ ] ++ [
                   "gccarch-${stdenv.hostPlatform.gcc.arch}"
                 ];
               }
@@ -649,7 +651,7 @@ let
             __sandboxProfile =
               let
                 profiles =
-                  [stdenv.extraSandboxProfile]
+                  [ stdenv.extraSandboxProfile ]
                   ++ computedSandboxProfile
                   ++ computedPropagatedSandboxProfile
                   ++ [
@@ -660,7 +662,7 @@ let
               in
               final;
             __propagatedSandboxProfile = unique (
-              computedPropagatedSandboxProfile ++ [propagatedSandboxProfile]
+              computedPropagatedSandboxProfile ++ [ propagatedSandboxProfile ]
             );
             __impureHostDeps =
               computedImpureHostDeps
@@ -717,14 +719,14 @@ let
             references
             ;
         };
-        validity = checkMeta.assertValidity {inherit meta attrs;};
+        validity = checkMeta.assertValidity { inherit meta attrs; };
 
         checkedEnv =
           let
             overlappingNames = attrNames (builtins.intersectAttrs env derivationArg);
           in
           assert assertMsg envIsExportable "When using structured attributes, `env` must be an attribute set of environment variables.";
-          assert assertMsg (overlappingNames == [])
+          assert assertMsg (overlappingNames == [ ])
             "The ‘env’ attribute set cannot contain any attributes passed to derivation. The following attributes are overlapping: ${concatStringsSep ", " overlappingNames}";
           mapAttrs
             (
@@ -750,7 +752,7 @@ let
                 # Add a name in case the original drv didn't have one
                 name = derivationArg.name or "inputDerivation";
                 # This always only has one output
-                outputs = ["out"];
+                outputs = [ "out" ];
 
                 # Propagate the original builder and arguments, since we override
                 # them and they might contain references to build inputs
@@ -779,8 +781,8 @@ let
                 # anymore.
                 allowedReferences = null;
                 allowedRequisites = null;
-                disallowedReferences = [];
-                disallowedRequisites = [];
+                disallowedReferences = [ ];
+                disallowedRequisites = [ ];
               }
             );
 

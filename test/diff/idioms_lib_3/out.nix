@@ -12,7 +12,7 @@
 #
 # Tests can be found in ./tests/misc.nix
 # Documentation in the manual, #sec-generators
-{lib}:
+{ lib }:
 with (lib).trivial;
 let
   libStr = lib.strings;
@@ -28,14 +28,14 @@ rec {
   # The builtin `toString` function has some strange defaults,
   # suitable for bash scripts but not much else.
   mkValueStringDefault =
-    {}:
+    { }:
     v:
     with builtins;
     let
       err =
         t: v:
         abort (
-          "generators.mkValueStringDefault: " + "${t} not supported: ${toPretty {} v}"
+          "generators.mkValueStringDefault: " + "${t} not supported: ${toPretty { } v}"
         );
     in
     if isInt v then
@@ -81,10 +81,10 @@ rec {
   # > "f\:oo:bar"
   mkKeyValueDefault =
     {
-      mkValueString ? mkValueStringDefault {},
+      mkValueString ? mkValueStringDefault { },
     }:
     sep: k: v:
-    "${libStr.escape [sep] k}${sep}${mkValueString v}";
+    "${libStr.escape [ sep ] k}${sep}${mkValueString v}";
 
   ## -- FILE FORMAT GENERATORS --
 
@@ -93,16 +93,16 @@ rec {
   # mkKeyValue is the same as in toINI.
   toKeyValue =
     {
-      mkKeyValue ? mkKeyValueDefault {} "=",
+      mkKeyValue ? mkKeyValueDefault { } "=",
       listsAsDuplicateKeys ? false,
     }:
     let
       mkLine = k: v: mkKeyValue k v + "\n";
       mkLines =
         if listsAsDuplicateKeys then
-          k: v: map (mkLine k) (if lib.isList v then v else [v])
+          k: v: map (mkLine k) (if lib.isList v then v else [ v ])
         else
-          k: v: [(mkLine k v)];
+          k: v: [ (mkLine k v) ];
     in
     attrs:
     libStr.concatStrings (lib.concatLists (libAttr.mapAttrsToList mkLines attrs));
@@ -139,7 +139,7 @@ rec {
           name
       ),
       # format a setting line from key and value
-      mkKeyValue ? mkKeyValueDefault {} "=",
+      mkKeyValue ? mkKeyValueDefault { } "=",
       # allow lists as values for duplicate keys
       listsAsDuplicateKeys ? false,
     }:
@@ -154,7 +154,7 @@ rec {
         ''
           [${mkSectionName sectName}]
         ''
-        + toKeyValue {inherit mkKeyValue listsAsDuplicateKeys;} sectValues;
+        + toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } sectValues;
     in
     # map input to ini sections
     mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
@@ -202,18 +202,18 @@ rec {
           name
       ),
       # format a setting line from key and value
-      mkKeyValue ? mkKeyValueDefault {} "=",
+      mkKeyValue ? mkKeyValueDefault { } "=",
       # allow lists as values for duplicate keys
       listsAsDuplicateKeys ? false,
     }:
-    {globalSection, sections}:
+    { globalSection, sections }:
     (
-      if globalSection == {} then
+      if globalSection == { } then
         ""
       else
-        (toKeyValue {inherit mkKeyValue listsAsDuplicateKeys;} globalSection) + "\n"
+        (toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } globalSection) + "\n"
     )
-    + (toINI {inherit mkSectionName mkKeyValue listsAsDuplicateKeys;} sections);
+    + (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; } sections);
 
   # Generate a git-config file from an attrset.
   #
@@ -245,7 +245,7 @@ rec {
           subsections = tail sections;
           subsection = concatStringsSep "." subsections;
         in
-        if containsQuote || subsections == [] then
+        if containsQuote || subsections == [ ] then
           name
         else
           ''${section} "${subsection}"'';
@@ -254,7 +254,7 @@ rec {
       mkKeyValue =
         k: v:
         let
-          mkKeyValue = mkKeyValueDefault {} " = " k;
+          mkKeyValue = mkKeyValueDefault { } " = " k;
         in
         concatStringsSep "\n" (map (kv: "	" + mkKeyValue kv) (lib.toList v));
 
@@ -264,22 +264,22 @@ rec {
           recurse =
             path: value:
             if isAttrs value && !lib.isDerivation value then
-              lib.mapAttrsToList (name: value: recurse ([name] ++ path) value) value
+              lib.mapAttrsToList (name: value: recurse ([ name ] ++ path) value) value
             else if length path > 1 then
-              {${concatStringsSep "." (lib.reverseList (tail path))}.${head path} = value;}
+              { ${concatStringsSep "." (lib.reverseList (tail path))}.${head path} = value; }
             else
-              {${head path} = value;};
+              { ${head path} = value; };
         in
         attrs:
-        lib.foldl lib.recursiveUpdate {} (lib.flatten (recurse [] attrs));
+        lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs));
 
-      toINI_ = toINI {inherit mkKeyValue mkSectionName;};
+      toINI_ = toINI { inherit mkKeyValue mkSectionName; };
     in
     toINI_ (gitFlattenAttrs attrs);
 
   # Generates JSON from an arbitrary (non-function) value.
   # For more information see the documentation of the builtin.
-  toJSON = {}: builtins.toJSON;
+  toJSON = { }: builtins.toJSON;
 
   # YAML has been a strict superset of JSON since 1.2, so we
   # use toJSON. Before it only had a few differences referring
@@ -416,7 +416,7 @@ rec {
         else if isPath v then
           toString v
         else if isList v then
-          if v == [] then
+          if v == [ ] then
             "[ ]"
           else
             "["
@@ -432,12 +432,12 @@ rec {
                 fna
             );
           in
-          if fna == {} then "<function>" else "<function, args: {${showFnas}}>"
+          if fna == { } then "<function>" else "<function, args: {${showFnas}}>"
         else if isAttrs v then
           # apply pretty values if allowed
           if allowPrettyValues && v ? __pretty && v ? val then
             v.__pretty v.val
-          else if v == {} then
+          else if v == { } then
             "{ }"
           else if v ? type && v.type == "derivation" then
             "<derivation ${v.name or "???"}>"
@@ -465,7 +465,7 @@ rec {
 
   # PLIST handling
   toPlist =
-    {}:
+    { }:
     v:
     let
       isFloat = builtins.isFloat or (x: false);
@@ -547,7 +547,7 @@ rec {
   # Note that integers are translated to Integer and never
   # the Natural type.
   toDhall =
-    {}@args:
+    { }@args:
     v:
     with builtins;
     let

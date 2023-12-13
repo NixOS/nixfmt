@@ -2,7 +2,7 @@
   (
     # To find infinite recursion in NixOS option docs:
     # builtins.trace opt.loc
-    [docOption] ++ optionals subOptionsVisible subOptions
+    [ docOption ] ++ optionals subOptionsVisible subOptions
   )
   (
     # Filter out git
@@ -37,7 +37,7 @@
     # comment on operator inside
     || baseName == "tests.nix"
     # comment absorbable term
-    || {}
+    || { }
     # comment absorbable term 2
     || {
       foo = "bar"; # multiline
@@ -68,13 +68,13 @@
   (
     # Don't bother wrapping unless we actually have plugins, since the wrapper will stop automatic downloading
     # of plugins, which might be counterintuitive if someone just wants a vanilla Terraform.
-    if actualPlugins == [] then
-      terraform.overrideAttrs (orig: {passthru = orig.passthru // passthru;})
+    if actualPlugins == [ ] then
+      terraform.overrideAttrs (orig: { passthru = orig.passthru // passthru; })
     else
       lib.appendToName "with-plugins" (
         stdenv.mkDerivation {
           inherit (terraform) meta pname version;
-          nativeBuildInputs = [makeWrapper];
+          nativeBuildInputs = [ makeWrapper ];
         }
       )
   )
@@ -159,13 +159,13 @@
       some
       flags # multiline
     ]
-    ++ [short]
+    ++ [ short ]
     ++ [
       more
       stuff # multiline
     ]
-    ++ (if foo then [bar] else [baz])
-    ++ []
+    ++ (if foo then [ bar ] else [ baz ])
+    ++ [ ]
     ++ (optionals condition [
       more
       items
@@ -195,14 +195,14 @@
       || cccccccccccccccccccc && ddddddddddddddddd
       || eeeeeeeeeeeeeeeeeeee && fffffffffffffffffffffffffff
     then
-      []
+      [ ]
     else if
       aaaaaaaaaaaaaaaaaaaaa
       || bbbbbbbbbbbbbbbbbbb && cccccccccccccccccccccccccccccccc
       || ddddddddddddddddd && eeeeeeeeeeeeeeeeeeee
       || fffffffffffffffffffffffffff
     then
-      []
+      [ ]
     else if
       aaaaaaaaaaaaaa && bbbbbbbbbbbb && aaaaaaaaaaaaaa && bbbbbbbbbbbb
       ||
@@ -216,9 +216,9 @@
         && eeeeeeeeeeeeeeeeeeee
         && fffffffffffffffffffffffffff
     then
-      []
+      [ ]
     else
-      {}
+      { }
   )
 
   # Indentation
@@ -228,7 +228,7 @@
       zip
       zlib
     ]
-    ++ [(if (lib.versionAtLeast version "103") then nss_latest else nss_esr)]
+    ++ [ (if (lib.versionAtLeast version "103") then nss_latest else nss_esr) ]
   )
 
   # Indentation with parenthesized multiline function call

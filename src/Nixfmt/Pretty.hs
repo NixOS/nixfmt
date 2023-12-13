@@ -172,7 +172,7 @@ instance Pretty Binder where
 prettySet :: Bool -> (Maybe Leaf, Leaf, Items Binder, Leaf) -> Doc
 -- Empty, non-recursive attribute set
 prettySet _ (Nothing, Ann [] paropen Nothing, Items [], parclose@(Ann [] _ _))
-    = pretty paropen <> pretty parclose
+    = pretty paropen <> hardspace <> pretty parclose
 -- Singleton sets are allowed to fit onto one line,
 -- but apart from that always expand.
 prettySet wide (krec, Ann pre paropen post, binders, parclose)
@@ -181,7 +181,7 @@ prettySet wide (krec, Ann pre paropen post, binders, parclose)
         <> (surroundWith sep $ nest 2 $ pretty post <> prettyItems hardline binders)
         <> pretty parclose
     where
-        sep = if wide && not (null (unItems binders)) then hardline else line'
+        sep = if wide && not (null (unItems binders)) then hardline else line
 
 prettyTermWide :: Term -> Doc
 prettyTermWide (Set krec paropen items parclose) = prettySet True (krec, paropen, items, parclose)
@@ -202,13 +202,13 @@ prettyTerm (Selection term selectors) = pretty term <> line' <> hcat selectors
 
 -- Empty list
 prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trailing'))
-    = pretty leading <> pretty paropen <> pretty parclose <> pretty trailing'
+    = pretty leading <> pretty paropen <> hardspace <> pretty parclose <> pretty trailing'
 
 -- General list
 -- Always expand if len > 1
 prettyTerm (List (Ann pre paropen post) items parclose) =
     base $ pretty (Ann pre paropen Nothing)
-    <> (surroundWith line' $ nest 2 $ pretty post <> prettyItems hardline items)
+    <> (surroundWith line $ nest 2 $ pretty post <> prettyItems hardline items)
     <> pretty parclose
 
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
@@ -310,13 +310,13 @@ instance Pretty Parameter where
 
     -- {}:
     pretty (SetParameter bopen [] bclose)
-        = group $ pretty (moveTrailingCommentUp bopen) <> pretty bclose
+        = group $ pretty (moveTrailingCommentUp bopen) <> hardspace <> pretty bclose
 
     -- { stuff }:
     pretty (SetParameter bopen attrs bclose) =
         group $
             pretty (moveTrailingCommentUp bopen)
-            <> (surroundWith sep $ nest 2 $ sepBy (sep<>hardspace) $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments $ attrs)
+            <> (surroundWith sep $ nest 2 $ sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments $ attrs)
             <> pretty bclose
         where
         -- pretty all ParamAttrs, but mark the trailing comma of the last element specially
@@ -330,12 +330,12 @@ instance Pretty Parameter where
 
         sep = case attrs of
             [] -> line
-            [ParamEllipsis _] -> line'
+            [ParamEllipsis _] -> line
             -- Attributes must be without default
-            [ParamAttr _ Nothing _] -> line'
-            [ParamAttr _ Nothing _, ParamEllipsis _] -> line'
-            [ParamAttr _ Nothing _, ParamAttr _ Nothing _] -> line'
-            [ParamAttr _ Nothing _, ParamAttr _ Nothing _, ParamEllipsis _] -> line'
+            [ParamAttr _ Nothing _] -> line
+            [ParamAttr _ Nothing _, ParamEllipsis _] -> line
+            [ParamAttr _ Nothing _, ParamAttr _ Nothing _] -> line
+            [ParamAttr _ Nothing _, ParamAttr _ Nothing _, ParamEllipsis _] -> line
             _ -> hardline
 
     pretty (ContextParameter param1 at param2)

@@ -119,14 +119,14 @@
     }
   ''
   {
-    name1 = function arg {asdf = 1;};
+    name1 = function arg { asdf = 1; };
 
-    name2 = function arg {asdf = 1;} argument;
+    name2 = function arg { asdf = 1; } argument;
 
-    name3 = function arg {asdf = 1;} {qwer = 12345;} argument;
+    name3 = function arg { asdf = 1; } { qwer = 12345; } argument;
   }
   {
-    name1 = function arg {asdf = 1;};
+    name1 = function arg { asdf = 1; };
 
     name2 =
       function arg
@@ -142,12 +142,12 @@
           asdf = 1;
           # multiline
         }
-        {qwer = 12345;}
+        { qwer = 12345; }
         argument;
   }
   {
     name4 =
-      function arg {asdf = 1;}
+      function arg { asdf = 1; }
         {
           qwer = 12345;
           qwer2 = 54321;
@@ -156,7 +156,7 @@
   }
   {
     option1 =
-      function arg {asdf = 1;}
+      function arg { asdf = 1; }
         {
           qwer = 12345;
           qwer2 = 54321;
@@ -164,7 +164,7 @@
         lastArg;
 
     option2 =
-      function arg {asdf = 1;}
+      function arg { asdf = 1; }
         {
           qwer = 12345;
           qwer2 = 54321;
@@ -172,7 +172,7 @@
         lastArg;
 
     option3 =
-      function arg {asdf = 1;}
+      function arg { asdf = 1; }
         {
           qwer = 12345;
           qwer2 = 54321;
@@ -182,9 +182,9 @@
   # https://github.com/kamadorueda/alejandra/issues/372#issuecomment-1435083516
   {
     outputs =
-      {utils}:
+      { utils }:
       # For each supported platform,
-      utils.lib.eachDefaultSystem (system: {});
+      utils.lib.eachDefaultSystem (system: { });
   }
   {
     escapeSingleline = libStr.escape [
@@ -210,9 +210,9 @@
           2
           3
         ]
-        []
-        {}
-        []
+        [ ]
+        { }
+        [ ]
         [
           1
           2

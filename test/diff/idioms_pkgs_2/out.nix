@@ -20,12 +20,12 @@ stdenv.mkDerivation rec {
   doCheck = true;
 
   passthru.tests = {
-    version = testVersion {package = hello;};
+    version = testVersion { package = hello; };
 
     invariant-under-noXlibs =
       testEqualDerivation "hello must not be rebuilt when environment.noXlibs is set."
         hello
-        (nixos {environment.noXlibs = true;}).pkgs.hello;
+        (nixos { environment.noXlibs = true; }).pkgs.hello;
   };
 
   meta = with lib; {
@@ -37,7 +37,7 @@ stdenv.mkDerivation rec {
     homepage = "https://www.gnu.org/software/hello/manual/";
     changelog = "https://git.savannah.gnu.org/cgit/hello.git/plain/NEWS?h=v${version}";
     license = licenses.gpl3Plus;
-    maintainers = [maintainers.eelco];
+    maintainers = [ maintainers.eelco ];
     platforms = platforms.all;
   };
 }

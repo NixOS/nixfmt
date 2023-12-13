@@ -4,7 +4,7 @@
   crossSystem,
   config,
   overlays,
-  crossOverlays ? [],
+  crossOverlays ? [ ],
 }:
 
 assert crossSystem == localSystem;
@@ -19,9 +19,9 @@ let
       "/bin/bash";
 
   path =
-    (lib.optionals (system == "i686-solaris") ["/usr/gnu"])
-    ++ (lib.optionals (system == "i686-netbsd") ["/usr/pkg"])
-    ++ (lib.optionals (system == "x86_64-solaris") ["/opt/local/gnu"])
+    (lib.optionals (system == "i686-solaris") [ "/usr/gnu" ])
+    ++ (lib.optionals (system == "i686-netbsd") [ "/usr/pkg" ])
+    ++ (lib.optionals (system == "x86_64-solaris") [ "/opt/local/gnu" ])
     ++ [
       "/"
       "/usr"
@@ -84,11 +84,11 @@ let
     ]
     ++ (
       if system == "i686-cygwin" then
-        [../cygwin/rebase-i686.sh]
+        [ ../cygwin/rebase-i686.sh ]
       else if system == "x86_64-cygwin" then
-        [../cygwin/rebase-x86_64.sh]
+        [ ../cygwin/rebase-x86_64.sh ]
       else
-        []
+        [ ]
     );
 
   # A function that builds a "native" stdenv (one that uses tools in
@@ -97,9 +97,9 @@ let
     {
       cc,
       fetchurl,
-      extraPath ? [],
-      overrides ? (self: super: {}),
-      extraNativeBuildInputs ? [],
+      extraPath ? [ ],
+      overrides ? (self: super: { }),
+      extraNativeBuildInputs ? [ ],
     }:
 
     import ../generic {
@@ -131,7 +131,7 @@ let
           else if system == "x86_64-cygwin" then
             extraNativeBuildInputsCygwin
           else
-            []
+            [ ]
         );
 
       initialPath = extraPath ++ path;
@@ -150,7 +150,7 @@ in
 [
 
   (
-    {}:
+    { }:
     rec {
       __raw = true;
 
@@ -195,7 +195,7 @@ in
   # First build a stdenv based only on tools outside the store.
   (prevStage: {
     inherit config overlays;
-    stdenv = makeStdenv {inherit (prevStage) cc fetchurl;} // {
+    stdenv = makeStdenv { inherit (prevStage) cc fetchurl; } // {
       inherit (prevStage) fetchurl;
     };
   })
@@ -206,10 +206,10 @@ in
     inherit config overlays;
     stdenv = makeStdenv {
       inherit (prevStage.stdenv) cc fetchurl;
-      extraPath = [prevStage.xz];
-      overrides = self: super: {inherit (prevStage) xz;};
+      extraPath = [ prevStage.xz ];
+      overrides = self: super: { inherit (prevStage) xz; };
       extraNativeBuildInputs =
-        if localSystem.isLinux then [prevStage.patchelf] else [];
+        if localSystem.isLinux then [ prevStage.patchelf ] else [ ];
     };
   })
 ]
