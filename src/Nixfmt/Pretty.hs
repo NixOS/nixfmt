@@ -626,6 +626,7 @@ isSimpleString [parts]
 
 isSimpleString parts
     | all isInvisibleLine parts = True
+    | endsInSingleQuote (last parts) = True
     | isIndented parts          = True
     | lastLineIsSpaces parts    = True
     | otherwise                 = False
@@ -718,7 +719,7 @@ prettyIndentedString parts = group $ base $
     -- However, for single-line strings it should be omitted, because often times a line break will
     -- not reduce the indentation at all
     <> (case parts of { _:_:_ -> line'; _ -> mempty })
-    <> nest 2 (sepBy newline (map (prettyLine escape unescapeInterpol) parts))
+    <> (nest 2 $ sepBy newline $ map (prettyLine escape unescapeInterpol) parts)
     <> text "''"
     where escape = replaceMultiple
               [ ("'${", "''\\'''${")

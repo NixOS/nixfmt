@@ -45,7 +45,7 @@ import Data.Bifunctor (second)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (Text, concat, length, replicate, strip)
 import GHC.Stack (HasCallStack)
-import Debug.Trace (traceShow, traceShowId)
+-- import Debug.Trace (traceShow, traceShowId)
 import Control.Applicative ((<|>))
 import Control.Monad.Trans.State.Strict (State, StateT, StateT(..), mapStateT, state, runState, evalState, get, put)
 
