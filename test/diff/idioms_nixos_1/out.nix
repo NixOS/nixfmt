@@ -276,12 +276,10 @@ in
             ]
           );
 
-      boot.initrd.kernelModules =
-        optionals config.boot.initrd.includeDefaultModules
-          [
-            # For LVM.
-            "dm_mod"
-          ];
+      boot.initrd.kernelModules = optionals config.boot.initrd.includeDefaultModules [
+        # For LVM.
+        "dm_mod"
+      ];
     })
 
     (mkIf (!config.boot.isContainer) {

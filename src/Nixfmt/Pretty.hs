@@ -409,10 +409,10 @@ isAbstractionWithAbsorbableTerm _ = False
 isAbsorbable :: Term -> Bool
 isAbsorbable (String (Ann _ parts@(_:_:_) _))
     = not $ isSimpleString parts
+-- Non-empty sets and lists
 isAbsorbable (Set _ _ (Items (_:_)) _)                                   = True
-isAbsorbable (List (Ann [] _ Nothing) (Items [CommentedItem [] _]) _)    = True
+isAbsorbable (List _ (Items (_:_)) _)                                    = True
 isAbsorbable (Parenthesized (Ann [] _ Nothing) (Term t) _)               = isAbsorbable t
-isAbsorbable (List _ (Items (_:_:_)) _)                                  = True
 isAbsorbable _                                                           = False
 
 absorb :: Doc -> Doc -> Maybe Int -> Expression -> Doc

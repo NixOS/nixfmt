@@ -6,6 +6,21 @@
       foo2 = "barbar";
     }
   ]
+  {
+    # List in attrset with comment
+
+    imports0 = [ ];
+
+    imports2 = [
+      # ./disko.nix
+      ./hardware-configuration.nix
+    ];
+    imports3 = [
+      # comment
+      ./disko.nix
+      ./hardware-configuration.nix
+    ];
+  }
   [
     (
       if foo then
