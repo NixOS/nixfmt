@@ -1,5 +1,8 @@
 [
-  (assert b; e)
+  (
+    assert b;
+    e
+  )
   (
     assert b; # d
     e
@@ -36,6 +39,12 @@
     ; # d
     e
   )
-  (assert b; cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc)
-  (assert b; cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc)
+  (
+    assert b;
+    cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  )
+  (
+    assert b;
+    cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  )
 ]

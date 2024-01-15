@@ -483,7 +483,7 @@ instance Pretty Expression where
     pretty (Assert assert cond semicolon expr)
         = base (pretty assert <> hardspace
           <> nest 2 (group cond) <> pretty semicolon)
-          <> absorbSet expr
+          <> hardline <> pretty expr
 
     pretty (If if_ cond then_ expr0 else_ expr1)
         = base $ group' False $
