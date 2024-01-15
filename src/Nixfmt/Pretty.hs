@@ -388,27 +388,6 @@ isAbsorbable (List _ (Items (_:_)) _)                                    = True
 isAbsorbable (Parenthesized (Ann [] _ Nothing) (Term t) _)               = isAbsorbable t
 isAbsorbable _                                                           = False
 
-absorb :: Doc -> Doc -> Maybe Int -> Expression -> Doc
-absorb left right _ (Term t)
-    | isAbsorbable t = toHardspace left <> prettyTerm t <> toHardspace right
-    where toHardspace x | x == mempty    = mempty
-                        | x == softline' = mempty
-                        | x == line'     = mempty
-                        | otherwise      = hardspace
-absorb left right _ with@(With _ _ _ (Term t)) | isAbsorbable t
-    = toHardspace left <> prettyWith True with <> toHardspace right
-    where toHardspace x | x == mempty    = mempty
-                        | x == softline' = mempty
-                        | x == line'     = mempty
-                        | otherwise      = hardspace
-
-absorb left right Nothing x = left <> pretty x <> right
-absorb left right (Just level) x
-    = left <> nest level (pretty x) <> right
-
-absorbSet :: Expression -> Doc
-absorbSet = absorb line mempty Nothing
-
 -- Render the RHS value of an assignment or function parameter default value
 absorbRHS :: Expression -> Doc
 absorbRHS expr = case expr of
@@ -523,15 +502,26 @@ instance Pretty Expression where
             <> (surroundWith line $ nest 2 $ group expr0)
             <> pretty else_ <> absorbElse expr1
 
+    -- Simple parameter
     pretty (Abstraction (IDParameter param) colon body)
         = pretty param <> pretty colon <> absorbAbs 1 body
-        where absorbAbs :: Int -> Expression -> Doc
-              absorbAbs depth (Abstraction (IDParameter param0) colon0 body0) =
-                  hardspace <> pretty param0 <> pretty colon0 <> absorbAbs (depth + 1) body0
-              absorbAbs depth x
-                  | depth <= 2 = absorbSet x
-                  | otherwise = absorb hardline mempty Nothing x
+        where
+            absorbAbs :: Int -> Expression -> Doc
+            -- If there are multiple ID parameters to that function, treat them all at once
+            absorbAbs depth (Abstraction (IDParameter param0) colon0 body0) =
+                hardspace <> pretty param0 <> pretty colon0 <> absorbAbs (depth + 1) body0
+            absorbAbs _ (Term t) | isAbsorbable t
+                = hardspace <> prettyTerm t
+            absorbAbs _ with@(With _ _ _ (Term t)) | isAbsorbable t
+                = hardspace <> prettyWith True with
+            -- Force the content onto a new line when it is not absorbable and there are more than two arguments
+            absorbAbs depth x
+                = (if depth <= 2 then line else hardline) <> pretty x
 
+    -- Attrset parameter
+    pretty (Abstraction param colon (Term t))
+        | isAbsorbable t
+        = pretty param <> pretty colon <> line <> group (prettyTermWide t)
     pretty (Abstraction param colon body)
         = pretty param <> pretty colon <> line <> pretty body
 

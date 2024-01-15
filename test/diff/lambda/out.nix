@@ -166,4 +166,47 @@ in
     }:
     { }
   )
+  {
+    a =
+      name: with config.ids; ''
+        --nodaemon --syslog --prefix=${name} --pidfile /run/${name}/${name}.pid ${name}
+      '';
+    a' = name: ''
+      --nodaemon --syslog --prefix=${name} --pidfile /run/${name}/${name}.pid ${name}
+    '';
+    b =
+      p: with p; [
+        ConfigIniFiles
+        FileSlurp
+      ];
+    b' = p: [
+      ConfigIniFiles
+      FileSlurp
+    ];
+    mkUrls =
+      {
+        name,
+        version,
+        biocVersion,
+      }:
+      [ "mirror://bioc/${biocVersion}/data/experiment/${name}_${version}.tar.gz" ];
+    c =
+      { ... }:
+      {
+        foo = true;
+      };
+    c = { ... }: [ 1 ];
+    d =
+      { a }:
+      {
+        foo = true;
+      };
+    d = { a }: [ 1 ];
+    e =
+      { a, b }:
+      {
+        foo = true;
+      };
+    e = { a, b }: [ 1 ];
+  }
 ]
