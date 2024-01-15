@@ -118,52 +118,7 @@ instance Pretty Binder where
     -- `foo = bar`
     pretty (Assignment selectors assign expr semicolon)
         = base $ group $ hcat selectors
-                 <> nest 2 (hardspace <> pretty assign <> inner) <> pretty semicolon
-        where
-        inner =
-            case expr of
-              -- Absorbable term. Always start on the same line, keep semicolon attatched
-              (Term t) | isAbsorbable t -> hardspace <> prettyTermWide t
-              -- Not all strings are absorbably, but in this case we always want to keep them attached.
-              -- Because there's nothing to gain from having them start on a new line.
-              (Term (String _)) -> hardspace <> group expr
-              -- Same for path
-              (Term (Path _)) -> hardspace <> group expr
-              -- Non-absorbable term
-              -- If it is multi-line, force it to start on a new line with indentation
-              (Term _) -> group' False (line <> pretty expr)
-              -- Function call
-              -- Absorb if all arguments except the last fit into the line, start on new line otherwise
-              (Application f a) -> prettyApp False line False f a
-              -- Absorb function declarations but only those with simple parameter(s)
-              (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> hardspace <> group expr
-              -- With expression with absorbable body: Try to absorb and keep the semicolon attached, spread otherwise
-              (With _ _ _ (Term t)) | isAbsorbable t -> softline <> group expr
-              -- Special case `//` operations to be more compact in some cases
-              -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
-              (Operation (Term t) (Ann [] TUpdate Nothing) b) | isAbsorbable t ->
-                group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TUpdate <> hardspace <> pretty b
-              -- Case 2a: LHS fits onto first line, RHS is an absorbable term
-              (Operation l (Ann [] TUpdate Nothing) (Term t)) | isAbsorbable t ->
-                group' False $ line <> pretty l <> line <> group' True (pretty TUpdate <> hardspace <> prettyTermWide t)
-              -- Case 2b: LHS fits onto first line, RHS is a function application
-              (Operation l (Ann [] TUpdate Nothing) (Application f a)) ->
-                line <> (group l) <> line <> prettyApp False (pretty TUpdate <> hardspace) False f a
-              -- Special case `++` operations to be more compact in some cases
-              -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
-              (Operation (Term t) (Ann [] TConcat Nothing) b) | isAbsorbable t ->
-                group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TConcat <> hardspace <> pretty b
-              -- Case 2a: LHS fits onto first line, RHS is an absorbable term
-              (Operation l (Ann [] TConcat Nothing) (Term t)) | isAbsorbable t ->
-                group' False $ line <> pretty l <> line <> group' True (pretty TConcat <> hardspace <> prettyTermWide t)
-              -- Case 2b: LHS fits onto first line, RHS is a function application
-              (Operation l (Ann [] TConcat Nothing) (Application f a)) ->
-                line <> (group l) <> line <> prettyApp False (pretty TConcat <> hardspace) False f a
-              -- Everything else:
-              -- If it fits on one line, it fits
-              -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
-              -- Otherwise, start on new line, expand fully (including the semicolon)
-              _ -> line <> group expr
+                 <> nest 2 (hardspace <> pretty assign <> absorbRHS expr) <> pretty semicolon
 
 -- Pretty a set
 -- while we already pretty eagerly expand sets with more than one element,
@@ -219,6 +174,10 @@ prettyTerm (Parenthesized paropen (Application f a) parclose)
             base $ prettyApp True mempty True f a
         ) <> pretty parclose
 
+-- Parenthesized `with` followed by absorbable term
+prettyTerm (Parenthesized paropen with@(With _ _ _ (Term t)) parclose) | isAbsorbable t
+    = base $ group $ pretty (moveTrailingCommentUp paropen) <> nest 2 (prettyWith True with) <> pretty parclose
+
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose)
     = base $ group $ pretty (moveTrailingCommentUp paropen) <> lineL <> nest 2 (group expr) <> lineR <> pretty parclose
@@ -250,8 +209,9 @@ instance Pretty ParamAttr where
 
     -- With ? default
     pretty (ParamAttr name (Just (qmark, def)) maybeComma)
-        = group (pretty name <> hardspace <> pretty qmark
-            <> absorb softline mempty (Just 2) def)
+        = base $ group $
+            pretty name <> hardspace
+            <> nest 2 (pretty qmark <> absorbRHS def)
             <> pretty maybeComma
 
     -- `...`
@@ -373,7 +333,7 @@ prettyApp indentFunction pre hasPost f a
             = group' True $ nest 2 $ prettyTerm t
         absorbLast (Term (Parenthesized (Ann pre' open post') expr close))
             = group' True $ nest 2 $ base $ pretty (Ann pre' open Nothing)
-                -- Move any tryiling comments on the opening parenthesis down into the body
+                -- Move any trailing comments on the opening parenthesis down into the body
                 <> (surroundWith line' $ group $ nest 2 $ base $
                     mapFirstToken
                         (\(Ann leading token trailing') -> (Ann (maybeToList (toLineComment <$> post') ++ leading) token trailing'))
@@ -401,6 +361,19 @@ prettyApp indentFunction pre hasPost f a
         )
         <> (if hasPost && not (null comment') then hardline else mempty)
 
+prettyWith :: Bool -> Expression -> Doc
+-- absorb the body
+prettyWith True (With with expr0 semicolon (Term expr1))
+        = base (pretty with <> hardspace
+          <> nest 2 (group expr0) <> pretty semicolon)
+          -- Force-expand attrsets
+          <> hardspace <> prettyTermWide expr1
+prettyWith _ (With with expr0 semicolon expr1)
+        = base (pretty with <> hardspace
+          <> nest 2 (group expr0) <> pretty semicolon)
+          <> line <> pretty expr1
+prettyWith _ _ = error "unreachable"
+
 isAbstractionWithAbsorbableTerm :: Expression -> Bool
 isAbstractionWithAbsorbableTerm (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t = True
 isAbstractionWithAbsorbableTerm (Abstraction (IDParameter _) _ body) = isAbstractionWithAbsorbableTerm body
@@ -422,6 +395,12 @@ absorb left right _ (Term t)
                         | x == softline' = mempty
                         | x == line'     = mempty
                         | otherwise      = hardspace
+absorb left right _ with@(With _ _ _ (Term t)) | isAbsorbable t
+    = toHardspace left <> prettyWith True with <> toHardspace right
+    where toHardspace x | x == mempty    = mempty
+                        | x == softline' = mempty
+                        | x == line'     = mempty
+                        | otherwise      = hardspace
 
 absorb left right Nothing x = left <> pretty x <> right
 absorb left right (Just level) x
@@ -429,6 +408,61 @@ absorb left right (Just level) x
 
 absorbSet :: Expression -> Doc
 absorbSet = absorb line mempty Nothing
+
+-- Render the RHS value of an assignment or function parameter default value
+absorbRHS :: Expression -> Doc
+absorbRHS expr = case expr of
+    -- Absorbable term. Always start on the same line, keep semicolon attatched
+    (Term t) | isAbsorbable t -> hardspace <> prettyTermWide t
+    -- Parenthesized expression. Same thing as the special case for parenthesized last argument in function calls.
+    (Term (Parenthesized open expr' close)) ->
+      group' True $ nest 2 $ base $
+        hardspace <> pretty open
+        <> (surroundWith line' . group . nest 2 . base) expr'
+        <> pretty close
+    -- Not all strings are absorbably, but in this case we always want to keep them attached.
+    -- Because there's nothing to gain from having them start on a new line.
+    (Term (String _)) -> hardspace <> group expr
+    -- Same for path
+    (Term (Path _)) -> hardspace <> group expr
+    -- Non-absorbable term
+    -- If it is multi-line, force it to start on a new line with indentation
+    (Term _) -> group' False (line <> pretty expr)
+    -- Function call
+    -- Absorb if all arguments except the last fit into the line, start on new line otherwise
+    (Application f a) -> prettyApp False line False f a
+    -- Absorb function declarations but only those with simple parameter(s)
+    (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> hardspace <> group expr
+    -- With expression with absorbable body: Treat as absorbable term
+    (With _ _ _ (Term t)) | isAbsorbable t -> hardspace <> prettyWith True expr
+    -- Otherwise, render like in the "Everything else" case, but with the leading line break
+    -- being part of the group.
+    (With _ _ _ _) -> group' False $ line <> pretty expr
+    -- Special case `//` operations to be more compact in some cases
+    -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
+    (Operation (Term t) (Ann [] TUpdate Nothing) b) | isAbsorbable t ->
+      group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TUpdate <> hardspace <> pretty b
+    -- Case 2a: LHS fits onto first line, RHS is an absorbable term
+    (Operation l (Ann [] TUpdate Nothing) (Term t)) | isAbsorbable t ->
+      group' False $ line <> pretty l <> line <> group' True (pretty TUpdate <> hardspace <> prettyTermWide t)
+    -- Case 2b: LHS fits onto first line, RHS is a function application
+    (Operation l (Ann [] TUpdate Nothing) (Application f a)) ->
+      line <> (group l) <> line <> prettyApp False (pretty TUpdate <> hardspace) False f a
+    -- Special case `++` operations to be more compact in some cases
+    -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
+    (Operation (Term t) (Ann [] TConcat Nothing) b) | isAbsorbable t ->
+      group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TConcat <> hardspace <> pretty b
+    -- Case 2a: LHS fits onto first line, RHS is an absorbable term
+    (Operation l (Ann [] TConcat Nothing) (Term t)) | isAbsorbable t ->
+      group' False $ line <> pretty l <> line <> group' True (pretty TConcat <> hardspace <> prettyTermWide t)
+    -- Case 2b: LHS fits onto first line, RHS is a function application
+    (Operation l (Ann [] TConcat Nothing) (Application f a)) ->
+      line <> (group l) <> line <> prettyApp False (pretty TConcat <> hardspace) False f a
+    -- Everything else:
+    -- If it fits on one line, it fits
+    -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
+    -- Otherwise, start on new line, expand fully (including the semicolon)
+    _ -> line <> group expr
 
 -- Only absorb "else if"
 absorbElse :: Expression -> Doc
@@ -444,10 +478,7 @@ absorbElse x
 instance Pretty Expression where
     pretty (Term t) = pretty t
 
-    pretty (With with expr0 semicolon expr1)
-        = base (pretty with <> hardspace
-          <> nest 2 (group expr0) <> pretty semicolon)
-          <> absorbSet expr1
+    pretty with@(With _ _ _ _) = prettyWith False with
 
     -- Let bindings are always fully expanded (no single-line form)
     -- We also take the comments around the `in` (trailing, leading and detached binder comments)

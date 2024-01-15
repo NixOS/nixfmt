@@ -218,8 +218,8 @@
           2
           3 # multiline
         ];
-    looooooooong =
-      (toINI
+    looooooooong = (
+      toINI
         {
           inherit
             mkSectionName
@@ -229,7 +229,7 @@
             ;
         }
         sections
-      );
+    );
     looooooooong' =
       toINI
         {
@@ -363,31 +363,29 @@
           }
         );
     # Also test within parenthesized function instead of just attribute sets
-    foo3 =
-      (
-        (callPackage ../generic-builders/manifest.nix {
-          # A lot of values here
-        }).overrideAttrs
+    foo3 = (
+      (callPackage ../generic-builders/manifest.nix {
+        # A lot of values here
+      }).overrideAttrs
         stuff
         (
           prevAttrs: {
             # stuff here
           }
         )
-      );
+    );
     # Add a comment at a bad place
-    foo4 =
-      (
-        # comment
-        (callPackage ../generic-builders/manifest.nix {
-          # A lot of values here
-        }).overrideAttrs
-          stuff
-          (
-            prevAttrs: {
-              # stuff here
-            }
-          )
-      );
+    foo4 = (
+      # comment
+      (callPackage ../generic-builders/manifest.nix {
+        # A lot of values here
+      }).overrideAttrs
+        stuff
+        (
+          prevAttrs: {
+            # stuff here
+          }
+        )
+    );
   }
 ]

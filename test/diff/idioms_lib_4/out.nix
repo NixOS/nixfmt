@@ -837,11 +837,13 @@ rec {
       cpu,
       # Optional, but fallback too complex for here.
       # Inferred below instead.
-      vendor ? assert false;
+      vendor ?
+        assert false;
         null,
       kernel,
       # Also inferred below
-      abi ? assert false;
+      abi ?
+        assert false;
         null,
     }@args:
     let

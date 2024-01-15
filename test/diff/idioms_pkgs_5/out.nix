@@ -165,15 +165,16 @@ let
       # Including it then would cause needless mass rebuilds.
       #
       # TODO(@Ericson2314): Make [ "build" "host" ] always the default / resolve #87909
-      configurePlatforms ? optionals
-        (
-          stdenv.hostPlatform != stdenv.buildPlatform
-          || config.configurePlatformsByDefault
-        )
-        [
-          "build"
-          "host"
-        ],
+      configurePlatforms ?
+        optionals
+          (
+            stdenv.hostPlatform != stdenv.buildPlatform
+            || config.configurePlatformsByDefault
+          )
+          [
+            "build"
+            "host"
+          ],
 
       # TODO(@Ericson2314): Make unconditional / resolve #33599
       # Check phase
@@ -184,24 +185,25 @@ let
       doInstallCheck ? config.doCheckByDefault or false,
 
       # TODO(@Ericson2314): Make always true and remove / resolve #178468
-      strictDeps ? if config.strictDepsByDefault then
-        true
-      else
-        stdenv.hostPlatform != stdenv.buildPlatform,
+      strictDeps ?
+        if config.strictDepsByDefault then
+          true
+        else
+          stdenv.hostPlatform != stdenv.buildPlatform,
 
       enableParallelBuilding ? config.enableParallelBuildingByDefault,
 
       meta ? { },
       passthru ? { },
       pos ? # position used in error messages and for meta.position
-        (
-          if attrs.meta.description or null != null then
-            builtins.unsafeGetAttrPos "description" attrs.meta
-          else if attrs.version or null != null then
-            builtins.unsafeGetAttrPos "version" attrs
-          else
-            builtins.unsafeGetAttrPos "name" attrs
-        ),
+          (
+            if attrs.meta.description or null != null then
+              builtins.unsafeGetAttrPos "description" attrs.meta
+            else if attrs.version or null != null then
+              builtins.unsafeGetAttrPos "version" attrs
+            else
+              builtins.unsafeGetAttrPos "name" attrs
+          ),
       separateDebugInfo ? false,
       outputs ? [ "out" ],
       __darwinAllowLocalNetworking ? false,
