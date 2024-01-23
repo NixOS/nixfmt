@@ -168,34 +168,21 @@ prettyTerm (List (Ann pre paropen post) items parclose) =
 
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
 
--- Parenthesized application
-prettyTerm (Parenthesized paropen (Application f a) parclose)
-    = base $ group $ pretty (moveTrailingCommentUp paropen) <> nest 2 (
-            base $ prettyApp True mempty True f a
-        ) <> pretty parclose
-
--- Parenthesized `with` followed by absorbable term
-prettyTerm (Parenthesized paropen with@(With _ _ _ (Term t)) parclose) | isAbsorbable t
-    = base $ group $ pretty (moveTrailingCommentUp paropen) <> nest 2 (prettyWith True with) <> pretty parclose
-
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose)
-    = base $ group $ pretty (moveTrailingCommentUp paropen) <> lineL <> nest 2 (group expr) <> lineR <> pretty parclose
+    = base $ group $ pretty (moveTrailingCommentUp paropen) <> inner <> pretty parclose
   where
-    (lineL, lineR) =
+    inner =
       case expr of
         -- Start on the same line for these
-        (Term t) | isAbsorbable t -> (mempty, mempty)
-        -- unreachable
-        (Application _ _) -> (mempty, mempty)
-        -- Absorb function declarations but only those with simple parameter(s)
-        (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> (mempty, mempty)
-        (Operation _ _ _) -> (line', line')
+        _ | isAbsorbableExpr expr -> nest 2 $ group $ absorbExpr False expr
+        -- Parenthesized application
+        (Application f a) -> nest 2 $ base $ prettyApp True mempty True f a
         -- Same thing for selections
-        (Term (Selection t _)) | isAbsorbable t -> (line', line')
-        (Term (Selection _ _)) -> (mempty, line')
+        (Term (Selection t _)) | isAbsorbable t -> line' <> (nest 2 $ group $ expr) <> line'
+        (Term (Selection _ _)) -> (nest 2 $ group $ expr) <> line'
         -- Start on a new line for the others
-        _ -> (line', line')
+        _ -> line' <> (nest 2 $ group $ expr) <> line'
 
 instance Pretty Term where
     pretty l@List{} = group $ prettyTerm l
@@ -368,38 +355,54 @@ prettyWith True (With with expr0 semicolon (Term expr1))
           <> nest 2 (group expr0) <> pretty semicolon)
           -- Force-expand attrsets
           <> hardspace <> prettyTermWide expr1
+-- Normal case
 prettyWith _ (With with expr0 semicolon expr1)
         = base (pretty with <> hardspace
           <> nest 2 (group expr0) <> pretty semicolon)
           <> line <> pretty expr1
 prettyWith _ _ = error "unreachable"
 
-isAbstractionWithAbsorbableTerm :: Expression -> Bool
-isAbstractionWithAbsorbableTerm (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t = True
-isAbstractionWithAbsorbableTerm (Abstraction (IDParameter _) _ body) = isAbstractionWithAbsorbableTerm body
-isAbstractionWithAbsorbableTerm _ = False
+isAbsorbableExpr :: Expression -> Bool
+isAbsorbableExpr expr = case expr of
+    (Term t) | isAbsorbableTerm t -> True
+    (With _ _ _ (Term t)) | isAbsorbableTerm t -> True
+    -- Absorb function declarations but only those with simple parameter(s)
+    (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t -> True
+    (Abstraction (IDParameter _) _ body@(Abstraction _ _ _)) -> isAbsorbableExpr body
+    _ -> False
 
 isAbsorbable :: Term -> Bool
 isAbsorbable (String (Ann _ parts@(_:_:_) _))
     = not $ isSimpleString parts
+isAbsorbable (Path _) = True
 -- Non-empty sets and lists
 isAbsorbable (Set _ _ (Items (_:_)) _)                                   = True
 isAbsorbable (List _ (Items (_:_)) _)                                    = True
 isAbsorbable (Parenthesized (Ann [] _ Nothing) (Term t) _)               = isAbsorbable t
 isAbsorbable _                                                           = False
 
+isAbsorbableTerm :: Term -> Bool
+isAbsorbableTerm = isAbsorbable
+
+absorbExpr :: Bool -> Expression -> Doc
+absorbExpr True (Term t) | isAbsorbableTerm t = prettyTermWide t
+absorbExpr False (Term t) | isAbsorbableTerm t = prettyTerm t
+-- With expression with absorbable body: Treat as absorbable term
+absorbExpr _ expr@(With _ _ _ (Term t)) | isAbsorbableTerm t = prettyWith True expr
+absorbExpr _ expr = pretty expr
+
 -- Render the RHS value of an assignment or function parameter default value
 absorbRHS :: Expression -> Doc
 absorbRHS expr = case expr of
-    -- Absorbable term. Always start on the same line, keep semicolon attatched
-    (Term t) | isAbsorbable t -> hardspace <> prettyTermWide t
+    -- Absorbable expression. Always start on the same line
+    _ | isAbsorbableExpr expr -> hardspace <> group (absorbExpr True expr)
     -- Parenthesized expression. Same thing as the special case for parenthesized last argument in function calls.
     (Term (Parenthesized open expr' close)) ->
       group' True $ nest 2 $ base $
         hardspace <> pretty open
         <> (surroundWith line' . group . nest 2 . base) expr'
         <> pretty close
-    -- Not all strings are absorbably, but in this case we always want to keep them attached.
+    -- Not all strings are absorbable, but in this case we always want to keep them attached.
     -- Because there's nothing to gain from having them start on a new line.
     (Term (String _)) -> hardspace <> group expr
     -- Same for path
@@ -410,12 +413,6 @@ absorbRHS expr = case expr of
     -- Function call
     -- Absorb if all arguments except the last fit into the line, start on new line otherwise
     (Application f a) -> prettyApp False line False f a
-    -- Absorb function declarations but only those with simple parameter(s)
-    (Abstraction _ _ _) | isAbstractionWithAbsorbableTerm expr -> hardspace <> group expr
-    -- With expression with absorbable body: Treat as absorbable term
-    (With _ _ _ (Term t)) | isAbsorbable t -> hardspace <> prettyWith True expr
-    -- Otherwise, render like in the "Everything else" case, but with the leading line break
-    -- being part of the group.
     (With _ _ _ _) -> group' False $ line <> pretty expr
     -- Special case `//` operations to be more compact in some cases
     -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
@@ -442,17 +439,6 @@ absorbRHS expr = case expr of
     -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
     -- Otherwise, start on new line, expand fully (including the semicolon)
     _ -> line <> group expr
-
--- Only absorb "else if"
-absorbElse :: Expression -> Doc
-absorbElse (If if_ cond then_ expr0 else_ expr1)
-    -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
-    -- Using hardline here is okay because it will only apply to nested ifs, which should not be inline anyways.
-    = hardspace <> (group (pretty if_ <> line <> nest 2 (pretty cond) <> line <> pretty then_))
-      <> hardline <> nest 2 (group expr0) <> hardline
-      <> pretty else_ <> absorbElse expr1
-absorbElse x
-    = line <> nest 2 (group x)
 
 instance Pretty Expression where
     pretty (Term t) = pretty t
@@ -495,12 +481,19 @@ instance Pretty Expression where
           <> nest 2 (group cond) <> pretty semicolon)
           <> hardline <> pretty expr
 
-    pretty (If if_ cond then_ expr0 else_ expr1)
-        = base $ group' False $
-            -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
-            group (pretty if_ <> line <> nest 2 (pretty cond) <> line <> pretty then_)
-            <> (surroundWith line $ nest 2 $ group expr0)
-            <> pretty else_ <> absorbElse expr1
+    pretty expr@(If _ _ _ _ _ _)
+        = base $ group' False $ prettyIf line expr
+        where
+            -- Recurse to absorb nested "else if" chains
+            prettyIf :: Doc -> Expression -> Doc
+            prettyIf sep (If if_ cond then_ expr0 else_ expr1)
+                -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
+                = group (pretty if_ <> line <> nest 2 (pretty cond) <> line <> pretty then_)
+                <> (surroundWith sep $ nest 2 $ group expr0)
+                -- Using hardline here is okay because it will only apply to nested ifs, which should not be inline anyways.
+                <> pretty else_ <> hardspace <> prettyIf hardline expr1
+            prettyIf _ x
+                = line <> nest 2 (group x)
 
     -- Simple parameter
     pretty (Abstraction (IDParameter param) colon body)
@@ -510,10 +503,7 @@ instance Pretty Expression where
             -- If there are multiple ID parameters to that function, treat them all at once
             absorbAbs depth (Abstraction (IDParameter param0) colon0 body0) =
                 hardspace <> pretty param0 <> pretty colon0 <> absorbAbs (depth + 1) body0
-            absorbAbs _ (Term t) | isAbsorbable t
-                = hardspace <> prettyTerm t
-            absorbAbs _ with@(With _ _ _ (Term t)) | isAbsorbable t
-                = hardspace <> prettyWith True with
+            absorbAbs _ expr | isAbsorbableExpr expr = hardspace <> absorbExpr False expr
             -- Force the content onto a new line when it is not absorbable and there are more than two arguments
             absorbAbs depth x
                 = (if depth <= 2 then line else hardline) <> pretty x
