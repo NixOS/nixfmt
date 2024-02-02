@@ -390,11 +390,7 @@ rec {
       unexpected = lib.subtractLists valid given;
     in
     lib.throwIfNot (unexpected == [ ])
-      "${msg}: ${
-        builtins.concatStringsSep ", " (builtins.map builtins.toString unexpected)
-      } unexpected; valid ones: ${
-        builtins.concatStringsSep ", " (builtins.map builtins.toString valid)
-      }";
+      "${msg}: ${builtins.concatStringsSep ", " (builtins.map builtins.toString unexpected)} unexpected; valid ones: ${builtins.concatStringsSep ", " (builtins.map builtins.toString valid)}";
 
   info = msg: builtins.trace "INFO: ${msg}";
 

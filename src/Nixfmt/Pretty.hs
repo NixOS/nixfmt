@@ -384,6 +384,9 @@ isAbsorbable _                                                           = False
 isAbsorbableTerm :: Term -> Bool
 isAbsorbableTerm = isAbsorbable
 
+-- Note that unlike for absorbable terms which can be force-absorbed, some expressions
+-- may turn out to not be absorbable. In that case, they should start with a line' so that
+-- they properly start on the next line if necessary.
 absorbExpr :: Bool -> Expression -> Doc
 absorbExpr True (Term t) | isAbsorbableTerm t = prettyTermWide t
 absorbExpr False (Term t) | isAbsorbableTerm t = prettyTerm t
@@ -580,6 +583,7 @@ isSimple (Term (Path (Ann [] _ Nothing))) = True
 isSimple (Term (Token (Ann [] (Identifier _) Nothing))) = True
 isSimple (Term (Selection t selectors))
     = isSimple (Term t) && all isSimpleSelector selectors
+isSimple (Term (Parenthesized (Ann [] _ Nothing) e (Ann [] _ Nothing))) = isSimple e
 -- Function applications of simple terms are simple up to two arguments
 isSimple (Application (Application (Application _ _) _) _) = False
 isSimple (Application f a) = isSimple f && isSimple a

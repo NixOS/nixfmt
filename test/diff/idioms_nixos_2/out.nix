@@ -922,10 +922,7 @@ in
                     [ 'path' => '${cfg.home}/apps', 'url' => '/apps', 'writable' => false ],
                     [ 'path' => '${cfg.home}/store-apps', 'url' => '/store-apps', 'writable' => true ],
                   ],
-                  ${
-                    optionalString (showAppStoreSetting)
-                      "'appstoreenabled' => ${renderedAppStoreSetting},"
-                  }
+                  ${optionalString (showAppStoreSetting) "'appstoreenabled' => ${renderedAppStoreSetting},"}
                   'datadirectory' => '${datadir}/data',
                   'skeletondirectory' => '${cfg.skeletonDirectory}',
                   ${optionalString cfg.caching.apcu "'memcache.local' => '\\OC\\Memcache\\APCu',"}
@@ -959,10 +956,7 @@ in
                     optionalString (c.defaultPhoneRegion != null)
                       "'default_phone_region' => '${c.defaultPhoneRegion}',"
                   }
-                  ${
-                    optionalString (nextcloudGreaterOrEqualThan "23")
-                      "'profile.enabled' => ${boolToString cfg.globalProfiles},"
-                  }
+                  ${optionalString (nextcloudGreaterOrEqualThan "23") "'profile.enabled' => ${boolToString cfg.globalProfiles},"}
                   ${objectstoreConfig}
                 ];
 
@@ -1082,9 +1076,7 @@ in
 
                 ${optionalString (cfg.extraAppsEnable && cfg.extraApps != { }) ''
                   # Try to enable apps
-                  ${occ}/bin/nextcloud-occ app:enable ${
-                    concatStringsSep " " (attrNames cfg.extraApps)
-                  }
+                  ${occ}/bin/nextcloud-occ app:enable ${concatStringsSep " " (attrNames cfg.extraApps)}
                 ''}
 
                 ${occSetTrustedDomainsCmd}
@@ -1093,9 +1085,7 @@ in
               serviceConfig.User = "nextcloud";
               # On Nextcloud ≥ 26, it is not necessary to patch the database files to prevent
               # an automatic creation of the database user.
-              environment.NC_setup_create_db_user =
-                lib.mkIf (nextcloudGreaterOrEqualThan "26")
-                  "false";
+              environment.NC_setup_create_db_user = lib.mkIf (nextcloudGreaterOrEqualThan "26") "false";
             };
           nextcloud-cron = {
             after = [ "nextcloud-setup.service" ];
@@ -1157,9 +1147,7 @@ in
             }
           ];
           initialScript = pkgs.writeText "mysql-init" ''
-            CREATE USER '${cfg.config.dbname}'@'localhost' IDENTIFIED BY '${
-              builtins.readFile (cfg.config.dbpassFile)
-            }';
+            CREATE USER '${cfg.config.dbname}'@'localhost' IDENTIFIED BY '${builtins.readFile (cfg.config.dbpassFile)}';
             CREATE DATABASE IF NOT EXISTS ${cfg.config.dbname};
             GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER,
               CREATE TEMPORARY TABLES ON ${cfg.config.dbname}.* TO '${cfg.config.dbuser}'@'localhost'
