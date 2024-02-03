@@ -145,7 +145,15 @@ data Expression
 -- initial trivia.
 data Whole a
     = Whole a Trivia
-    deriving (Eq, Show)
+
+-- | Equality of annotated syntax is defined as equality of their corresponding
+-- semantics, thus ignoring the annotations.
+instance Eq a => Eq (Whole a) where
+    Whole x _ == Whole y _ = x == y
+
+-- Trivia is ignored for Eq, so also don't show
+instance Show a => Show (Whole a) where
+    show (Whole a _) = show a
 
 type File = Whole Expression
 
