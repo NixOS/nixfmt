@@ -6,8 +6,6 @@
 
 {-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
 
--- | This module implements a layer around the prettyprinter package, making it
--- easier to use.
 module Nixfmt.Predoc
     ( text
     , comment

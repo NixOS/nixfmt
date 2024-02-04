@@ -4,12 +4,13 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE DeriveFoldable, OverloadedStrings, RankNTypes, LambdaCase, TupleSections #-}
+{-# LANGUAGE DeriveFoldable, OverloadedStrings, RankNTypes, LambdaCase, TupleSections, FlexibleInstances #-}
 
 module Nixfmt.Types where
 
 import Prelude hiding (String)
 
+import Data.Maybe (maybeToList)
 import Data.List.NonEmpty as NonEmpty
 import Control.Monad.State (StateT)
 import Data.Bifunctor (first)
@@ -57,10 +58,12 @@ data Item a
     deriving (Foldable, Show)
 
 newtype Items a = Items { unItems :: [Item a] }
-    deriving (Show)
 
 instance Eq a => Eq (Items a) where
     (==) = (==) `on` concatMap Data.Foldable.toList . unItems
+
+instance Show a => Show (Items a) where
+    show = show . concatMap Data.Foldable.toList . unItems
 
 type Leaf = Ann Token
 
@@ -183,9 +186,14 @@ class LanguageElement a where
     -- returned. This is useful for getting/extracting values
     mapLastToken' :: (forall b. Ann b -> (Ann b, c)) -> a -> (a, c)
 
+    -- Walk all syntactically valid sub-expressions in a breadth-first search way. This allows
+    -- minimizing failing test cases
+    walkSubprograms :: a -> [Expression]
+
 instance LanguageElement (Ann a) where
     mapFirstToken' f = f
     mapLastToken' f = f
+    walkSubprograms = error "unreachable"
 
 instance LanguageElement SimpleSelector where
     mapFirstToken' f = \case
@@ -195,6 +203,11 @@ instance LanguageElement SimpleSelector where
 
     mapLastToken' = mapFirstToken'
 
+    walkSubprograms = \case
+        (IDSelector name) -> [Term (Token name)]
+        (InterpolSelector (Ann _ str _)) -> pure $ Term $ SimpleString $ Ann [] [[str]] Nothing
+        (StringSelector str) -> [Term (SimpleString str)]
+
 instance LanguageElement Selector where
     mapFirstToken' f = \case
         (Selector Nothing ident def) -> first (\ident' -> Selector Nothing ident' def) $ mapFirstToken' f ident
@@ -203,6 +216,19 @@ instance LanguageElement Selector where
     mapLastToken' f = \case
         (Selector dot ident Nothing) -> first (\ident' -> Selector dot ident' Nothing) $ mapLastToken' f ident
         (Selector dot ident (Just (qmark, def))) -> first (Selector dot ident . Just . (qmark,)) $ mapLastToken' f def
+
+    walkSubprograms = \case
+        (Selector _ ident Nothing) -> walkSubprograms ident
+        (Selector _ ident (Just (_, def))) -> (Term def) : walkSubprograms ident
+
+instance LanguageElement ParamAttr where
+    mapFirstToken' _ _ = error "unreachable"
+    mapLastToken' _ _ = error "unreachable"
+
+    walkSubprograms = \case
+        (ParamAttr name Nothing _) -> [Term (Token name)]
+        (ParamAttr name (Just (_, def)) _) -> [Term (Token name), def]
+        (ParamEllipsis _) -> []
 
 instance LanguageElement Parameter where
     mapFirstToken' f = \case
@@ -214,6 +240,11 @@ instance LanguageElement Parameter where
         (IDParameter name) -> first IDParameter (f name)
         (SetParameter open items close) -> first (SetParameter open items) (f close)
         (ContextParameter first' at second) -> first (ContextParameter first' at) (mapLastToken' f second)
+
+    walkSubprograms = \case
+        (IDParameter ident) -> [(Term $ Token ident)]
+        (SetParameter _ bindings _) -> bindings >>= walkSubprograms
+        (ContextParameter left _ right) -> walkSubprograms left ++ walkSubprograms right
 
 instance LanguageElement Term where
     mapFirstToken' f = \case
@@ -237,6 +268,23 @@ instance LanguageElement Term where
         (Selection term []) -> first (\term' -> Selection term' []) (mapLastToken' f term)
         (Selection term sels) -> first (Selection term . NonEmpty.toList) (mapLastToken' f $ NonEmpty.fromList sels)
         (Parenthesized open expr close) -> first (Parenthesized open expr) (f close)
+
+    walkSubprograms = \case
+        (List _ items _) -> unItems items >>= \case
+            CommentedItem _ item -> [Term item]
+            DetachedComments _ -> []
+        (Set _ _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
+            (CommentedItem _ (Inherit _ from sels _)) -> (Term <$> maybeToList from) ++ concatMap walkSubprograms sels
+            (CommentedItem _ (Assignment sels _ expr _)) -> expr : concatMap walkSubprograms sels
+            (DetachedComments _) -> []
+        (Set _ _ items _) -> unItems items >>= \case
+            -- Map each binding to a singleton set
+            (CommentedItem _ item) -> [ Term (Set Nothing (Ann [] TBraceOpen Nothing) (Items [(CommentedItem [] item)]) (Ann [] TBraceClose Nothing)) ]
+            (DetachedComments _) -> []
+        (Selection term sels) -> Term term : (sels >>= walkSubprograms)
+        (Parenthesized _ expr _) -> [expr]
+        -- The others are already minimal
+        _ -> []
 
 instance LanguageElement Expression where
     mapFirstToken' f = \case
@@ -266,18 +314,39 @@ instance LanguageElement Expression where
         (Negation not_ expr) -> first (Negation not_) (mapLastToken' f expr)
         (Inversion tilde expr) -> first (Inversion tilde) (mapLastToken' f expr)
 
-instance LanguageElement a => LanguageElement (Whole a) where
+    walkSubprograms = \case
+        (Term term) -> walkSubprograms term
+        (With _ expr0 _ expr1) -> [expr0, expr1]
+        (Let _ items _ body) -> body : (unItems items >>= \case
+                -- Map each binding to a singleton set
+                (CommentedItem _ item) -> [ Term (Set Nothing (Ann [] TBraceOpen Nothing) (Items [(CommentedItem [] item)]) (Ann [] TBraceClose Nothing)) ]
+                (DetachedComments _) -> []
+            )
+        (Assert _ cond _ body) -> [cond, body]
+        (If _ expr0 _ expr1 _ expr2) -> [expr0, expr1, expr2]
+        (Abstraction param _ body) -> [(Abstraction param (Ann [] TColon Nothing) (Term (Token (Ann [] (Identifier "_") Nothing)))), body]
+        (Application g a) -> [g, a]
+        (Operation left _ right) -> [left, right]
+        (MemberCheck name _ sels) -> name : (sels >>= walkSubprograms)
+        (Negation _ expr) -> [expr]
+        (Inversion _ expr) -> [expr]
+
+instance LanguageElement (Whole Expression) where
     mapFirstToken' f (Whole a trivia)
         = first (\a' -> Whole a' trivia) (mapFirstToken' f a)
 
     mapLastToken' f (Whole a trivia)
         = first (\a' -> Whole a' trivia) (mapLastToken' f a)
 
+    walkSubprograms (Whole a _) = [a]
+
 instance LanguageElement a => LanguageElement (NonEmpty a) where
     mapFirstToken' f (x :| _) = first pure $ mapFirstToken' f x
 
     mapLastToken' f (x :| []) = first pure $ mapLastToken' f x
     mapLastToken' f (x :| xs) = first ((x :|) . NonEmpty.toList) $ mapLastToken' f (NonEmpty.fromList xs)
+
+    walkSubprograms = error "unreachable"
 
 data Token
     = Integer    Int
