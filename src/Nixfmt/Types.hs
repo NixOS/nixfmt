@@ -71,6 +71,9 @@ data StringPart
 
 type Path = Ann [StringPart]
 
+-- A string consists of lines, each of which consists of text elements and interpolations.
+-- The string's text does describe the raw input text value, and not the actual text it represents
+-- within Nix semantics.
 type String = Ann [[StringPart]]
 
 data SimpleSelector
@@ -91,7 +94,10 @@ data Binder
 
 data Term
     = Token Leaf
-    | String String
+    -- " String
+    | SimpleString String
+    -- '' String
+    | IndentedString String
     | Path Path
     | List Leaf (Items Term) Leaf
     | Set (Maybe Leaf) Leaf (Items Binder) Leaf
@@ -212,7 +218,8 @@ instance LanguageElement Parameter where
 instance LanguageElement Term where
     mapFirstToken' f = \case
         (Token leaf) -> first Token (f leaf)
-        (String string) -> first String (f string)
+        (SimpleString string) -> first SimpleString (f string)
+        (IndentedString string) -> first IndentedString (f string)
         (Path path) -> first Path (f path)
         (List open items close) -> first (\open' -> List open' items close) (f open)
         (Set (Just rec) open items close) -> first (\rec' -> Set (Just rec') open items close) (f rec)
@@ -222,7 +229,8 @@ instance LanguageElement Term where
 
     mapLastToken' f = \case
         (Token leaf) -> first Token (f leaf)
-        (String string) -> first String (f string)
+        (SimpleString string) -> first SimpleString (f string)
+        (IndentedString string) -> first IndentedString (f string)
         (Path path) -> first Path (f path)
         (List open items close) -> first (List open items) (f close)
         (Set rec open items close) -> first (Set rec open items) (f close)

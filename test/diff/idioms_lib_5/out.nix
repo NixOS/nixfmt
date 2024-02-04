@@ -178,7 +178,11 @@ let
   '';
 
   # flakeNote will be printed in the remediation messages below.
-  flakeNote = "\n Note: For `nix shell`, `nix build`, `nix develop` or any other Nix 2.4+\n (Flake) command, `--impure` must be passed in order to read this\n environment variable.\n    ";
+  flakeNote = "
+ Note: For `nix shell`, `nix build`, `nix develop` or any other Nix 2.4+
+ (Flake) command, `--impure` must be passed in order to read this
+ environment variable.
+    ";
 
   remediate_allowlist = allow_attr: rebuild_amendment: attrs: ''
     a) To temporarily allow ${remediation_phrase allow_attr}, you can use an environment variable
@@ -290,9 +294,7 @@ let
           "Warning while evaluating ${getName attrs}: «${reason}»: ${errormsg}"
         else
           "Package ${getName attrs} in ${pos_str meta} ${errormsg}, continuing anyway."
-          + (lib.optionalString (remediationMsg != "") ''
-
-            ${remediationMsg}'');
+          + (lib.optionalString (remediationMsg != "") "\n${remediationMsg}");
       isEnabled = lib.findFirst (x: x == reason) null showWarnings;
     in
     if isEnabled != null then builtins.trace msg true else true;
@@ -381,13 +383,11 @@ let
       if typeCheck metaTypes.${k} v then
         null
       else
-        ''
-          key 'meta.${k}' has invalid value; expected ${metaTypes.${k}.description}, got
-              ${lib.generators.toPretty { indent = "    "; } v}''
+        "key 'meta.${k}' has invalid value; expected ${metaTypes.${k}.description}, got\n    ${lib.generators.toPretty { indent = "    "; } v}"
     else
-      ''
-        key 'meta.${k}' is unrecognized; expected one of: 
-          [${lib.concatMapStringsSep ", " (x: "'${x}'") (lib.attrNames metaTypes)}]'';
+      "key 'meta.${k}' is unrecognized; expected one of: \n  [${
+        lib.concatMapStringsSep ", " (x: "'${x}'") (lib.attrNames metaTypes)
+      }]";
   checkMeta =
     meta:
     lib.optionals config.checkMeta (
@@ -424,9 +424,9 @@ let
       {
         valid = "no";
         reason = "unknown-meta";
-        errormsg = ''
-          has an invalid meta attrset:${lib.concatMapStrings (x: "\n  - " + x) res}
-        '';
+        errormsg = "has an invalid meta attrset:${
+          lib.concatMapStrings (x: "\n  - " + x) res
+        }\n";
         unfree = false;
         nonSource = false;
         broken = false;

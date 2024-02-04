@@ -5,15 +5,19 @@
   ''
   ""
   ###
-  "\n  "
+  "
+  "
   ###
-  "a\n   ${x}\n   b\n  "
+  "a
+   ${x}
+   b
+  "
   ###
-  ""
+  ''''
   ###
-  "a"
+  ''a''
   ###
-  "${""}"
+  ''${""}''
   ###
   ''
     ${""}
@@ -47,7 +51,7 @@
        e
   ''
   ###
-  ""
+  ''''
   ###
   ''
     declare -a makefiles=(./*.mak)
@@ -62,7 +66,7 @@
     [${mkSectionName sectName}]
   ''
   ###
-  "-couch_ini ${cfg.package}/etc/default.ini ${configFile} ${pkgs.writeText "couchdb-extra.ini" cfg.extraConfig} ${cfg.configFile}"
+  ''-couch_ini ${cfg.package}/etc/default.ini ${configFile} ${pkgs.writeText "couchdb-extra.ini" cfg.extraConfig} ${cfg.configFile}''
   ###
   ''exec i3-input -F "mark %s" -l 1 -P 'Mark: ' ''
   ###
@@ -70,7 +74,7 @@
   ###
   ''"${pkgs.name or "<unknown-name>"}";''
   ###
-  "${pkgs.replace-secret}/bin/replace-secret '${placeholder}' '${secretFile}' '${targetFile}' "
+  ''${pkgs.replace-secret}/bin/replace-secret '${placeholder}' '${secretFile}' '${targetFile}' ''
   ###
   ''
     mkdir -p "$out/lib/modules/${kernel.modDirVersion}/kernel/net/wireless/"

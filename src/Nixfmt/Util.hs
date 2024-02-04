@@ -11,24 +11,17 @@ module Nixfmt.Util
     , someP
     , manyText
     , someText
-    , commonPrefix
     , commonIndentation
-    , dropCommonIndentation
     , identChar
     , isSpaces
     , pathChar
-    , replaceMultiple
     , schemeChar
     , uriChar
     ) where
 
-import Control.Applicative ((<|>))
 import Data.Char (isAlpha, isDigit, isSpace)
-import Data.Foldable (asum)
-import Data.List (unfoldr)
-import Data.Maybe (fromMaybe)
 import Data.Text as Text
-  (Text, all, commonPrefixes, concat, empty, null, splitAt, stripEnd, stripPrefix, takeWhile)
+  (Text, all, commonPrefixes, concat, empty, takeWhile)
 import Text.Megaparsec
   (MonadParsec, Token, Tokens, many, some, takeWhile1P, takeWhileP)
 
@@ -77,31 +70,5 @@ commonIndentation []       = Nothing
 commonIndentation [x]      = Just $ Text.takeWhile isSpace x
 commonIndentation (x:y:xs) = commonIndentation (commonPrefix x y : xs)
 
--- | Strip the longest common indentation from a list of lines. Empty lines do
--- not count towards the common indentation.
-dropCommonIndentation :: [Text] -> [Text]
-dropCommonIndentation unstrippedLines =
-    let strippedLines = map stripEnd unstrippedLines
-    in case commonIndentation (filter (/=empty) strippedLines) of
-            Nothing          -> map (const empty) strippedLines
-            Just indentation -> map (fromMaybe empty . stripPrefix indentation) strippedLines
-
 isSpaces :: Text -> Bool
 isSpaces = Text.all (==' ')
-
--- | Apply multiple independent replacements. This function passes over the text
--- once and applies the first replacement it can find at each position. After a
--- replacement is matched, the function continues after the replacement, not
--- inside it.
-replaceMultiple :: [(Text, Text)] -> Text -> Text
-replaceMultiple replacements = mconcat . unfoldr replaceAny
-  where
-    -- | replaceAny assumes input is nonempty
-    replaceAny :: Text -> Maybe (Text, Text)
-    replaceAny t
-      | Text.null t = Nothing
-      | otherwise   = asum (map (replaceStart t) replacements)
-                      <|> Just (Text.splitAt 1 t)
-
-    replaceStart :: Text -> (Text, Text) -> Maybe (Text, Text)
-    replaceStart t (pat, rep) = (rep,) <$> Text.stripPrefix pat t

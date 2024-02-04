@@ -12,9 +12,8 @@ import Prelude hiding (String)
 
 import Data.Char (isSpace)
 import Data.Maybe (fromMaybe, isJust, fromJust, maybeToList)
-import Data.Text (Text, isPrefixOf, isSuffixOf, stripPrefix)
-import qualified Data.Text as Text
-  (dropEnd, empty, init, isInfixOf, last, null, strip, takeWhile)
+import Data.Text (Text, isPrefixOf, stripPrefix)
+import qualified Data.Text as Text (null, takeWhile)
 
 -- import Debug.Trace (traceShowId)
 import Nixfmt.Predoc
@@ -26,7 +25,6 @@ import Nixfmt.Types
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
   StringPart(..), Term(..), Token(..), TrailingComment(..), Trivium(..),
   Whole(..), tokenText, mapFirstToken, mapFirstToken', mapLastToken')
-import Nixfmt.Util (commonIndentation, isSpaces, replaceMultiple)
 
 prettyCommentLine :: Text -> Doc
 prettyCommentLine l
@@ -145,7 +143,8 @@ prettyTermWide t = prettyTerm t
 -- | Pretty print a term without wrapping it in a group.
 prettyTerm :: Term -> Doc
 prettyTerm (Token t) = pretty t
-prettyTerm (String s) = pretty s
+prettyTerm (SimpleString (Ann leading s trailing')) = pretty leading <> prettySimpleString s <> pretty trailing'
+prettyTerm (IndentedString (Ann leading s trailing')) = pretty leading <> prettyIndentedString s <> pretty trailing'
 prettyTerm (Path p) = pretty p
 -- Selection (`foo.bar.baz`) case distinction on the first element (`foo`):
 -- If it is an ident, keep it all together
@@ -372,8 +371,8 @@ isAbsorbableExpr expr = case expr of
     _ -> False
 
 isAbsorbable :: Term -> Bool
-isAbsorbable (String (Ann _ parts@(_:_:_) _))
-    = not $ isSimpleString parts
+-- Multi-line indented string
+isAbsorbable (IndentedString (Ann _ (_:_:_) _)) = True
 isAbsorbable (Path _) = True
 -- Non-empty sets and lists
 isAbsorbable (Set _ _ (Items (_:_)) _)                                   = True
@@ -407,7 +406,8 @@ absorbRHS expr = case expr of
         <> pretty close
     -- Not all strings are absorbable, but in this case we always want to keep them attached.
     -- Because there's nothing to gain from having them start on a new line.
-    (Term (String _)) -> hardspace <> group expr
+    (Term (SimpleString _)) -> hardspace <> group expr
+    (Term (IndentedString _)) -> hardspace <> group expr
     -- Same for path
     (Term (Path _)) -> hardspace <> group expr
     -- Non-absorbable term
@@ -571,14 +571,14 @@ instance Pretty a => Pretty (Whole a) where
 instance Pretty Token where
     pretty = text . tokenText
 
--- STRINGS
 
 isSimpleSelector :: Selector -> Bool
 isSimpleSelector (Selector _ (IDSelector _) Nothing) = True
 isSimpleSelector _                                   = False
 
 isSimple :: Expression -> Bool
-isSimple (Term (String (Ann [] _ Nothing))) = True
+isSimple (Term (SimpleString (Ann [] _ Nothing))) = True
+isSimple (Term (IndentedString (Ann [] _ Nothing))) = True
 isSimple (Term (Path (Ann [] _ Nothing))) = True
 isSimple (Term (Token (Ann [] (Identifier _) Nothing))) = True
 isSimple (Term (Selection t selectors))
@@ -589,62 +589,7 @@ isSimple (Application (Application (Application _ _) _) _) = False
 isSimple (Application f a) = isSimple f && isSimple a
 isSimple _ = False
 
-hasQuotes :: [StringPart] -> Bool
-hasQuotes []                = False
-hasQuotes (TextPart x : xs) = Text.isInfixOf "\"" x || hasQuotes xs
-hasQuotes (_ : xs)          = hasQuotes xs
-
-hasDualQuotes :: [StringPart] -> Bool
-hasDualQuotes []                = False
-hasDualQuotes (TextPart x : xs) = Text.isInfixOf "''" x || hasDualQuotes xs
-hasDualQuotes (_ : xs)          = hasDualQuotes xs
-
-endsInSingleQuote :: [StringPart] -> Bool
-endsInSingleQuote []           = False
-endsInSingleQuote xs =
-    case last xs of
-         (TextPart x) -> x /= Text.empty && Text.last x == '\''
-         _            -> False
-
-isIndented :: [[StringPart]] -> Bool
-isIndented parts =
-    case commonIndentation inits of
-         Just "" -> False
-         _       -> True
-    where textInit (TextPart t : xs) = t <> textInit xs
-          textInit _                 = ""
-          nonEmpty (TextPart "" : xs) = nonEmpty xs
-          nonEmpty []                 = False
-          nonEmpty _                  = True
-          inits = map textInit $ filter nonEmpty parts
-
--- | If the last line has at least one space but nothing else, it cannot be
--- cleanly represented in an indented string.
-lastLineIsSpaces :: [[StringPart]] -> Bool
-lastLineIsSpaces [] = False
-lastLineIsSpaces xs = case last xs of
-    [TextPart t] -> isSpaces t
-    _            -> False
-
-isInvisibleLine :: [StringPart] -> Bool
-isInvisibleLine []           = True
-isInvisibleLine [TextPart t] = Text.null $ Text.strip t
-isInvisibleLine _            = False
-
-isSimpleString :: [[StringPart]] -> Bool
-isSimpleString [parts]
-    | hasDualQuotes parts       = True
-    | endsInSingleQuote parts   = True
-    | isIndented [parts]        = True
-    | hasQuotes parts           = False
-    | otherwise                 = True
-
-isSimpleString parts
-    | all isInvisibleLine parts = True
-    | endsInSingleQuote (last parts) = True
-    | isIndented parts          = True
-    | lastLineIsSpaces parts    = True
-    | otherwise                 = False
+-- STRINGS
 
 instance Pretty StringPart where
     pretty (TextPart t) = text t
@@ -689,43 +634,13 @@ instance Pretty [StringPart] where
 
     pretty parts = base $ hcat parts
 
-instance Pretty [[StringPart]] where
-    pretty parts
-        | isSimpleString parts = prettySimpleString parts
-        | otherwise            = prettyIndentedString parts
-
-type UnescapeInterpol = Text -> Text
-type EscapeText = Text -> Text
-
-prettyLine :: EscapeText -> UnescapeInterpol -> [StringPart] -> Doc
-prettyLine escapeText unescapeInterpol
-    = pretty . unescapeInterpols . map escape
-    where escape (TextPart t) = TextPart (escapeText t)
-          escape x            = x
-
-          unescapeInterpols [] = []
-          unescapeInterpols (TextPart t : TextPart u : xs)
-              = unescapeInterpols (TextPart (t <> u) : xs)
-          unescapeInterpols (TextPart t : xs@(Interpolation{} : _))
-              = TextPart (unescapeInterpol t) : unescapeInterpols xs
-          unescapeInterpols (x : xs) = x : unescapeInterpols xs
-
 prettySimpleString :: [[StringPart]] -> Doc
 prettySimpleString parts = group $
     text "\""
-    <> sepBy (text "\\n") (map (prettyLine escape unescapeInterpol) parts)
+    -- Use literal \n here instead of `newline`, as the latter
+    -- would cause multiline-string-style indentation which we do not want
+    <> sepBy (text "\n") (map pretty parts)
     <> text "\""
-    where escape = replaceMultiple
-              [ ("$\\${", "$${")
-              , ("${",    "\\${")
-              , ("\"",    "\\\"")
-              , ("\r",    "\\r")
-              , ("\\",    "\\\\")
-              ]
-
-          unescapeInterpol t
-              | "$" `isSuffixOf` t = Text.init t <> "\\$"
-              | otherwise          = t
 
 prettyIndentedString :: [[StringPart]] -> Doc
 prettyIndentedString parts = group $ base $
@@ -734,24 +649,5 @@ prettyIndentedString parts = group $ base $
     -- However, for single-line strings it should be omitted, because often times a line break will
     -- not reduce the indentation at all
     <> (case parts of { _:_:_ -> line'; _ -> mempty })
-    <> (nest 2 $ sepBy newline $ map (prettyLine escape unescapeInterpol) parts)
+    <> (nest 2 $ sepBy newline $ map pretty parts)
     <> text "''"
-    where escape = replaceMultiple
-              [ ("'${", "''\\'''${")
-              , ("${", "''${")
-              , ("''", "'''")
-              ]
-
-          unescapeInterpol t
-              | Text.null t        = t
-              | Text.last t /= '$' = t
-              | trailingQuotes (Text.init t) `mod` 3 == 0
-                  = Text.init t <> "''$"
-              | trailingQuotes (Text.init t) `mod` 3 == 1
-                  = Text.dropEnd 2 t <> "''\\'''$"
-              | otherwise
-                  = error "should never happen after escape"
-
-          trailingQuotes t
-              | "'" `isSuffixOf` t = 1 + trailingQuotes (Text.init t)
-              | otherwise          = 0 :: Int

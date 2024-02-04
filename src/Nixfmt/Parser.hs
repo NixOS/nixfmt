@@ -33,7 +33,7 @@ import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Types
   (Ann, Binder(..), Expression(..), File, Fixity(..), Item(..), Items(..), Leaf,
   Operator(..), ParamAttr(..), Parameter(..), Parser, Path, Selector(..),
-  SimpleSelector(..), String, StringPart(..), Term(..), Token(..), Trivium(..),
+  SimpleSelector(..), StringPart(..), Term(..), Token(..), Trivium(..),
   operators, tokenText)
 import Nixfmt.Util
   (commonIndentation, identChar, isSpaces, manyP, manyText, pathChar,
@@ -116,22 +116,22 @@ interpolation = Interpolation <$>
 
 simpleStringPart :: Parser StringPart
 simpleStringPart = TextPart <$> someText (
-    chunk "\\n" $> "\n" <|>
-    chunk "\\r" $> "\r" <|>
-    chunk "\\t" $> "\t" <|>
-    chunk "\\" *> (Text.singleton <$> anySingle) <|>
+    chunk "\\n" <|>
+    chunk "\\r" <|>
+    chunk "\\t" <|>
+    ((<>) <$> chunk "\\" <*> (Text.singleton <$> anySingle)) <|>
     chunk "$$" <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     someP (\t -> t /= '"' && t /= '\\' && t /= '$'))
 
 indentedStringPart :: Parser StringPart
 indentedStringPart = TextPart <$> someText (
-    chunk "''\\n" $> "\n" <|>
-    chunk "''\\r" $> "\r" <|>
-    chunk "''\\t" $> "\t" <|>
+    chunk "''\\n" <|>
+    chunk "''\\r" <|>
+    chunk "''\\t" <|>
     chunk "''\\" *> (Text.singleton <$> anySingle) <|>
-    chunk "''$" $> "$" <|>
-    chunk "'''" $> "''" <|>
+    chunk "''$" <|>
+    chunk "'''" <|>
     chunk "$$" <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     try (chunk "'" <* notFollowedBy (char '\'')) <|>
@@ -216,10 +216,6 @@ indentedString :: Parser [[StringPart]]
 indentedString = rawSymbol TDoubleSingleQuote *>
     fmap fixIndentedString (sepBy indentedLine (chunk "\n")) <*
     rawSymbol TDoubleSingleQuote
-
-string :: Parser String
-string = lexeme $ simpleString <|> indentedString <|> uri
-
 -- TERMS
 
 parens :: Parser Term
@@ -239,9 +235,14 @@ selectorPath = (pure <$> selector Nothing) <>
     many (selector $ Just $ symbol TDot)
 
 simpleTerm :: Parser Term
-simpleTerm = (String <$> string) <|> (Path <$> path) <|>
-    (Token <$> (envPath <|> float <|> integer <|> identifier)) <|>
-    parens <|> set <|> list
+simpleTerm =
+    (SimpleString <$> (lexeme $ simpleString <|> uri))
+    <|> (IndentedString <$> lexeme indentedString)
+    <|> (Path <$> path)
+    <|> (Token <$> (envPath <|> float <|> integer <|> identifier))
+    <|> parens
+    <|> set
+    <|> list
 
 term :: Parser Term
 term = label "term" $ do

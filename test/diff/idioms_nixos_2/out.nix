@@ -131,7 +131,7 @@ in
     enableBrokenCiphersForSSE = mkOption {
       type = types.bool;
       default = versionOlder stateVersion "22.11";
-      defaultText = literalExpression ''versionOlder system.stateVersion "22.11"'';
+      defaultText = literalExpression "versionOlder system.stateVersion \"22.11\"";
       description = lib.mdDoc ''
         This option enables using the OpenSSL PHP extension linked against OpenSSL 1.1
         rather than latest OpenSSL (≥ 3), this is not recommended unless you need
@@ -825,7 +825,7 @@ in
         assertions = [
           {
             assertion = cfg.database.createLocally -> cfg.config.dbtype == "mysql";
-            message = "services.nextcloud.config.dbtype must be set to mysql if services.nextcloud.database.createLocally is set to true.";
+            message = ''services.nextcloud.config.dbtype must be set to mysql if services.nextcloud.database.createLocally is set to true.'';
           }
         ];
       }
@@ -996,9 +996,9 @@ in
                         if c.dbport != null then "--database-port" else null
                       } = ''"${toString c.dbport}"'';
                       ${if c.dbuser != null then "--database-user" else null} = ''"${c.dbuser}"'';
-                      "--database-pass" = ''"''$${dbpass.arg}"'';
+                      "--database-pass" = "\"\$${dbpass.arg}\"";
                       "--admin-user" = ''"${c.adminuser}"'';
-                      "--admin-pass" = ''"''$${adminpass.arg}"'';
+                      "--admin-pass" = "\"\$${adminpass.arg}\"";
                       "--data-dir" = ''"${datadir}/data"'';
                     }
                   );
