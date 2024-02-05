@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings, LambdaCase #-}
 
 module Nixfmt.Predoc
     ( text
@@ -14,10 +14,10 @@ module Nixfmt.Predoc
     , sepBy
     , surroundWith
     , hcat
-    , base
     , group
     , group'
     , nest
+    , offset
     , softline'
     , line'
     , softline
@@ -85,12 +85,6 @@ data DocAnn
     -- In all other cases, fully expand the group.
     -- Groups containing multiple priority groups are not supported at the moment.
     = Group Bool
-    -- | Node (Nest n) doc indicates all line starts in doc should be indented
-    -- by n more spaces than the surrounding Base.
-    | Nest Int
-    -- | Node Base doc sets the base indentation that Nests should be relative
-    -- to to the indentation of the line where the Base starts.
-    | Base
     deriving (Show, Eq)
 
 -- Comments do not count towards some line length limits
@@ -103,8 +97,9 @@ data TextAnn = Regular | Comment | TrailingComment | Trailing
 
 -- | Single document element. Documents are modeled as lists of these elements
 -- in order to make concatenation simple.
-data DocE
-    = Text TextAnn Text
+data DocE =
+    -- indent level, offset, kind, text
+    Text Int Int TextAnn Text
     | Spacing Spacing
     | Node DocAnn Doc
     deriving (Show, Eq)
@@ -129,21 +124,21 @@ instance (Pretty a, Pretty b, Pretty c) => Pretty (a, b, c) where
 
 text :: Text -> Doc
 text "" = []
-text t  = [Text Regular t]
+text t  = [Text 0 0 Regular t]
 
 comment :: Text -> Doc
 comment "" = []
-comment t  = [Text Comment t]
+comment t  = [Text 0 0 Comment t]
 
 -- Comment at the end of a line
 trailingComment :: Text -> Doc
 trailingComment "" = []
-trailingComment t  = [Text TrailingComment t]
+trailingComment t  = [Text 0 0 TrailingComment t]
 
 -- Text tokens that are only needed in expanded groups
 trailing :: Text -> Doc
 trailing "" = []
-trailing t = [Text Trailing t]
+trailing t = [Text 0 0 Trailing t]
 
 -- | Group document elements together (see Node Group documentation)
 -- Must not contain non-hard whitespace (e.g. line, softline' etc.) at the start of the end.
@@ -166,21 +161,28 @@ group x = pure . Node (Group False) $
 group' :: Pretty a => Bool -> a -> Doc
 group' prio = pure . Node (Group prio) . pretty
 
--- | @nest n doc@ sets the indentation for lines in @doc@ to @n@ more than the
--- indentation of the part before it. This is based on the actual indentation of
--- the line, rather than the indentation it should have used: If multiple
--- indentation levels start on the same line, only the last indentation level
--- will be applied on the next line. This prevents unnecessary nesting.
-nest :: HasCallStack => Pretty a => Int -> a -> Doc
-nest level x = pure . Node (Nest level) $
-    if x' /= [] && (isSoftSpacing (head x') || isSoftSpacing (last x')) then
-       error $ "nest should not start or end with whitespace; " <> show x'
-    else
-        x'
-    where x' = pretty x
+-- | @nest doc@ declarse @doc@ to have a higher indentation level
+-- than before. Not all nestings actually result in indentation changes,
+-- this will be calculated automatically later on. As a rule of thumb:
+-- Multiple indentation levels on one line will be compacted and only result in a single
+-- bump for the next line. This prevents excessive indentation.
+nest :: Pretty a => a -> Doc
+nest x = go $ pretty x
+    where
+    go (Text i o ann t : rest) = (Text (i + 2) o ann t) : go rest
+    go (Node ann inner : rest) = (Node ann (go inner)) : go rest
+    go (spacing : rest) = spacing : go rest
+    go [] = []
 
-base :: Pretty a => a -> Doc
-base = pure . Node Base . pretty
+-- This is similar to nest, however it circumvents the "smart" rules that usually apply.
+-- This should only be useful to manage the indentation within indented strings.
+offset :: Pretty a => Int -> a -> Doc
+offset level x = go $ pretty x
+    where
+    go (Text i o ann t : rest) = (Text i (o + level) ann t) : go rest
+    go (Node ann inner : rest) = (Node ann (go inner)) : go rest
+    go (spacing : rest) = spacing : go rest
+    go [] = []
 
 -- | Line break or nothing (soft)
 softline' :: Doc
@@ -243,8 +245,8 @@ isHardSpacing _           = False
 -- Some comments are nested as nodes with multiple elements.
 -- Therefore nodes are counted as comments if they only contain comments or hard spacings
 isComment :: DocE -> Bool
-isComment (Text Comment _) = True
-isComment (Text TrailingComment _) = True
+isComment (Text _ _ Comment _) = True
+isComment (Text _ _ TrailingComment _) = True
 isComment (Node _ inner) = all (\x -> isComment x || isHardSpacing x) inner
 isComment _ = False
 
@@ -269,7 +271,7 @@ spanEnd p = fmap reverse . span p . reverse
 unexpandSpacing' :: Maybe Int -> Doc -> Maybe Doc
 unexpandSpacing' (Just n) _ | n < 0 = Nothing
 unexpandSpacing' _ [] = Just []
-unexpandSpacing' n (txt@(Text _ t):xs) = (txt :) <$> unexpandSpacing' (n <&> (subtract $ textWidth t)) xs
+unexpandSpacing' n (txt@(Text _ _ _ t):xs) = (txt :) <$> unexpandSpacing' (n <&> (subtract $ textWidth t)) xs
 unexpandSpacing' n (Spacing Hardspace:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> (subtract 1)) xs
 unexpandSpacing' n (Spacing Space:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> (subtract 1)) xs
 unexpandSpacing' n (Spacing Softspace:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> (subtract 1)) xs
@@ -297,16 +299,15 @@ fixup :: Doc -> Doc
 fixup [] = []
 -- Merge consecutive spacings
 fixup (Spacing a : Spacing b : xs) = fixup $ Spacing (mergeSpacings a b) : xs
--- Merge consecutive texts
-fixup (Text ann a : Text ann' b : xs) | ann == ann' = fixup $ Text ann (a <> b) : xs
+-- Merge consecutive texts. Take indentation and offset from the left one
+fixup (Text level off ann a : Text _ _ ann' b : xs) | ann == ann' = fixup $ Text level off ann (a <> b) : xs
 -- Handle node, with stuff in front of it to potentially merge with
 fixup (a@(Spacing _) : Node ann xs : ys) =
     let
-        moveComment = case ann of { Nest _ -> False; _ -> True }
         -- Recurse onto xs, split out leading and trailing whitespace into pre and post.
         -- For the leading side, also move out comments out of groups, they are kinda the same thing
         -- (We could move out trailing comments too but it would make no difference)
-        (pre, rest)  = span (\x -> isHardSpacing x || (moveComment && isComment x)) $ fixup xs
+        (pre, rest)  = span (\x -> isHardSpacing x || isComment x) $ fixup xs
         (post, body) = (second $ simplifyNode ann) $ spanEnd isHardSpacing rest
     in if null body then
         -- Dissolve empty node
@@ -316,8 +317,7 @@ fixup (a@(Spacing _) : Node ann xs : ys) =
 -- Handle node, almost the same thing as above
 fixup (Node ann xs : ys) =
     let
-        moveComment = case ann of { Nest _ -> False; _ -> True }
-        (pre, rest)  = span (\x -> isHardSpacing x || (moveComment && isComment x)) $ fixup xs
+        (pre, rest)  = span (\x -> isHardSpacing x || isComment x) $ fixup xs
         (post, body) = (second $ simplifyNode ann) $ spanEnd isHardSpacing rest
     in if null body then
         fixup $ pre ++ post ++ ys
@@ -354,7 +354,8 @@ textWidth :: Text -> Int
 textWidth = Text.length
 
 -- | Attempt to fit a list of documents in a single line of a specific width.
--- ni — next indentation. Only used for trailing comment calculations
+-- ni — next indentation. Only used for trailing comment calculations. Set this to the indentation
+--      of the next line relative to the current one. So usuall 2 when the indentation level increases, 0 otherwise.
 -- c — allowed width
 fits :: Int -> Int -> Doc -> Maybe Text
 fits _ c _ | c < 0 = Nothing
@@ -363,11 +364,11 @@ fits _ _ [] = Just ""
 -- due to our recursion on nodes below
 fits ni c (Spacing a:Spacing b:xs) = fits ni c (Spacing (mergeSpacings a b):xs)
 fits ni c (x:xs) = case x of
-    Text Regular t       -> (t<>) <$> fits (ni - textWidth t) (c - textWidth t) xs
-    Text Comment t       -> (t<>) <$> fits ni c xs
-    Text TrailingComment t | ni == 0 -> ((" " <> t) <>) <$> fits ni c xs
+    Text _ _ Regular t   -> (t<>) <$> fits (ni - textWidth t) (c - textWidth t) xs
+    Text _ _ Comment t   -> (t<>) <$> fits ni c xs
+    Text _ _ TrailingComment t | ni == 0 -> ((" " <> t) <>) <$> fits ni c xs
                          | otherwise -> (t<>) <$> fits ni c xs
-    Text Trailing _      -> fits ni c xs
+    Text _ _ Trailing _  -> fits ni c xs
     Spacing Softbreak    -> fits ni c xs
     Spacing Break        -> fits ni c xs
     Spacing Softspace    -> (" "<>) <$> fits (ni - 1) (c - 1) xs
@@ -382,9 +383,9 @@ fits ni c (x:xs) = case x of
 -- width 0, which always forces line breaks when possible.
 firstLineWidth :: Doc -> Int
 firstLineWidth []                       = 0
-firstLineWidth (Text Comment _ : xs)    = firstLineWidth xs
-firstLineWidth (Text TrailingComment _ : xs) = firstLineWidth xs
-firstLineWidth (Text _ t : xs)          = textWidth t + firstLineWidth xs
+firstLineWidth (Text _ _ Comment _ : xs)  = firstLineWidth xs
+firstLineWidth (Text _ _ TrailingComment _ : xs) = firstLineWidth xs
+firstLineWidth (Text _ _ _ t : xs)        = textWidth t + firstLineWidth xs
 -- This case is impossible in the input thanks to fixup, but may happen
 -- due to our recursion on nodes below
 firstLineWidth (Spacing a : Spacing b : xs) = firstLineWidth (Spacing (mergeSpacings a b):xs)
@@ -398,8 +399,8 @@ firstLineFits :: Int -> Int -> Doc -> Bool
 firstLineFits targetWidth maxWidth docs = go maxWidth docs
     where go c _ | c < 0                = False
           go c []                       = maxWidth - c <= targetWidth
-          go c (Text Regular t : xs)    = go (c - textWidth t) xs
-          go c (Text _ _ : xs)          = go c xs
+          go c (Text _ _ Regular t : xs)  = go (c - textWidth t) xs
+          go c (Text _ _ _ _ : xs)        = go c xs
           -- This case is impossible in the input thanks to fixup, but may happen
           -- due to our recursion on nodes below
           go c (Spacing a : Spacing b : xs) = go c $ Spacing (mergeSpacings a b) : xs
@@ -410,37 +411,13 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
                    Nothing -> go c (ys ++ xs)
                    Just t  -> go (c - textWidth t) xs
 
-          go c (Node _ ys : xs)         = go c (ys ++ xs)
-
 -- Calculate the amount of indentation until the first token
 -- This assumes the input to be an unexpanded group at the start of a new line
-firstLineIndent :: Doc -> Int
-firstLineIndent ((Node (Nest n) xs) : _) = n + firstLineIndent xs
-firstLineIndent ((Node _ xs) : _) = firstLineIndent xs
-firstLineIndent _ = 0
-
--- From a current indent and following tokens, calculate the effective indent of the next text token
-nextIndent :: Int -> [Chunk] -> Int
-nextIndent _ (Chunk ti (Text _ _) : _) = ti
-nextIndent _ (Chunk _ (Spacing s) : Chunk ti (Node (Nest l) ys) : xs)
-    | s == Break || s == Space || s == Hardline
-    = nextIndent (ti + l) (map (Chunk (ti+l)) ys ++ xs)
-nextIndent _ (Chunk ti (Spacing s) : xs)
-    | s == Break || s == Space || s == Hardline
-    = nextIndent ti xs
-nextIndent _ (Chunk _ (Spacing Emptyline) : _) = 0
-nextIndent _ (Chunk _ (Spacing (Newlines _)) : _) = 0
-nextIndent _ (Chunk ti (Spacing Softbreak) : xs) = nextIndent ti xs
-nextIndent _ (Chunk ti (Spacing Softspace) : xs) = nextIndent ti xs
-nextIndent ci (Chunk ti (Node (Nest l) ys) : xs) = nextIndent ci (map (Chunk (ti+l)) ys ++ xs)
-nextIndent ci (Chunk _ (Node Base ys) : xs) = nextIndent ci (map (Chunk ci) ys ++ xs)
-nextIndent ci (Chunk ti (Node _ ys) : xs) = nextIndent ci (map (Chunk ti) ys ++ xs)
-nextIndent ci (_:xs) = nextIndent ci xs
-nextIndent _ [] = 0
-
--- | A document element with target indentation
-data Chunk = Chunk Int DocE
-    deriving (Show)
+nextIndent :: Doc -> (Int, Int)
+nextIndent ((Text i o _ _) : _) = (i, o)
+nextIndent ((Node _ xs) : _) = nextIndent xs
+nextIndent (_:xs) = nextIndent xs
+nextIndent _ = (0, 0)
 
 -- | Create `n` newlines
 newlines :: Int -> Text
@@ -450,71 +427,105 @@ newlines n = Text.replicate n "\n"
 indent :: Int -> Text
 indent n = Text.replicate n " "
 
-unChunk :: Chunk -> DocE
-unChunk (Chunk _ doc) = doc
+-- All state is (cc, indents)
+-- cc: current column (within the current line, *not including indentation*)
+-- indents:
+--   A stack of tuples (realIndent, virtualIndent)
+--   This is guaranteed to never be empty, as we start with [(0, 0)] and never go below that.
+type St = (Int, [(Int, Int)])
 
 -- tw   Target Width
--- cc   Current Column
--- ci   Current Indentation
--- ti   Target Indentation
---        an indent only changes the target indentation at first.
---        Only for the tokens starting on the next line the current
---        indentation will match the target indentation.
 layoutGreedy :: Int -> Doc -> Text
-layoutGreedy tw doc = Text.concat $ evalState (go [Chunk 0 $ Node (Group False) doc] []) (0, 0)
+layoutGreedy tw doc = Text.concat $ evalState (go [Node (Group False) doc] []) (0, [(0, 0)])
     where
-    -- All state is (cc, ci)
+    -- Print a given text. If this is the first token on a line, it will
+    -- do the appropriate calculations for indentation and print that in addition to the text.
+    putText :: Int -> Int -> Text -> State St [Text]
+    putText textVI textOffset t = get >>=
+        \case
+            -- Needs indent, but no more than last line
+            (0, indents@((ci, vi):_)) | textVI == vi ->
+                go' indents (ci + textOffset)
+            -- Needs more indent than last line. We only go up by one level every time
+            (0, indents@((ci, vi):_)) | textVI > vi ->
+                go' ((ci + 2, textVI):indents) (ci + 2 + textOffset)
+            -- Need to go down one or more levels
+            -- Just pop from the stack and recurse until the indent matches again
+            (0, ((_, vi) : indents@((ci, vi'):_))) | textVI < vi ->
+                if textVI < vi' then
+                    put (0, indents) >> putText textVI textOffset t
+                else
+                    go' indents (ci + textOffset)
+            -- Does not need indent (not at start of line)
+            (cc, indents) ->
+                put (cc + textWidth t, indents) $> [t]
+        where
+            -- Start a new line
+            go' indents i = put (textWidth t, indents) $> [indent i, t]
+
+    -- Simply put text without caring about line-start indentation
+    putText' :: [Text] -> State St [Text]
+    putText' ts = do
+        (cc, indents) <- get
+        put (cc + sum (map textWidth ts), indents)
+        pure ts
 
     -- First argument: chunks to render
     -- Second argument: lookahead of following chunks, not rendered
-    go :: [Chunk] -> [Chunk] -> State (Int, Int) [Text]
+    go :: Doc -> Doc -> State St [Text]
     go [] _ = return []
     go (x:xs) ys = do { t <- goOne x (xs ++ ys); ts <- go xs ys; return (t ++ ts) }
 
     -- First argument: chunk to render. This will recurse into nests/groups if the chunk is one.
     -- Second argument: lookahead of following chunks
-    goOne :: Chunk -> [Chunk] -> State (Int, Int) [Text]
-    goOne (Chunk ti x) xs = get >>= \(cc, ci) ->
+    goOne :: DocE -> Doc -> State St [Text]
+    goOne x xs = get >>= \(cc, indents) ->
         let
-            xs' = map unChunk xs
-
             -- The last printed character was a line break
             needsIndent = (cc == 0)
-            -- Start of line indentation, if necessary
-            lineStart = if needsIndent then indent ti else ""
 
-            -- Some state helpers
-            putText ts = put (cc + sum (map textWidth ts), ci) $> ts
-            putNL = put (0, ti)
+            putNL :: Int -> State St [Text]
+            putNL n = put (0, indents) $> [newlines n]
         in case x of
-        Text TrailingComment t | not needsIndent && cc == nextIndent ci xs -> putText [" ", t]
-        Text _ t             -> putText [lineStart, t]
+        -- Special case trailing comments. Because in cases like
+        -- [ # comment
+        --   1
+        -- ]
+        -- the comment will be parsed as associated to the inner element next time, rendering it as
+        -- [
+        --   # comment
+        --   1
+        -- ]
+        -- This breaks idempotency. To work around this, we simply shift the comment by one:
+        -- [  # comment
+        --   1
+        -- ]
+        Text _ _ TrailingComment t | cc == 2 && (fst $ nextIndent xs) > lineVI -> putText' [" ", t]
+            where lineVI = snd $ head indents
+        Text vi off _ t -> putText vi off t
 
         -- This code treats whitespace as "expanded"
         -- A new line resets the column counter and sets the target indentation as current indentation
-        Spacing sp ->
+        Spacing sp
             -- We know that the last printed character was a line break (cc == 0),
             -- therefore drop any leading whitespace within the group to avoid duplicate newlines
-            if needsIndent then
-                pure []
-            else case sp of
-                Break        -> putNL $> [newlines 1]
-                Space        -> putNL $> [newlines 1]
-                Hardspace    -> putText [" "]
-                Hardline     -> putNL $> [newlines 1]
-                Emptyline    -> putNL $> [newlines 2]
-                (Newlines n) -> putNL $> [newlines n]
+            | needsIndent -> pure []
+            | otherwise -> case sp of
+                Break        -> putNL 1
+                Space        -> putNL 1
+                Hardspace    -> putText' [" "]
+                Hardline     -> putNL 1
+                Emptyline    -> putNL 2
+                (Newlines n) -> putNL n
                 Softbreak
-                    | firstLineFits (tw - cc + ci) (tw - ti) xs'
+                    | firstLineFits (tw - cc) tw xs
                                             -> pure []
-                    | otherwise             -> putNL $> [newlines 1]
+                    | otherwise             -> putNL 1
                 Softspace
-                    | firstLineFits (tw - cc + ci - 1) (tw - ti) xs'
-                                            -> putText [" "]
-                    | otherwise             -> putNL $> [newlines 1]
+                    | firstLineFits (tw - cc - 1) tw xs
+                                            -> putText' [" "]
+                    | otherwise             -> putNL 1
 
-        Node (Nest l) ys     -> put (cc, if cc == 0 then ti + l else ci) >> go (map (Chunk (ti + l)) ys) xs
-        Node Base ys         -> go (map (Chunk ci) ys) xs
         Node (Group _) ys    ->
             let
                 -- fromMaybe lifted to (StateT s Maybe)
@@ -522,37 +533,37 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Chunk 0 $ Node (Group False) 
                 fromMaybeState l r = state $ \s -> fromMaybe (runState l s) (runStateT r s)
             in
             -- Try to fit the entire group first
-            goGroup ti ys xs'
+            goGroup ys xs
             -- If that fails, check whether the group contains a priority group within its children and try to expand that first
             <|> do
                 -- Split up on the first priority group, if present
                 -- Note that the pattern on prio is infallible as per isPriorityGroup
                 (pre, (Node (Group True) prio) : post) <- pure $ (break isPriorityGroup ys)
                 -- Try to fit pre onto one line
-                preRendered <- goGroup ti pre (prio ++ post ++ xs')
+                preRendered <- goGroup pre (prio ++ post ++ xs)
                 -- Render prio expanded
                 -- We know that post will be rendered compact. So we tell the renderer that by manually removing all
                 -- line breaks in post here. Otherwise we might get into awkward the situation where pre and prio are put
                 -- onto the one line, all three obviously wouldn't fit.
                 prioRendered <- mapStateT (Just . runIdentity) $
-                    go (map (Chunk ti) prio) (map (Chunk ti) (unexpandSpacing post) ++ xs)
+                    go prio (unexpandSpacing post ++ xs)
                 -- Try to render post onto one line
-                postRendered <- goGroup ti post xs'
+                postRendered <- goGroup post xs
                 -- If none of these failed, put together and return
                 return $ (preRendered ++ prioRendered ++ postRendered)
             -- Otherwise, dissolve the group by mapping its members to the target indentation
             -- This also implies that whitespace in there will now be rendered "expanded".
-            & fromMaybeState (go (map (Chunk ti) ys) xs)
+            & fromMaybeState (go ys xs)
 
     -- Try to fit the group onto a single line, while accounting for the fact that the first
     -- bits of rest must fit as well (until the first possibility for a line break within rest).
     -- Any whitespace within the group is treated as "compact".
     -- Return Nothing on failure, i.e. if the group would require a line break
-    goGroup :: Int -> Doc -> Doc -> StateT (Int, Int) Maybe [Text]
+    goGroup :: Doc -> Doc -> StateT St Maybe [Text]
     -- In general groups are never empty as empty groups are removed in `fixup`, however this also
     -- gets called for pre and post of priority groups, which may be empty.
-    goGroup _ [] _ = pure []
-    goGroup ti grp rest = StateT $ \(cc, ci) ->
+    goGroup [] _ = pure []
+    goGroup grp rest = StateT $ \(cc, ci) ->
         if cc == 0 then
             let
                 -- We know that the last printed character was a line break (cc == 0),
@@ -561,10 +572,19 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Chunk 0 $ Node (Group False) 
                     Spacing _ -> tail grp
                     Node ann@(Group _) ((Spacing _) : inner) -> (Node ann inner) : tail grp
                     _ -> grp
-                i = ti + firstLineIndent grp'
+                (vi, off) = nextIndent grp'
+
+                indentWillIncrease = if fst (nextIndent rest) > lineVI then 2 else 0
+                    where
+                        lastLineVI = snd $ head ci
+                        lineVI = lastLineVI + (if vi > lastLineVI then 2 else 0)
             in
-            fits ((nextIndent ci (map (Chunk ci) rest)) - ci) (tw - firstLineWidth rest) grp'
-            <&> \t -> ([indent i, t], (i + textWidth t, ci))
+            fits indentWillIncrease (tw - firstLineWidth rest) grp'
+            <&> \t -> runState (putText vi off t) (cc, ci)
         else
-            fits ((nextIndent ci (map (Chunk ci) rest)) - cc) (tw + (ci - cc) - firstLineWidth rest) grp
+            let
+                indentWillIncrease = if fst (nextIndent rest) > lineVI then 2 else 0
+                    where lineVI = snd $ head ci
+            in
+            fits (indentWillIncrease - cc) (tw - cc - firstLineWidth rest) grp
             <&> \t -> ([t], (cc + textWidth t, ci))

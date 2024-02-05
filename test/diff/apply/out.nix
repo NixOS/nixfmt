@@ -18,9 +18,7 @@
   ))
   (foo bar baz
     # Function call with comment
-    (
-      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
-    )
+    (mapAttrsToStringsSep "\n" mkSection attrsOfAttrs)
   )
   (foo bar baz (
     # Function call with comment
@@ -48,9 +46,7 @@
     bar
     baz
     # Function call with comment
-    (
-      mapAttrsToStringsSep "\n" mkSection attrsOfAttrs
-    )
+    (mapAttrsToStringsSep "\n" mkSection attrsOfAttrs)
   )
   (foo
     [

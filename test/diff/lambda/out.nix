@@ -153,16 +153,16 @@ in
           "loooooooooooooooooooooooooooooooooooooooooooong"
       ),
       things ? # comment
-          (
-            if null then
-              [
-                1
-                2
-                3
-              ]
-            else
-              "loooooooooooooooooooooooooooooooooooooooooooong"
-          ),
+        (
+          if null then
+            [
+              1
+              2
+              3
+            ]
+          else
+            "loooooooooooooooooooooooooooooooooooooooooooong"
+        ),
     }:
     { }
   )
