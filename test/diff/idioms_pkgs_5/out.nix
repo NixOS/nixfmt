@@ -231,7 +231,8 @@ let
     }@attrs:
 
     # Policy on acceptable hash types in nixpkgs
-    assert attrs ? outputHash
+    assert
+      attrs ? outputHash
       -> (
         let
           algo = attrs.outputHashAlgo or (head (splitString "-" attrs.outputHash));
@@ -721,7 +722,8 @@ let
           let
             overlappingNames = attrNames (builtins.intersectAttrs env derivationArg);
           in
-          assert assertMsg envIsExportable "When using structured attributes, `env` must be an attribute set of environment variables.";
+          assert assertMsg envIsExportable
+            "When using structured attributes, `env` must be an attribute set of environment variables.";
           assert assertMsg (overlappingNames == [ ])
             "The ‘env’ attribute set cannot contain any attributes passed to derivation. The following attributes are overlapping: ${concatStringsSep ", " overlappingNames}";
           mapAttrs

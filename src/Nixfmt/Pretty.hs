@@ -480,9 +480,16 @@ instance Pretty Expression where
               <> pretty expr
 
     pretty (Assert assert cond semicolon expr)
-        = base (pretty assert <> hardspace
-          <> nest 2 (group cond) <> pretty semicolon)
-          <> hardline <> pretty expr
+        = group $
+            -- Render the assert as if it is was just a function (literally)
+            uncurry (prettyApp False mempty False) (insertIntoApp (Term $ Token assert) cond)
+            <> pretty semicolon <> hardline <> pretty expr
+            where
+                -- Add something to the left of a function application
+                -- We need to walk down the arguments here because applications are left-associative.
+                insertIntoApp :: Expression -> Expression -> (Expression, Expression)
+                insertIntoApp insert (Application f a) = ((uncurry Application $ insertIntoApp insert f), a)
+                insertIntoApp insert other = (insert, other)
 
     pretty expr@(If _ _ _ _ _ _)
         = base $ group' False $ prettyIf line expr

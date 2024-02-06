@@ -153,7 +153,8 @@
 }:
 
 assert stdenv.cc.libc or null != null;
-assert pipewireSupport
+assert
+  pipewireSupport
   -> !waylandSupport || !webrtcSupport
   -> throw "${pname}: pipewireSupport requires both wayland and webrtc support.";
 

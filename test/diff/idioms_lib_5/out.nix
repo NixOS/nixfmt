@@ -383,7 +383,9 @@ let
       if typeCheck metaTypes.${k} v then
         null
       else
-        "key 'meta.${k}' has invalid value; expected ${metaTypes.${k}.description}, got\n    ${lib.generators.toPretty { indent = "    "; } v}"
+        "key 'meta.${k}' has invalid value; expected ${metaTypes.${k}.description}, got\n    ${
+          lib.generators.toPretty { indent = "    "; } v
+        }"
     else
       "key 'meta.${k}' is unrecognized; expected one of: \n  [${
         lib.concatMapStringsSep ", " (x: "'${x}'") (lib.attrNames metaTypes)
