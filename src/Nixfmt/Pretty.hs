@@ -170,19 +170,19 @@ prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, i
 
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose)
-    = group $ pretty (moveTrailingCommentUp paropen) <> inner <> pretty parclose
+    = group $ pretty (moveTrailingCommentUp paropen) <> nest inner <> pretty parclose
   where
     inner =
       case expr of
         -- Start on the same line for these
-        _ | isAbsorbableExpr expr -> nest $ group $ absorbExpr False expr
+        _ | isAbsorbableExpr expr -> group $ absorbExpr False expr
         -- Parenthesized application
-        (Application f a) -> nest $ prettyApp True mempty True f a
+        (Application f a) -> prettyApp True mempty True f a
         -- Same thing for selections
-        (Term (Selection t _)) | isAbsorbable t -> line' <> (nest $ group $ expr) <> line'
-        (Term (Selection _ _)) -> (nest $ group $ expr) <> line'
+        (Term (Selection t _)) | isAbsorbable t -> line' <> group expr <> line'
+        (Term (Selection _ _)) -> group expr <> line'
         -- Start on a new line for the others
-        _ -> line' <> (nest $ group $ expr) <> line'
+        _ -> line' <> group expr <> line'
 
 instance Pretty Term where
     pretty l@List{} = group $ prettyTerm l
