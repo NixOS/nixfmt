@@ -27,6 +27,7 @@ module Nixfmt.Predoc
     , emptyline
     , newline
     , Doc
+    , GroupAnn(..)
     , Pretty
     , pretty
     , fixup
@@ -44,7 +45,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text as Text (Text, concat, length, replicate, strip)
 import GHC.Stack (HasCallStack)
 -- import Debug.Trace (traceShow, traceShowId)
-import Control.Applicative ((<|>))
+import Control.Applicative ((<|>), asum, empty)
 import Control.Monad.Trans.State.Strict (State, StateT, StateT(..), mapStateT, state, runState, evalState, get, put)
 
 -- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
@@ -70,21 +71,31 @@ data Spacing
     | Newlines Int
     deriving (Show, Eq, Ord)
 
-data DocAnn
-    -- | Node Group docs indicates either all or none of the Spaces and Breaks
-    -- in docs should be converted to line breaks. This does not affect softlines,
-    -- those will be expanded only as necessary and with a lower priority.
+-- | `Group docs` indicates that either all or none of the Spaces and Breaks
+-- in `docs` should be converted to line breaks. This does not affect softlines,
+-- those will be expanded only as necessary and with a lower priority.
+data GroupAnn
+    = RegularG
+    -- Group with priority expansion. This is only rarely needed, and mostly useful
+    -- to compact things left and right of a multiline element as long as they fit onto one line.
     --
-    -- The boolean argument makes a group a "high priority" group. You should almost
-    -- never need this (it was introduced purely to accomodate for some Application special
-    -- handling). Groups containing priority groups are treated as having three segments:
+    -- Groups containing priority groups are treated as having three segments:
     -- pre, prio and post.
     -- If any group contains a priority group, the following happens:
     -- If it entirely fits on one line, render on one line (as usual).
     -- If it does not fit on one line, but pre and post do when prio is expanded, then try that.
-    -- In all other cases, fully expand the group.
-    -- Groups containing multiple priority groups are not supported at the moment.
-    = Group Bool
+    -- In all other cases, fully expand the group as if it didn't contain any priority groups.
+    --
+    -- If a group contains multiple priority groups, then the renderer will attempt to expand them,
+    -- each one individually, and in *reverse* order. If all of these fail, then the entire group
+    -- will be fully expanded as if it didn't contain any priority groups.
+    | Priority
+    -- Usually, priority groups are associated and handled by their direct parent group. However,
+    -- if the parent is a `Transparent` group, then they will be associated with its parent instead.
+    -- (This goes on transitively until the first non-transparent parent group.)
+    -- In the case of priority group expansion, this group will be treated as non-existent (transparent).
+    -- Otherwise, it will be treated like a regular group.
+    | Transparent
     deriving (Show, Eq)
 
 -- Comments do not count towards some line length limits
@@ -92,7 +103,7 @@ data DocAnn
 -- Trailing comments are like comments, but marked differently for special treatment further down the line
 -- (The difference is that trailing comments are guaranteed to be single "# text" tokens, while all other comments
 -- may be composite and multi-line)
-data TextAnn = Regular | Comment | TrailingComment | Trailing
+data TextAnn = RegularT | Comment | TrailingComment | Trailing
     deriving (Show, Eq)
 
 -- | Single document element. Documents are modeled as lists of these elements
@@ -101,7 +112,7 @@ data DocE =
     -- indent level, offset, kind, text
     Text Int Int TextAnn Text
     | Spacing Spacing
-    | Node DocAnn Doc
+    | Group GroupAnn Doc
     deriving (Show, Eq)
 
 type Doc = [DocE]
@@ -124,7 +135,7 @@ instance (Pretty a, Pretty b, Pretty c) => Pretty (a, b, c) where
 
 text :: Text -> Doc
 text "" = []
-text t  = [Text 0 0 Regular t]
+text t  = [Text 0 0 RegularT t]
 
 comment :: Text -> Doc
 comment "" = []
@@ -144,7 +155,7 @@ trailing t = [Text 0 0 Trailing t]
 -- Must not contain non-hard whitespace (e.g. line, softline' etc.) at the start of the end.
 -- Use group' for that instead if you are sure of what you are doing.
 group :: HasCallStack => Pretty a => a -> Doc
-group x = pure . Node (Group False) $
+group x = pure . (Group RegularG) $
     if p /= [] && (isSoftSpacing (head p) || isSoftSpacing (last p)) then
         error $ "group should not start or end with whitespace, use `group'` if you are sure; " <> show p
     else
@@ -158,8 +169,8 @@ group x = pure . Node (Group False) $
 -- or you'll get some *very* confusing bugs …
 --
 -- Also allows to create priority groups (see Node Group documentation)
-group' :: Pretty a => Bool -> a -> Doc
-group' prio = pure . Node (Group prio) . pretty
+group' :: Pretty a => GroupAnn -> a -> Doc
+group' ann = pure . (Group ann) . pretty
 
 -- | @nest doc@ declarse @doc@ to have a higher indentation level
 -- than before. Not all nestings actually result in indentation changes,
@@ -170,7 +181,7 @@ nest :: Pretty a => a -> Doc
 nest x = go $ pretty x
     where
     go (Text i o ann t : rest) = (Text (i + 2) o ann t) : go rest
-    go (Node ann inner : rest) = (Node ann (go inner)) : go rest
+    go (Group ann inner : rest) = (Group ann (go inner)) : go rest
     go (spacing : rest) = spacing : go rest
     go [] = []
 
@@ -180,7 +191,7 @@ offset :: Pretty a => Int -> a -> Doc
 offset level x = go $ pretty x
     where
     go (Text i o ann t : rest) = (Text i (o + level) ann t) : go rest
-    go (Node ann inner : rest) = (Node ann (go inner)) : go rest
+    go (Group ann inner : rest) = (Group ann (go inner)) : go rest
     go (spacing : rest) = spacing : go rest
     go [] = []
 
@@ -247,7 +258,7 @@ isHardSpacing _           = False
 isComment :: DocE -> Bool
 isComment (Text _ _ Comment _) = True
 isComment (Text _ _ TrailingComment _) = True
-isComment (Node _ inner) = all (\x -> isComment x || isHardSpacing x) inner
+isComment (Group _ inner) = all (\x -> isComment x || isHardSpacing x) inner
 isComment _ = False
 
 --- Manually force a group to its compact layout, by replacing all relevant whitespace.
@@ -278,12 +289,13 @@ unexpandSpacing' n (Spacing Softspace:xs) = (Spacing Hardspace :) <$> unexpandSp
 unexpandSpacing' n (Spacing Break:xs) = unexpandSpacing' n xs
 unexpandSpacing' n (Spacing Softbreak:xs) = unexpandSpacing' n xs
 unexpandSpacing' _ (Spacing _:_) = Nothing
-unexpandSpacing' n ((Node _ xs):ys) = unexpandSpacing' n $ xs <> ys
+unexpandSpacing' n ((Group _ xs):ys) = unexpandSpacing' n $ xs <> ys
 
-simplifyNode :: DocAnn -> Doc -> Doc
-simplifyNode _ [] = []
-simplifyNode (Group False) [Node (Group False) body] = body
-simplifyNode _ x = x
+-- Dissolve some groups with only one item
+simplifyGroup :: GroupAnn -> Doc -> Doc
+simplifyGroup _ [] = []
+simplifyGroup ann [Group ann' body] | ann == ann' = body
+simplifyGroup _ x = x
 
 -- | Fix up a Doc:
 -- - Move some spacings (those which are not relevant for group calculations)
@@ -301,28 +313,28 @@ fixup [] = []
 fixup (Spacing a : Spacing b : xs) = fixup $ Spacing (mergeSpacings a b) : xs
 -- Merge consecutive texts. Take indentation and offset from the left one
 fixup (Text level off ann a : Text _ _ ann' b : xs) | ann == ann' = fixup $ Text level off ann (a <> b) : xs
--- Handle node, with stuff in front of it to potentially merge with
-fixup (a@(Spacing _) : Node ann xs : ys) =
+-- Handle group, with stuff in front of it to potentially merge with
+fixup (a@(Spacing _) : Group ann xs : ys) =
     let
         -- Recurse onto xs, split out leading and trailing whitespace into pre and post.
         -- For the leading side, also move out comments out of groups, they are kinda the same thing
         -- (We could move out trailing comments too but it would make no difference)
         (pre, rest)  = span (\x -> isHardSpacing x || isComment x) $ fixup xs
-        (post, body) = (second $ simplifyNode ann) $ spanEnd isHardSpacing rest
+        (post, body) = (second $ simplifyGroup ann) $ spanEnd isHardSpacing rest
     in if null body then
-        -- Dissolve empty node
+        -- Dissolve empty group
         fixup $ (a : pre) ++ post ++ ys
     else
-        fixup (a : pre) ++ [Node ann body] ++ fixup (post ++ ys)
--- Handle node, almost the same thing as above
-fixup (Node ann xs : ys) =
+        fixup (a : pre) ++ [Group ann body] ++ fixup (post ++ ys)
+-- Handle group, almost the same thing as above
+fixup (Group ann xs : ys) =
     let
         (pre, rest)  = span (\x -> isHardSpacing x || isComment x) $ fixup xs
-        (post, body) = (second $ simplifyNode ann) $ spanEnd isHardSpacing rest
+        (post, body) = (second $ simplifyGroup ann) $ spanEnd isHardSpacing rest
     in if null body then
         fixup $ pre ++ post ++ ys
     else
-        fixup pre ++ [Node ann body] ++ fixup (post ++ ys)
+        fixup pre ++ [Group ann body] ++ fixup (post ++ ys)
 fixup (x : xs) = x : fixup xs
 
 mergeSpacings :: Spacing -> Spacing -> Spacing
@@ -345,9 +357,35 @@ layout w = (<>"\n") . Text.strip . layoutGreedy w . fixup . pretty
 -- 4. For each Group, if it fits on a single line, render it that way.
 -- 5. If not, convert lines to hardlines and unwrap the group
 
-isPriorityGroup :: DocE -> Bool
-isPriorityGroup (Node (Group True) _) = True
-isPriorityGroup _ = False
+
+-- Extract and list the priority groups of this group.
+-- The return value is a segmentation of the input, each segment annotated with its priority (True = Priority).
+-- This recurses into `Transparent` subgroups on the search for priority groups, and flattens their content in the output.
+-- If no priority groups are found, the empty list is returned.
+priorityGroups :: Doc -> [(Doc, Doc, Doc)]
+priorityGroups = explode . mergeSegments . segments
+    where
+    segments :: Doc -> [(Bool, Doc)]
+    segments [] = []
+    segments ((Group Priority ys):xs) = (True, ys) : segments xs
+    segments ((Group Transparent ys):xs) = segments ys ++ segments xs
+    segments (x:xs) = (False, pure x) : segments xs
+
+    -- Merge subsequent segments of non-priority-group elements
+    mergeSegments :: [(Bool, Doc)] -> [(Bool, Doc)]
+    mergeSegments [] = []
+    mergeSegments ((False, content1):(False, content2):xs) = mergeSegments $ (False, content1 ++ content2):xs
+    mergeSegments (x:xs) = x : mergeSegments xs
+
+    -- Convert the segmented/pre-porcessed input into a list of all groups as (pre, prio, post) triples
+    explode :: [(Bool, Doc)] -> [(Doc, Doc, Doc)]
+    explode [] = []
+    explode [(prio, x)]
+        | prio = [([], x, [])]
+        | otherwise = []
+    explode ((prio, x):xs)
+        | prio = ([], x, concatMap (snd) xs) : (map (\(a, b, c) -> (x<>a, b, c)) $ explode xs)
+        | otherwise = map (\(a, b, c) -> (x<>a, b, c)) (explode xs)
 
 -- | To support i18n, this function needs to be patched.
 textWidth :: Text -> Int
@@ -364,7 +402,7 @@ fits _ _ [] = Just ""
 -- due to our recursion on nodes below
 fits ni c (Spacing a:Spacing b:xs) = fits ni c (Spacing (mergeSpacings a b):xs)
 fits ni c (x:xs) = case x of
-    Text _ _ Regular t   -> (t<>) <$> fits (ni - textWidth t) (c - textWidth t) xs
+    Text _ _ RegularT t   -> (t<>) <$> fits (ni - textWidth t) (c - textWidth t) xs
     Text _ _ Comment t   -> (t<>) <$> fits ni c xs
     Text _ _ TrailingComment t | ni == 0 -> ((" " <> t) <>) <$> fits ni c xs
                          | otherwise -> (t<>) <$> fits ni c xs
@@ -377,7 +415,7 @@ fits ni c (x:xs) = case x of
     Spacing Hardline     -> Nothing
     Spacing Emptyline    -> Nothing
     Spacing (Newlines _) -> Nothing
-    Node _ ys            -> fits ni c $ ys ++ xs
+    Group _ ys            -> fits ni c $ ys ++ xs
 
 -- | Find the width of the first line in a list of documents, using target
 -- width 0, which always forces line breaks when possible.
@@ -387,11 +425,11 @@ firstLineWidth (Text _ _ Comment _ : xs)  = firstLineWidth xs
 firstLineWidth (Text _ _ TrailingComment _ : xs) = firstLineWidth xs
 firstLineWidth (Text _ _ _ t : xs)        = textWidth t + firstLineWidth xs
 -- This case is impossible in the input thanks to fixup, but may happen
--- due to our recursion on nodes below
+-- due to our recursion on groups below
 firstLineWidth (Spacing a : Spacing b : xs) = firstLineWidth (Spacing (mergeSpacings a b):xs)
 firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
 firstLineWidth (Spacing _ : _)          = 0
-firstLineWidth (Node _ xs : ys)         = firstLineWidth $ xs ++ ys
+firstLineWidth (Group _ xs : ys)         = firstLineWidth $ xs ++ ys
 
 -- | Check if the first line in a document fits a target width given
 -- a maximum width, without breaking up groups.
@@ -399,14 +437,14 @@ firstLineFits :: Int -> Int -> Doc -> Bool
 firstLineFits targetWidth maxWidth docs = go maxWidth docs
     where go c _ | c < 0                = False
           go c []                       = maxWidth - c <= targetWidth
-          go c (Text _ _ Regular t : xs)  = go (c - textWidth t) xs
+          go c (Text _ _ RegularT t : xs)  = go (c - textWidth t) xs
           go c (Text _ _ _ _ : xs)        = go c xs
           -- This case is impossible in the input thanks to fixup, but may happen
-          -- due to our recursion on nodes below
+          -- due to our recursion on groups below
           go c (Spacing a : Spacing b : xs) = go c $ Spacing (mergeSpacings a b) : xs
           go c (Spacing Hardspace : xs) = go (c - 1) xs
           go c (Spacing _ : _)          = maxWidth - c <= targetWidth
-          go c (Node (Group _) ys : xs)     =
+          go c (Group _ ys : xs)     =
               case fits 0 (c - firstLineWidth xs) ys of
                    Nothing -> go c (ys ++ xs)
                    Just t  -> go (c - textWidth t) xs
@@ -415,7 +453,7 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
 -- This assumes the input to be an unexpanded group at the start of a new line
 nextIndent :: Doc -> (Int, Int)
 nextIndent ((Text i o _ _) : _) = (i, o)
-nextIndent ((Node _ xs) : _) = nextIndent xs
+nextIndent ((Group _ xs) : _) = nextIndent xs
 nextIndent (_:xs) = nextIndent xs
 nextIndent _ = (0, 0)
 
@@ -436,7 +474,7 @@ type St = (Int, [(Int, Int)])
 
 -- tw   Target Width
 layoutGreedy :: Int -> Doc -> Text
-layoutGreedy tw doc = Text.concat $ evalState (go [Node (Group False) doc] []) (0, [(0, 0)])
+layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, [(0, 0)])
     where
     -- Print a given text. If this is the first token on a line, it will
     -- do the appropriate calculations for indentation and print that in addition to the text.
@@ -526,7 +564,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Node (Group False) doc] []) (
                                             -> putText' [" "]
                     | otherwise             -> putNL 1
 
-        Node (Group _) ys    ->
+        Group ann ys    ->
             let
                 -- fromMaybe lifted to (StateT s Maybe)
                 fromMaybeState :: State s a -> StateT s Maybe a -> State s a
@@ -534,26 +572,32 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Node (Group False) doc] []) (
             in
             -- Try to fit the entire group first
             goGroup ys xs
-            -- If that fails, check whether the group contains a priority group within its children and try to expand that first
-            <|> do
-                -- Split up on the first priority group, if present
-                -- Note that the pattern on prio is infallible as per isPriorityGroup
-                (pre, (Node (Group True) prio) : post) <- pure $ (break isPriorityGroup ys)
-                -- Try to fit pre onto one line
-                preRendered <- goGroup pre (prio ++ post ++ xs)
-                -- Render prio expanded
-                -- We know that post will be rendered compact. So we tell the renderer that by manually removing all
-                -- line breaks in post here. Otherwise we might get into awkward the situation where pre and prio are put
-                -- onto the one line, all three obviously wouldn't fit.
-                prioRendered <- mapStateT (Just . runIdentity) $
-                    go prio (unexpandSpacing post ++ xs)
-                -- Try to render post onto one line
-                postRendered <- goGroup post xs
-                -- If none of these failed, put together and return
-                return $ (preRendered ++ prioRendered ++ postRendered)
+            -- If that fails, check whether the group contains any priority groups within its children and try to expand them first
+            -- Ignore transparent groups as their priority children have already been handled up in the parent (and failed)
+            <|> (if ann /= Transparent then
+                    -- Each priority group will be handled individually, and the priority groups are tried in reverse order
+                    asum $ map (flip goPriorityGroup xs) $ reverse $ priorityGroups ys
+                else
+                    empty
+            )
             -- Otherwise, dissolve the group by mapping its members to the target indentation
             -- This also implies that whitespace in there will now be rendered "expanded".
             & fromMaybeState (go ys xs)
+
+    goPriorityGroup :: (Doc, Doc, Doc) -> Doc -> StateT St Maybe [Text]
+    goPriorityGroup (pre, prio, post) rest = do
+        -- Try to fit pre onto one line
+        preRendered <- goGroup pre (prio ++ post ++ rest)
+        -- Render prio expanded
+        -- We know that post will be rendered compact. So we tell the renderer that by manually removing all
+        -- line breaks in post here. Otherwise we might get into awkward the situation where pre and prio are put
+        -- onto the one line, all three obviously wouldn't fit.
+        prioRendered <- mapStateT (Just . runIdentity) $
+            go prio (unexpandSpacing post ++ rest)
+        -- Try to render post onto one line
+        postRendered <- goGroup post rest
+        -- If none of these failed, put together and return
+        return $ (preRendered ++ prioRendered ++ postRendered)
 
     -- Try to fit the group onto a single line, while accounting for the fact that the first
     -- bits of rest must fit as well (until the first possibility for a line break within rest).
@@ -570,7 +614,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Node (Group False) doc] []) (
                 -- therefore drop any leading whitespace within the group to avoid duplicate newlines
                 grp' = case head grp of
                     Spacing _ -> tail grp
-                    Node ann@(Group _) ((Spacing _) : inner) -> (Node ann inner) : tail grp
+                    Group ann ((Spacing _) : inner) -> (Group ann inner) : tail grp
                     _ -> grp
                 (vi, off) = nextIndent grp'
 

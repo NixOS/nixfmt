@@ -17,7 +17,7 @@ import qualified Data.Text as Text (null, takeWhile)
 
 -- import Debug.Trace (traceShowId)
 import Nixfmt.Predoc
-  (Doc, Pretty, emptyline, group, group', hardline, hardspace, hcat, line, line',
+  (Doc, GroupAnn(..), Pretty, emptyline, group, group', hardline, hardspace, hcat, line, line',
   nest, offset, newline, pretty, sepBy, surroundWith, softline, softline', text, comment, trailingComment, trailing, textWidth,
   unexpandSpacing')
 import Nixfmt.Types
@@ -108,7 +108,7 @@ instance Pretty Binder where
     -- `inherit (foo) bar` statement
     pretty (Inherit inherit (Just source) ids semicolon)
         = group $ pretty inherit <> nest (
-            (group' False (line <> pretty source))
+            (group' RegularG (line <> pretty source))
             <> if null ids then pretty semicolon else line
             <> sepBy (if length ids < 4 then line else hardline) ids
             <> line' <> pretty semicolon
@@ -312,13 +312,13 @@ prettyApp indentFunction pre hasPost f a
     = let
         absorbApp (Application f' a') = (group $ absorbApp f') <> line <> (nest (group a'))
         absorbApp expr
-            | indentFunction && (null comment') = nest $ group' False $ line' <> pretty expr
+            | indentFunction && (null comment') = nest $ group' RegularG $ line' <> pretty expr
             | otherwise = pretty expr
 
         absorbLast (Term t) | isAbsorbable t
-            = group' True $ nest $ prettyTerm t
+            = group' Priority $ nest $ prettyTerm t
         absorbLast (Term (Parenthesized (Ann pre' open post') expr close))
-            = group' True $ nest $ pretty (Ann pre' open Nothing)
+            = group' Priority $ nest $ pretty (Ann pre' open Nothing)
                 -- Move any trailing comments on the opening parenthesis down into the body
                 <> (surroundWith line' $ group $ nest $
                     mapFirstToken
@@ -326,7 +326,7 @@ prettyApp indentFunction pre hasPost f a
                         expr
                 )
                 <> pretty close
-        absorbLast arg = group' False $ nest $ pretty arg
+        absorbLast arg = group' RegularG $ nest $ pretty arg
 
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
         (fWithoutComment, comment') = mapFirstToken'
@@ -341,9 +341,9 @@ prettyApp indentFunction pre hasPost f a
         pretty comment'
         <> (
             if isSimple (Application f a) && isJust (renderedFUnexpanded) then
-                (group' False $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a <> post)
+                (group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a <> post)
             else
-                (group' False $ renderedF <> line <> absorbLast a <> post)
+                (group' RegularG $ renderedF <> line <> absorbLast a <> post)
         )
         <> (if hasPost && not (null comment') then hardline else mempty)
 
@@ -400,7 +400,7 @@ absorbRHS expr = case expr of
     _ | isAbsorbableExpr expr -> hardspace <> group (absorbExpr True expr)
     -- Parenthesized expression. Same thing as the special case for parenthesized last argument in function calls.
     (Term (Parenthesized open expr' close)) ->
-      group' True $ nest $
+      group' Priority $ nest $
         hardspace <> pretty open
         <> (surroundWith line' . group . nest) expr'
         <> pretty close
@@ -412,28 +412,28 @@ absorbRHS expr = case expr of
     (Term (Path _)) -> hardspace <> group expr
     -- Non-absorbable term
     -- If it is multi-line, force it to start on a new line with indentation
-    (Term _) -> group' False (line <> pretty expr)
+    (Term _) -> group' RegularG (line <> pretty expr)
     -- Function call
     -- Absorb if all arguments except the last fit into the line, start on new line otherwise
     (Application f a) -> prettyApp False line False f a
-    (With _ _ _ _) -> group' False $ line <> pretty expr
+    (With _ _ _ _) -> group' RegularG $ line <> pretty expr
     -- Special case `//` operations to be more compact in some cases
     -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
     (Operation (Term t) (Ann [] TUpdate Nothing) b) | isAbsorbable t ->
-      group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TUpdate <> hardspace <> pretty b
+      group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty TUpdate <> hardspace <> pretty b
     -- Case 2a: LHS fits onto first line, RHS is an absorbable term
     (Operation l (Ann [] TUpdate Nothing) (Term t)) | isAbsorbable t ->
-      group' False $ line <> pretty l <> line <> group' True (pretty TUpdate <> hardspace <> prettyTermWide t)
+      group' RegularG $ line <> pretty l <> line <> group' Priority (pretty TUpdate <> hardspace <> prettyTermWide t)
     -- Case 2b: LHS fits onto first line, RHS is a function application
     (Operation l (Ann [] TUpdate Nothing) (Application f a)) ->
       line <> (group l) <> line <> prettyApp False (pretty TUpdate <> hardspace) False f a
     -- Special case `++` operations to be more compact in some cases
     -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
     (Operation (Term t) (Ann [] TConcat Nothing) b) | isAbsorbable t ->
-      group' False $ line <> group' True (prettyTermWide t) <> line <> pretty TConcat <> hardspace <> pretty b
+      group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty TConcat <> hardspace <> pretty b
     -- Case 2a: LHS fits onto first line, RHS is an absorbable term
     (Operation l (Ann [] TConcat Nothing) (Term t)) | isAbsorbable t ->
-      group' False $ line <> pretty l <> line <> group' True (pretty TConcat <> hardspace <> prettyTermWide t)
+      group' RegularG $ line <> pretty l <> line <> group' Priority (pretty TConcat <> hardspace <> prettyTermWide t)
     -- Case 2b: LHS fits onto first line, RHS is a function application
     (Operation l (Ann [] TConcat Nothing) (Application f a)) ->
       line <> (group l) <> line <> prettyApp False (pretty TConcat <> hardspace) False f a
@@ -492,7 +492,7 @@ instance Pretty Expression where
                 insertIntoApp insert other = (insert, other)
 
     pretty expr@(If _ _ _ _ _ _)
-        = group' False $ prettyIf line expr
+        = group' RegularG $ prettyIf line expr
         where
             -- Recurse to absorb nested "else if" chains
             prettyIf :: Doc -> Expression -> Doc
@@ -546,7 +546,7 @@ instance Pretty Expression where
             absorbOperation :: Expression -> Doc
             absorbOperation (Term t) | isAbsorbable t = hardspace <> (pretty t)
             -- Force nested operations to start on a new line
-            absorbOperation x@(Operation _ _ _) = group' False $ line <> pretty x
+            absorbOperation x@(Operation _ _ _) = group' RegularG $ line <> pretty x
             -- Force applications to start on a new line if more than the last argument is multiline
             absorbOperation (Application f a) = group $ prettyApp False line False f a
             absorbOperation x = hardspace <> pretty x
@@ -558,7 +558,7 @@ instance Pretty Expression where
             prettyOperation ((Just op'), expr) =
                 line <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
           in
-            group' False $
+            group' RegularG $
                 (concat . map prettyOperation . (flatten Nothing)) operation
 
     pretty (MemberCheck expr qmark sel)
