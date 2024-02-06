@@ -245,9 +245,9 @@ let
     let
       expectedOutputs = attrs.meta.outputsToInstall or [ ];
       actualOutputs = attrs.outputs or [ "out" ];
-      missingOutputs =
-        builtins.filter (output: !builtins.elem output actualOutputs)
-          expectedOutputs;
+      missingOutputs = builtins.filter (
+        output: !builtins.elem output actualOutputs
+      ) expectedOutputs;
     in
     ''
       The package ${getName attrs} has set meta.outputsToInstall to: ${builtins.concatStringsSep ", " expectedOutputs}
@@ -401,9 +401,9 @@ let
     let
       expectedOutputs = attrs.meta.outputsToInstall or [ ];
       actualOutputs = attrs.outputs or [ "out" ];
-      missingOutputs =
-        builtins.filter (output: !builtins.elem output actualOutputs)
-          expectedOutputs;
+      missingOutputs = builtins.filter (
+        output: !builtins.elem output actualOutputs
+      ) expectedOutputs;
     in
     if config.checkMeta then builtins.length missingOutputs > 0 else false;
 

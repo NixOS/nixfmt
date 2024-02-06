@@ -871,8 +871,9 @@ in
                       ${optionalString (s3.region != null) "'region' => '${s3.region}',"}
                       'use_path_style' => ${boolToString s3.usePathStyle},
                       ${
-                        optionalString (s3.sseCKeyFile != null)
-                          "'sse_c_key' => nix_read_secret('${s3.sseCKeyFile}'),"
+                        optionalString (
+                          s3.sseCKeyFile != null
+                        ) "'sse_c_key' => nix_read_secret('${s3.sseCKeyFile}'),"
                       }
                     ],
                   ]
@@ -929,16 +930,18 @@ in
                   'log_type' => '${cfg.logType}',
                   'loglevel' => '${builtins.toString cfg.logLevel}',
                   ${
-                    optionalString (c.overwriteProtocol != null)
-                      "'overwriteprotocol' => '${c.overwriteProtocol}',"
+                    optionalString (
+                      c.overwriteProtocol != null
+                    ) "'overwriteprotocol' => '${c.overwriteProtocol}',"
                   }
                   ${optionalString (c.dbname != null) "'dbname' => '${c.dbname}',"}
                   ${optionalString (c.dbhost != null) "'dbhost' => '${c.dbhost}',"}
                   ${optionalString (c.dbport != null) "'dbport' => '${toString c.dbport}',"}
                   ${optionalString (c.dbuser != null) "'dbuser' => '${c.dbuser}',"}
                   ${
-                    optionalString (c.dbtableprefix != null)
-                      "'dbtableprefix' => '${toString c.dbtableprefix}',"
+                    optionalString (
+                      c.dbtableprefix != null
+                    ) "'dbtableprefix' => '${toString c.dbtableprefix}',"
                   }
                   ${
                     optionalString (c.dbpassFile != null) ''
@@ -953,8 +956,9 @@ in
                   },
                   'trusted_proxies' => ${writePhpArray (c.trustedProxies)},
                   ${
-                    optionalString (c.defaultPhoneRegion != null)
-                      "'default_phone_region' => '${c.defaultPhoneRegion}',"
+                    optionalString (
+                      c.defaultPhoneRegion != null
+                    ) "'default_phone_region' => '${c.defaultPhoneRegion}',"
                   }
                   ${optionalString (nextcloudGreaterOrEqualThan "23") "'profile.enabled' => ${boolToString cfg.globalProfiles},"}
                   ${objectstoreConfig}
@@ -1010,12 +1014,10 @@ in
                       ${installFlags}
                 '';
               occSetTrustedDomainsCmd = concatStringsSep "\n" (
-                imap0
-                  (i: v: ''
-                    ${occ}/bin/nextcloud-occ config:system:set trusted_domains \
-                      ${toString i} --value="${toString v}"
-                  '')
-                  ([ cfg.hostName ] ++ cfg.config.extraTrustedDomains)
+                imap0 (i: v: ''
+                  ${occ}/bin/nextcloud-occ config:system:set trusted_domains \
+                    ${toString i} --value="${toString v}"
+                '') ([ cfg.hostName ] ++ cfg.config.extraTrustedDomains)
               );
             in
             {

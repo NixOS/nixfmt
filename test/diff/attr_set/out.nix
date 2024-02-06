@@ -166,32 +166,27 @@
   }
   {
     programs.ssh.knownHosts =
-      lib.mapAttrs
-        (host_name: publicKey: {
-          inherit publicKey;
-          extraHostNames = [
-            "${host_name}.m-0.eu"
-            "${host_name}.vpn.m-0.eu"
-            "${host_name}.lo.m-0.eu"
-          ];
-        })
-        secret-config.ssh-hosts
+      lib.mapAttrs (host_name: publicKey: {
+        inherit publicKey;
+        extraHostNames = [
+          "${host_name}.m-0.eu"
+          "${host_name}.vpn.m-0.eu"
+          "${host_name}.lo.m-0.eu"
+        ];
+      }) secret-config.ssh-hosts
       // {
         foo = "bar";
       };
     programs.ssh.knownHosts2 =
       someStuff
-      //
-        lib.mapAttrs
-          (host_name: publicKey: {
-            inherit publicKey;
-            extraHostNames = [
-              "${host_name}.m-0.eu"
-              "${host_name}.vpn.m-0.eu"
-              "${host_name}.lo.m-0.eu"
-            ];
-          })
-          secret-config.ssh-hosts
+      // lib.mapAttrs (host_name: publicKey: {
+        inherit publicKey;
+        extraHostNames = [
+          "${host_name}.m-0.eu"
+          "${host_name}.vpn.m-0.eu"
+          "${host_name}.lo.m-0.eu"
+        ];
+      }) secret-config.ssh-hosts
       // {
         foo = "bar";
       };
@@ -238,16 +233,14 @@
       );
     programs.ssh.knownHosts6 =
       someStuff
-      // lib.mapAttrs
-        (host_name: publicKey: {
-          inherit publicKey;
-          extraHostNames = [
-            "${host_name}.m-0.eu"
-            "${host_name}.vpn.m-0.eu"
-            "${host_name}.lo.m-0.eu"
-          ];
-        })
-        secret-config.ssh-hosts;
+      // lib.mapAttrs (host_name: publicKey: {
+        inherit publicKey;
+        extraHostNames = [
+          "${host_name}.m-0.eu"
+          "${host_name}.vpn.m-0.eu"
+          "${host_name}.lo.m-0.eu"
+        ];
+      }) secret-config.ssh-hosts;
     programs.ssh.knownHosts7 =
       someStuff # multiline
       // lib.mapAttrs (
@@ -262,16 +255,14 @@
       );
     programs.ssh.knownHosts8 =
       someStuff # multiline
-      // lib.mapAttrs
-        (host_name: publicKey: {
-          inherit publicKey;
-          extraHostNames = [
-            "${host_name}.m-0.eu"
-            "${host_name}.vpn.m-0.eu"
-            "${host_name}.lo.m-0.eu"
-          ];
-        })
-        secret-config.ssh-hosts;
+      // lib.mapAttrs (host_name: publicKey: {
+        inherit publicKey;
+        extraHostNames = [
+          "${host_name}.m-0.eu"
+          "${host_name}.vpn.m-0.eu"
+          "${host_name}.lo.m-0.eu"
+        ];
+      }) secret-config.ssh-hosts;
     programs.ssh.knownHosts9 =
       {
         multi = 1;
@@ -292,16 +283,14 @@
         multi = 1;
         line = 2;
       }
-      // lib.mapAttrs
-        (host_name: publicKey: {
-          inherit publicKey;
-          extraHostNames = [
-            "${host_name}.m-0.eu"
-            "${host_name}.vpn.m-0.eu"
-            "${host_name}.lo.m-0.eu"
-          ];
-        })
-        secret-config.ssh-hosts;
+      // lib.mapAttrs (host_name: publicKey: {
+        inherit publicKey;
+        extraHostNames = [
+          "${host_name}.m-0.eu"
+          "${host_name}.vpn.m-0.eu"
+          "${host_name}.lo.m-0.eu"
+        ];
+      }) secret-config.ssh-hosts;
   }
 
   # Parentheses

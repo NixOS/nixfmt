@@ -12,9 +12,9 @@
     description = "${
       optionDescriptionPhrase (class: class == "noun" || class == "conjunction") t1
     } or ${
-      optionDescriptionPhrase
-        (class: class == "noun" || class == "conjunction" || class == "composite")
-        t2
+      optionDescriptionPhrase (
+        class: class == "noun" || class == "conjunction" || class == "composite"
+      ) t2
     }";
     ruleset = ''
       table ip nat {
@@ -24,23 +24,19 @@
 
           ${
             builtins.concatStringsSep "\n" (
-              map
-                (
-                  e:
-                  "iifname \"${cfg.upstreamIface}\" tcp dport ${builtins.toString e.sourcePort} dnat to ${e.destination}"
-                )
-                tcpPortMap
+              map (
+                e:
+                "iifname \"${cfg.upstreamIface}\" tcp dport ${builtins.toString e.sourcePort} dnat to ${e.destination}"
+              ) tcpPortMap
             )
           }
 
           ${
             builtins.concatStringsSep "\n" (
-              map
-                (
-                  e:
-                  "ifname \"${cfg.upstreamIface}\" udp dport ${builtins.toString e.sourcePort} dnat to ${e.destination}"
-                )
-                udpPortMap
+              map (
+                e:
+                "ifname \"${cfg.upstreamIface}\" udp dport ${builtins.toString e.sourcePort} dnat to ${e.destination}"
+              ) udpPortMap
             )
           }
         }

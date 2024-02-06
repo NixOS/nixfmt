@@ -379,12 +379,10 @@ in
           let
             cfg = config.boot.kernelPackages.kernel.config;
           in
-          map
-            (attrs: {
-              assertion = attrs.assertion cfg;
-              inherit (attrs) message;
-            })
-            config.system.requiredKernelConfig;
+          map (attrs: {
+            assertion = attrs.assertion cfg;
+            inherit (attrs) message;
+          }) config.system.requiredKernelConfig;
     })
   ];
 }

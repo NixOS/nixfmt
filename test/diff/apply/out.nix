@@ -70,15 +70,10 @@
       mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
   }
   [
-    (mapAttrsToStringsSep
-      [
-        force
-        long
-      ]
-      "\n"
-      mkSection
-      attrsOfAttrs
-    )
+    (mapAttrsToStringsSep [
+      force
+      long
+    ] "\n" mkSection attrsOfAttrs)
   ]
   (a b)
   ((a b) (a b)
@@ -96,20 +91,18 @@
     otherModules=${
       pkgs.writeText "other-modules.json" (
         l.toJSON (
-          l.mapAttrs
-            (
-              pname: subOutputs:
-              let
-                pkg = subOutputs.packages."${pname}".overrideAttrs (
-                  old: {
-                    buildScript = "true";
-                    installMethod = "copy";
-                  }
-                );
-              in
-              "${pkg}/lib/node_modules/${pname}/node_modules"
-            )
-            outputs.subPackages
+          l.mapAttrs (
+            pname: subOutputs:
+            let
+              pkg = subOutputs.packages."${pname}".overrideAttrs (
+                old: {
+                  buildScript = "true";
+                  installMethod = "copy";
+                }
+              );
+            in
+            "${pkg}/lib/node_modules/${pname}/node_modules"
+          ) outputs.subPackages
         )
       )
     }
@@ -124,56 +117,37 @@
   {
     name1 = function arg { asdf = 1; };
 
-    name2 =
-      function arg
-        {
-          asdf = 1;
-          # multiline
-        }
-        argument;
+    name2 = function arg {
+      asdf = 1;
+      # multiline
+    } argument;
 
-    name3 =
-      function arg
-        {
-          asdf = 1;
-          # multiline
-        }
-        { qwer = 12345; }
-        argument;
+    name3 = function arg {
+      asdf = 1;
+      # multiline
+    } { qwer = 12345; } argument;
   }
   {
-    name4 =
-      function arg { asdf = 1; }
-        {
-          qwer = 12345;
-          qwer2 = 54321;
-        }
-        argument;
+    name4 = function arg { asdf = 1; } {
+      qwer = 12345;
+      qwer2 = 54321;
+    } argument;
   }
   {
-    option1 =
-      function arg { asdf = 1; }
-        {
-          qwer = 12345;
-          qwer2 = 54321;
-        }
-        lastArg;
+    option1 = function arg { asdf = 1; } {
+      qwer = 12345;
+      qwer2 = 54321;
+    } lastArg;
 
-    option2 =
-      function arg { asdf = 1; }
-        {
-          qwer = 12345;
-          qwer2 = 54321;
-        }
-        lastArg;
+    option2 = function arg { asdf = 1; } {
+      qwer = 12345;
+      qwer2 = 54321;
+    } lastArg;
 
-    option3 =
-      function arg { asdf = 1; }
-        {
-          qwer = 12345;
-          qwer2 = 54321;
-        }
-        lastArg;
+    option3 = function arg { asdf = 1; } {
+      qwer = 12345;
+      qwer2 = 54321;
+    } lastArg;
   }
   # https://github.com/kamadorueda/alejandra/issues/372#issuecomment-1435083516
   {
@@ -215,28 +189,23 @@
           3 # multiline
         ];
     looooooooong = (
-      toINI
-        {
-          inherit
-            mkSectionName
-            mkKeyValue
-            listsAsDuplicateKeys
-            aaaaaaaa
-            ;
-        }
-        sections
+      toINI {
+        inherit
+          mkSectionName
+          mkKeyValue
+          listsAsDuplicateKeys
+          aaaaaaaa
+          ;
+      } sections
     );
-    looooooooong' =
-      toINI
-        {
-          inherit
-            mkSectionName
-            mkKeyValue
-            listsAsDuplicateKeys
-            aaaaaaaa
-            ;
-        }
-        sections;
+    looooooooong' = toINI {
+      inherit
+        mkSectionName
+        mkKeyValue
+        listsAsDuplicateKeys
+        aaaaaaaa
+        ;
+    } sections;
   }
 
   # Test breakup behavior at different line lengths

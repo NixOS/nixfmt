@@ -86,10 +86,9 @@
       "For valid subpath \"${str}\", appending to an absolute Nix path value gives \"${absConcatOrig}\", but appending the normalised result \"${tryOnce.value}\" gives a different value \"${absConcatNormalised}\"";
     assert lib.assertMsg (strw <= width)
       "fixedWidthString: requested string length (${toString width}) must not be shorter than actual length (${toString strw})";
-    assert lib.foldl
-      (pass: { assertion, message }: if assertion final then pass else throw message)
-      true
-      (final.parsed.abi.assertions or [ ]);
+    assert lib.foldl (
+      pass: { assertion, message }: if assertion final then pass else throw message
+    ) true (final.parsed.abi.assertions or [ ]);
     assert
       getErrors {
         nixpkgs.localSystem = pkgs.stdenv.hostPlatform;

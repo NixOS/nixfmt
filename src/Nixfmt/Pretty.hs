@@ -291,26 +291,29 @@ instance Pretty Parameter where
 -- Function application
 -- Some example mapping of Nix code to Doc (using brackets as groups, but omitting the outermost group
 -- and groups around the expressions for conciseness):
+--
 -- `f a` -> pre f line a post
 -- `f g a` -> pre [f line g] line a post
 -- `f g h a` -> pre [[f line g] line h] line a post
 -- `f g h i a` -> pre [[[f line g] line h] line i] line a post
--- As you can see, it separates the elements by `line` whitespace. However, there are three tricks to make it look good:
--- First, for each function call (imagine the fully parenthesised Nix code), we group it. Due to the greedy expansion
--- of groups this means that it will place as many function calls on the first line as possible, but then all the remaining
--- ones on a separate line each.
--- Second, the last argument is declared as "priority" group, meaning that the layouting algorithm will try to expand
--- it first when things do not fit onto one line. This allows the last argument to be multi-line without forcing the
--- preceding arguments to be multiline.
--- Third, callers may inject `pre` and `post` tokens (mostly newlines) into the inside of the group.
--- This means that callers can say "try to be compact first, but if more than the last argument does not fit onto the line,
--- then start on a new line instead".
--- Out of necessity, callers may also inject `commentPre` and `commentPost`, which will be added before/after the entire
--- thing if the function has a comment associated with its first token
+--
+-- As you can see, it separates the elements by `line` whitespace. However, there are several tricks to make it look good:
+-- 1. For each function call (imagine the fully parenthesised Nix code), we group it. Due to the greedy expansion
+--    of groups this means that it will place as many function calls on the first line as possible, but then all the remaining
+--    ones on a separate line each.
+-- 2. Each argument is declared as "priority" group, meaning that the layouting algorithm will try to expand
+--    it first when things do not fit onto one line. If there are multiple arguments, they will each be attempted to
+--    expand, individually and in reverse order (last argument first).
+--    This allows the last argument to be multi-line without forcing the
+--    preceding arguments to be multiline. This also allows other arguments to be multi-line as long
+--    all remaining arguments fit onto a single line together
+-- 3. Callers may inject `pre` and `post` tokens (mostly newlines) into the inside of the group.
+--    This means that callers can say "try to be compact first, but if more than the last argument does not fit onto the line,
+--    then start on a new line instead".
 prettyApp :: Bool -> Doc -> Bool -> Expression -> Expression -> Doc
 prettyApp indentFunction pre hasPost f a
     = let
-        absorbApp (Application f' a') = (group $ absorbApp f') <> line <> (nest (group a'))
+        absorbApp (Application f' a') = (group' Transparent $ absorbApp f') <> line <> (nest (group' Priority a'))
         absorbApp expr
             | indentFunction && (null comment') = nest $ group' RegularG $ line' <> pretty expr
             | otherwise = pretty expr
@@ -333,7 +336,7 @@ prettyApp indentFunction pre hasPost f a
             ((\(Ann leading token trailing') -> (Ann [] token trailing', leading)) . moveTrailingCommentUp)
             f
 
-        renderedF = pre <> group (absorbApp fWithoutComment)
+        renderedF = pre <> group' Transparent (absorbApp fWithoutComment)
         renderedFUnexpanded = unexpandSpacing' Nothing renderedF
 
         post = if hasPost then line' else mempty
