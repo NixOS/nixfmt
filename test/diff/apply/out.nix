@@ -353,4 +353,8 @@
         )
     );
   }
+  (function (
+    something
+  # ...
+    ) { })
 ]

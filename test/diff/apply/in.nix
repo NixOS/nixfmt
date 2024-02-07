@@ -306,4 +306,10 @@
       )
     );
   }
+  (
+    function (
+      something
+      # ...
+    ) { }
+  )
 ]
