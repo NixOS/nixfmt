@@ -495,7 +495,10 @@ instance Pretty Expression where
                 insertIntoApp insert other = (insert, other)
 
     pretty expr@(If _ _ _ _ _ _)
-        = group' RegularG $ prettyIf line expr
+        -- If the first `if` or any `else` has a trailing comment, move it up.
+        -- However, don't any subsequent `if` (`else if`). We could do that, but that
+        -- would require taking care of edge cases which are not worth handling.
+        = group' RegularG $ prettyIf line $ mapFirstToken moveTrailingCommentUp expr
         where
             -- Recurse to absorb nested "else if" chains
             prettyIf :: Doc -> Expression -> Doc
@@ -504,7 +507,7 @@ instance Pretty Expression where
                 = group (pretty if_ <> line <> nest (pretty cond) <> line <> pretty then_)
                 <> (surroundWith sep $ nest $ group expr0)
                 -- Using hardline here is okay because it will only apply to nested ifs, which should not be inline anyways.
-                <> pretty else_ <> hardspace <> prettyIf hardline expr1
+                <> pretty (moveTrailingCommentUp else_) <> hardspace <> prettyIf hardline expr1
             prettyIf _ x
                 = line <> nest (group x)
 

@@ -13,19 +13,23 @@
   (if ./a then b else c)
   (if a then b else c)
   (
-    if # test
+    # test
+    if
       a # test
     then # test
       b # test
-    else # test
+    # test
+    else
       c
   )
   (
-    if # test
+    # test
+    if
       a # test
     then # test
       b # test
-    else # test
+    # test
+    else
       c
   )
   (
@@ -77,8 +81,8 @@
       b
     else if a then
       b
-    else # x
-    if a then
+    # x
+    else if a then
       b
     else
       c
