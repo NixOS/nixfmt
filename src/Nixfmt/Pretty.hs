@@ -64,7 +64,10 @@ instance Pretty a => Pretty (Item a) where
 
 -- For lists, attribute sets and let bindings
 prettyItems :: Pretty a => Doc -> Items a -> Doc
-prettyItems sep = prettyItems' . unItems
+-- Special case: Preserve an empty line with no items
+-- usually, trailing newlines after the last element are not preserved
+prettyItems _ (Items [DetachedComments []]) = emptyline
+prettyItems sep items = prettyItems' $ unItems items
   where
     prettyItems' :: Pretty a => [Item a] -> Doc
     prettyItems' [] = mempty
@@ -124,9 +127,9 @@ instance Pretty Binder where
 -- in some situations even that is not sufficient. The wide parameter will
 -- be even more eager at expanding, except for empty sets and inherit statements.
 prettySet :: Bool -> (Maybe Leaf, Leaf, Items Binder, Leaf) -> Doc
--- Empty, non-recursive attribute set
-prettySet _ (Nothing, Ann [] paropen Nothing, Items [], parclose@(Ann [] _ _))
-    = pretty paropen <> hardspace <> pretty parclose
+-- Empty attribute set
+prettySet _ (krec, Ann [] paropen Nothing, Items [], parclose@(Ann [] _ _))
+    = pretty (fmap (, hardspace) krec) <> pretty paropen <> hardspace <> pretty parclose
 -- Singleton sets are allowed to fit onto one line,
 -- but apart from that always expand.
 prettySet wide (krec, Ann pre paropen post, binders, parclose)
