@@ -58,198 +58,198 @@ stdenv.mkDerivation
     pname
       # foo
       =
-      # foo
-      "contrast";
+        # foo
+        "contrast";
     # foo
     version
       # foo
       =
-      # foo
-      "0.0.5";
+        # foo
+        "0.0.5";
     # foo
     src
       # foo
       =
-      # foo
-      fetchFromGitLab
         # foo
-        {
+        fetchFromGitLab
           # foo
-          domain
+          {
             # foo
-            =
+            domain
+              # foo
+              =
+                # foo
+                "gitlab.gnome.org";
             # foo
-            "gitlab.gnome.org";
-          # foo
-          group
+            group
+              # foo
+              =
+                # foo
+                "World";
             # foo
-            =
+            owner
+              # foo
+              =
+                # foo
+                "design";
             # foo
-            "World";
-          # foo
-          owner
+            repo
+              # foo
+              =
+                # foo
+                "contrast";
             # foo
-            =
+            rev
+              # foo
+              =
+                # foo
+                version;
             # foo
-            "design";
-          # foo
-          repo
+            sha256
+              # foo
+              =
+                # foo
+                "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0=";
             # foo
-            =
-            # foo
-            "contrast";
-          # foo
-          rev
-            # foo
-            =
-            # foo
-            version;
-          # foo
-          sha256
-            # foo
-            =
-            # foo
-            "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0=";
-          # foo
-        };
+          };
     # foo
     cargoDeps
       # foo
       =
-      # foo
-      rustPlatform.fetchCargoTarball
         # foo
-        {
+        rustPlatform.fetchCargoTarball
           # foo
-          inherit
+          {
             # foo
-            src
-            ;
-          # foo
-          name
+            inherit
+              # foo
+              src
+              ;
             # foo
-            =
+            name
+              # foo
+              =
+                # foo
+                "${pname}-${version}";
             # foo
-            "${pname}-${version}";
-          # foo
-          hash
+            hash
+              # foo
+              =
+                # foo
+                "sha256-W4FyqwJpimf0isQRCq9TegpTQPQfsumx40AFQCFG5VQ=";
             # foo
-            =
-            # foo
-            "sha256-W4FyqwJpimf0isQRCq9TegpTQPQfsumx40AFQCFG5VQ=";
-          # foo
-        };
+          };
     # foo
     nativeBuildInputs
       # foo
       =
-      # foo
-      [
         # foo
-        desktop-file-utils
-        # foo
-        gettext
-        # foo
-        meson
-        # foo
-        ninja
-        # foo
-        pkg-config
-        # foo
-        python3
-        # foo
-        rustPlatform.rust.cargo
-        # foo
-        rustPlatform.cargoSetupHook
-        # foo
-        rustPlatform.rust.rustc
-        # foo
-        wrapGAppsHook4
-        # foo
-        glib
-        # foo
-        # for glib-compile-resources
+        [
+          # foo
+          desktop-file-utils
+          # foo
+          gettext
+          # foo
+          meson
+          # foo
+          ninja
+          # foo
+          pkg-config
+          # foo
+          python3
+          # foo
+          rustPlatform.rust.cargo
+          # foo
+          rustPlatform.cargoSetupHook
+          # foo
+          rustPlatform.rust.rustc
+          # foo
+          wrapGAppsHook4
+          # foo
+          glib
+          # foo
+          # for glib-compile-resources
 
-        # foo
-      ];
+          # foo
+        ];
     # foo
     buildInputs
       # foo
       =
-      # foo
-      [
         # foo
-        cairo
-        # foo
-        glib
-        # foo
-        gtk4
-        # foo
-        libadwaita
-        # foo
-        pango
-        # foo
-      ];
+        [
+          # foo
+          cairo
+          # foo
+          glib
+          # foo
+          gtk4
+          # foo
+          libadwaita
+          # foo
+          pango
+          # foo
+        ];
     # foo
     postPatch
       # foo
       =
-      # foo
-      ''
-        patchShebangs build-aux/meson_post_install.py
-        # https://gitlab.gnome.org/World/design/contrast/-/merge_requests/23
-        substituteInPlace build-aux/meson_post_install.py \
-          --replace "gtk-update-icon-cache" "gtk4-update-icon-cache"
-      '';
+        # foo
+        ''
+          patchShebangs build-aux/meson_post_install.py
+          # https://gitlab.gnome.org/World/design/contrast/-/merge_requests/23
+          substituteInPlace build-aux/meson_post_install.py \
+            --replace "gtk-update-icon-cache" "gtk4-update-icon-cache"
+        '';
     # foo
     meta
       # foo
       =
-      # foo
-      with
         # foo
-        lib;
-      # foo
-      {
+        with
+          # foo
+          lib;
         # foo
-        description
+        {
           # foo
-          =
-          # foo
-          "Checks whether the contrast between two colors meet the WCAG requirements";
-        # foo
-        homepage
-          # foo
-          =
-          # foo
-          "https://gitlab.gnome.org/World/design/contrast";
-        # foo
-        license
-          # foo
-          =
-          # foo
-          licenses.gpl3Plus;
-        # foo
-        maintainers
-          # foo
-          =
-          # foo
-          with
+          description
             # foo
-            maintainers;
+            =
+              # foo
+              "Checks whether the contrast between two colors meet the WCAG requirements";
           # foo
-          [
+          homepage
             # foo
-            jtojnar
+            =
+              # foo
+              "https://gitlab.gnome.org/World/design/contrast";
+          # foo
+          license
             # foo
-          ];
-        # foo
-        platforms
+            =
+              # foo
+              licenses.gpl3Plus;
           # foo
-          =
+          maintainers
+            # foo
+            =
+              # foo
+              with
+                # foo
+                maintainers;
+              # foo
+              [
+                # foo
+                jtojnar
+                # foo
+              ];
           # foo
-          platforms.unix;
-        # foo
-      };
+          platforms
+            # foo
+            =
+              # foo
+              platforms.unix;
+          # foo
+        };
     # foo
   }

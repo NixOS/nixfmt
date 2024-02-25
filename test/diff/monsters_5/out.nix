@@ -43,13 +43,13 @@ let
 
     =
 
-    pkgs.writeText
+      pkgs.writeText
 
-      "nixos.conf"
+        "nixos.conf"
 
-      ''
-        ${concatStringsSep "\n" config.boot.kernelModules}
-      '';
+        ''
+          ${concatStringsSep "\n" config.boot.kernelModules}
+        '';
 in
 
 {
@@ -60,207 +60,207 @@ in
 
     =
 
-    {
+      {
 
-      boot.kernel.features
+        boot.kernel.features
 
-        =
+          =
 
-        mkOption
+            mkOption
 
-          {
+              {
 
-            default
+                default
 
-              =
+                  =
 
-              { };
+                    { };
 
-            example
+                example
 
-              =
+                  =
 
-              literalExpression
+                    literalExpression
 
-                "{debug= true;}";
+                      "{debug= true;}";
 
-            internal
+                internal
 
-              =
+                  =
 
-              true;
+                    true;
 
-            description
+                description
 
-              =
+                  =
 
-              ''
-                This option allows to enable or disable certain kernel features.
-                It's not API, because it's about kernel feature sets, that
-                make sense for specific use cases. Mostly along with programs,
-                which would have separate nixos options.
-                `grep features pkgs/os-specific/linux/kernel/common-config.nix`
-              '';
-          };
+                    ''
+                      This option allows to enable or disable certain kernel features.
+                      It's not API, because it's about kernel feature sets, that
+                      make sense for specific use cases. Mostly along with programs,
+                      which would have separate nixos options.
+                      `grep features pkgs/os-specific/linux/kernel/common-config.nix`
+                    '';
+              };
 
-      boot.kernelPackages
+        boot.kernelPackages
 
-        =
+          =
 
-        mkOption
+            mkOption
 
-          {
+              {
 
-            default
+                default
 
-              =
+                  =
 
-              pkgs.linuxPackages;
+                    pkgs.linuxPackages;
 
-            type
+                type
 
-              =
+                  =
 
-              types.unspecified
+                    types.unspecified
 
-              //
+                    //
 
-                {
+                      {
 
-                  merge
+                        merge
 
-                    =
+                          =
 
-                    mergeEqualOption;
-                };
+                            mergeEqualOption;
+                      };
 
-            apply
+                apply
 
-              =
+                  =
 
-              kernelPackages:
+                    kernelPackages:
 
-              kernelPackages.extend
+                    kernelPackages.extend
 
-                (
-                  self:
+                      (
+                        self:
 
-                  super:
+                        super:
 
-                  {
+                        {
 
-                    kernel
+                          kernel
 
-                      =
+                            =
 
-                      super.kernel.override
+                              super.kernel.override
 
-                        (
-                          originalArgs:
+                                (
+                                  originalArgs:
 
-                          {
+                                  {
 
-                            inherit
+                                    inherit
 
-                              randstructSeed
-                              ;
+                                      randstructSeed
+                                      ;
 
-                            kernelPatches
+                                    kernelPatches
 
-                              =
+                                      =
 
-                              (originalArgs.kernelPatches
+                                        (originalArgs.kernelPatches
 
-                                or
+                                          or
 
-                                [ ]
-                              )
+                                          [ ]
+                                        )
 
-                              ++
+                                        ++
 
-                                kernelPatches;
+                                          kernelPatches;
 
-                            features
+                                    features
 
-                              =
+                                      =
 
-                              lib.recursiveUpdate
+                                        lib.recursiveUpdate
 
-                                super.kernel.features
+                                          super.kernel.features
 
-                                features;
-                          }
-                        );
-                  }
-                );
+                                          features;
+                                  }
+                                );
+                        }
+                      );
 
-            # We don't want to evaluate all of linuxPackages for the manual
-            # - some of it might not even evaluate correctly.
+                # We don't want to evaluate all of linuxPackages for the manual
+                # - some of it might not even evaluate correctly.
 
-            defaultText
+                defaultText
 
-              =
+                  =
 
-              literalExpression
+                    literalExpression
 
-                "pkgs.linuxPackages";
+                      "pkgs.linuxPackages";
 
-            example
+                example
 
-              =
+                  =
 
-              literalExpression
+                    literalExpression
 
-                "pkgs.linuxKernel.packages.linux_5_10";
+                      "pkgs.linuxKernel.packages.linux_5_10";
 
-            description
+                description
 
-              =
+                  =
 
-              ''
-                This option allows you to override the Linux kernel used by
-                NixOS.  Since things like external kernel module packages are
-                tied to the kernel you're using, it also overrides those.
-                This option is a function that takes Nixpkgs as an argument
-                (as a convenience), and returns an attribute set containing at
-                the very least an attribute <varname>kernel</varname>.
-                Additional attributes may be needed depending on your
-                configuration.  For instance, if you use the NVIDIA X driver,
-                then it also needs to contain an attribute
-                <varname>nvidia_x11</varname>.
-              '';
-          };
+                    ''
+                      This option allows you to override the Linux kernel used by
+                      NixOS.  Since things like external kernel module packages are
+                      tied to the kernel you're using, it also overrides those.
+                      This option is a function that takes Nixpkgs as an argument
+                      (as a convenience), and returns an attribute set containing at
+                      the very least an attribute <varname>kernel</varname>.
+                      Additional attributes may be needed depending on your
+                      configuration.  For instance, if you use the NVIDIA X driver,
+                      then it also needs to contain an attribute
+                      <varname>nvidia_x11</varname>.
+                    '';
+              };
 
-      boot.kernelPatches
+        boot.kernelPatches
 
-        =
+          =
 
-        mkOption
+            mkOption
 
-          {
+              {
 
-            type
+                type
 
-              =
+                  =
 
-              types.listOf
+                    types.listOf
 
-                types.attrs;
+                      types.attrs;
 
-            default
+                default
 
-              =
+                  =
 
-              [ ];
+                    [ ];
 
-            example
+                example
 
-              =
+                  =
 
-              literalExpression
+                    literalExpression
 
-                "[ pkgs.kernelPatches.ubuntu_fan_4_4 ]";
-            description = "A list of additional patches to apply to the kernel.";
-          };
-    };
+                      "[ pkgs.kernelPatches.ubuntu_fan_4_4 ]";
+                description = "A list of additional patches to apply to the kernel.";
+              };
+      };
 }

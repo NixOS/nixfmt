@@ -37,16 +37,18 @@ module Nixfmt.Predoc
     ) where
 
 import Data.List (intersperse)
+import qualified Data.List.NonEmpty as NonEmpty
+import Data.List.NonEmpty (NonEmpty(..), singleton, (<|))
 import Data.Function ((&))
 import Data.Functor ((<&>), ($>))
 import Data.Functor.Identity (runIdentity)
-import Data.Bifunctor (second)
+import Data.Bifunctor (first, second)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (Text, concat, length, replicate, strip)
 import GHC.Stack (HasCallStack)
 -- import Debug.Trace (traceShow, traceShowId)
 import Control.Applicative ((<|>), asum, empty)
-import Control.Monad.Trans.State.Strict (State, StateT, StateT(..), mapStateT, state, runState, evalState, get, put)
+import Control.Monad.Trans.State.Strict (State, StateT, StateT(..), mapStateT, state, runState, evalState, get, put, modify)
 
 -- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
 -- This means that e.g. a Space followed by an Emptyline results in just an
@@ -109,7 +111,7 @@ data TextAnn = RegularT | Comment | TrailingComment | Trailing
 -- | Single document element. Documents are modeled as lists of these elements
 -- in order to make concatenation simple.
 data DocE =
-    -- indent level, offset, kind, text
+    -- nesting depth, offset, kind, text
     Text Int Int TextAnn Text
     | Spacing Spacing
     | Group GroupAnn Doc
@@ -172,28 +174,26 @@ group x = pure . (Group RegularG) $
 group' :: Pretty a => GroupAnn -> a -> Doc
 group' ann = pure . (Group ann) . pretty
 
--- | @nest doc@ declarse @doc@ to have a higher indentation level
+-- | @nest doc@ declarse @doc@ to have a higher nesting depth
 -- than before. Not all nestings actually result in indentation changes,
 -- this will be calculated automatically later on. As a rule of thumb:
--- Multiple indentation levels on one line will be compacted and only result in a single
--- bump for the next line. This prevents excessive indentation.
+-- Multiple nesting levels on one line will be compacted and only result in a single
+-- indentation bump for the next line. This prevents excessive indentation.
 nest :: Pretty a => a -> Doc
-nest x = go $ pretty x
+nest x = map go $ pretty x
     where
-    go (Text i o ann t : rest) = (Text (i + 2) o ann t) : go rest
-    go (Group ann inner : rest) = (Group ann (go inner)) : go rest
-    go (spacing : rest) = spacing : go rest
-    go [] = []
+    go (Text i o ann t) = Text (i + 1) o ann t
+    go (Group ann inner) = Group ann (map go inner)
+    go spacing = spacing
 
 -- This is similar to nest, however it circumvents the "smart" rules that usually apply.
 -- This should only be useful to manage the indentation within indented strings.
 offset :: Pretty a => Int -> a -> Doc
-offset level x = go $ pretty x
+offset level x = map go $ pretty x
     where
-    go (Text i o ann t : rest) = (Text i (o + level) ann t) : go rest
-    go (Group ann inner : rest) = (Group ann (go inner)) : go rest
-    go (spacing : rest) = spacing : go rest
-    go [] = []
+    go (Text i o ann t) = Text i (o + level) ann t
+    go (Group ann inner) = Group ann (map go inner)
+    go spacing = spacing
 
 -- | Line break or nothing (soft)
 softline' :: Doc
@@ -470,38 +470,38 @@ indent n = Text.replicate n " "
 -- All state is (cc, indents)
 -- cc: current column (within the current line, *not including indentation*)
 -- indents:
---   A stack of tuples (realIndent, virtualIndent)
+--   A stack of tuples (currentIndent, nestingLevel)
 --   This is guaranteed to never be empty, as we start with [(0, 0)] and never go below that.
-type St = (Int, [(Int, Int)])
+type St = (Int, NonEmpty (Int, Int))
 
 -- tw   Target Width
 layoutGreedy :: Int -> Doc -> Text
-layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, [(0, 0)])
+layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, singleton (0, 0))
     where
+    -- Simple helpers around `put` with a tuple state
+    putL = modify . first . const
+    putR = modify . second . const
+
     -- Print a given text. If this is the first token on a line, it will
     -- do the appropriate calculations for indentation and print that in addition to the text.
     putText :: Int -> Int -> Text -> State St [Text]
-    putText textVI textOffset t = get >>=
-        \case
-            -- Needs indent, but no more than last line
-            (0, indents@((ci, vi):_)) | textVI == vi ->
-                go' indents (ci + textOffset)
-            -- Needs more indent than last line. We only go up by one level every time
-            (0, indents@((ci, vi):_)) | textVI > vi ->
-                go' ((ci + 2, textVI):indents) (ci + 2 + textOffset)
+    putText textNL textOffset t = get >>=
+        \(cc, indents@((ci, nl) :| indents')) ->
+        case textNL `compare` nl of
+            -- Push the textNL onto the stack, but only increase the actual indentation (`ci`)
+            -- if this is the first one of a line. All subsequent nestings within the line effectively get "swallowed"
+            GT -> putR ((if cc == 0 then ci + 2 else ci, textNL) <| indents) >> go'
             -- Need to go down one or more levels
             -- Just pop from the stack and recurse until the indent matches again
-            (0, ((_, vi) : indents@((ci, vi'):_))) | textVI < vi ->
-                if textVI < vi' then
-                    put (0, indents) >> putText textVI textOffset t
-                else
-                    go' indents (ci + textOffset)
-            -- Does not need indent (not at start of line)
-            (cc, indents) ->
-                put (cc + textWidth t, indents) $> [t]
+            LT -> putR (NonEmpty.fromList indents') >> putText textNL textOffset t
+            EQ -> go'
         where
-            -- Start a new line
-            go' indents i = put (textWidth t, indents) $> [indent i, t]
+            -- Put the text and advance the `cc` cursor. Add the appropriate amount of indentation if this is 
+            -- the first token on a line
+            go' = do
+                (cc, (ci, _) :| _) <- get
+                putL (cc + textWidth t)
+                pure $ if cc == 0 then [indent (ci + textOffset), t] else [t]
 
     -- Simply put text without caring about line-start indentation
     putText' :: [Text] -> State St [Text]
@@ -540,9 +540,9 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, [
         -- [  # comment
         --   1
         -- ]
-        Text _ _ TrailingComment t | cc == 2 && (fst $ nextIndent xs) > lineVI -> putText' [" ", t]
-            where lineVI = snd $ head indents
-        Text vi off _ t -> putText vi off t
+        Text _ _ TrailingComment t | cc == 2 && (fst $ nextIndent xs) > lineNL -> putText' [" ", t]
+            where lineNL = snd $ NonEmpty.head indents
+        Text nl off _ t -> putText nl off t
 
         -- This code treats whitespace as "expanded"
         -- A new line resets the column counter and sets the target indentation as current indentation
@@ -618,19 +618,19 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, [
                     Spacing _ -> tail grp
                     Group ann ((Spacing _) : inner) -> (Group ann inner) : tail grp
                     _ -> grp
-                (vi, off) = nextIndent grp'
+                (nl, off) = nextIndent grp'
 
-                indentWillIncrease = if fst (nextIndent rest) > lineVI then 2 else 0
+                indentWillIncrease = if fst (nextIndent rest) > lineNL then 2 else 0
                     where
-                        lastLineVI = snd $ head ci
-                        lineVI = lastLineVI + (if vi > lastLineVI then 2 else 0)
+                        lastLineNL = snd $ NonEmpty.head ci
+                        lineNL = lastLineNL + (if nl > lastLineNL then 2 else 0)
             in
             fits indentWillIncrease (tw - firstLineWidth rest) grp'
-            <&> \t -> runState (putText vi off t) (cc, ci)
+            <&> \t -> runState (putText nl off t) (cc, ci)
         else
             let
-                indentWillIncrease = if fst (nextIndent rest) > lineVI then 2 else 0
-                    where lineVI = snd $ head ci
+                indentWillIncrease = if fst (nextIndent rest) > lineNL then 2 else 0
+                    where lineNL = snd $ NonEmpty.head ci
             in
             fits (indentWillIncrease - cc) (tw - cc - firstLineWidth rest) grp
             <&> \t -> ([t], (cc + textWidth t, ci))

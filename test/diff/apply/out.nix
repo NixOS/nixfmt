@@ -356,5 +356,5 @@
   (function (
     something
   # ...
-    ) { })
+  ) { })
 ]

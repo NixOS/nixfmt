@@ -50,7 +50,7 @@ instance Pretty Trivium where
         | otherwise
             = comment "/*" <> hardspace
               -- Add an offset to manually indent the comment by one
-              <> (nest $ offset 1 $ hcat $ map prettyCommentLine c)
+              <> (offset 3 $ hcat $ map prettyCommentLine c)
               <> comment "*/" <> hardline
               where
                 prettyCommentLine :: Text -> Doc
@@ -117,7 +117,7 @@ instance Pretty Binder where
     -- `foo = bar`
     pretty (Assignment selectors assign expr semicolon)
         = group $ hcat selectors
-                 <> nest (hardspace <> pretty assign <> absorbRHS expr) <> pretty semicolon
+                 <> nest (hardspace <> pretty assign <> nest (absorbRHS expr)) <> pretty semicolon
 
 -- Pretty a set
 -- while we already pretty eagerly expand sets with more than one element,
@@ -198,7 +198,7 @@ instance Pretty ParamAttr where
     pretty (ParamAttr name (Just (qmark, def)) maybeComma)
         = group $
             pretty name <> hardspace
-            <> nest (pretty qmark <> absorbRHS def)
+            <> nest (pretty qmark <> nest (absorbRHS def))
             <> pretty maybeComma
 
     -- `...`

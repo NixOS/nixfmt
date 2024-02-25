@@ -644,12 +644,12 @@
     # a
     {
       b  # a
-        ? # a
-        null # c
+        ?  # a
+          null # c
       , # d
       e  # a
-        ? # a
-        null # f
+        ?  # a
+          null # f
       , # g
       ... # h
     }:
@@ -664,9 +664,9 @@
         # a
         #
         ?
-        # a
-        #
-        null,
+          # a
+          #
+          null,
       # c
       #
       # d
@@ -675,9 +675,9 @@
         # a
         #
         ?
-        # a
-        #
-        null,
+          # a
+          #
+          null,
       # f
       #
       # g

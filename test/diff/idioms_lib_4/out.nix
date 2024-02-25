@@ -829,7 +829,7 @@ rec {
       };
     }
     .${toString (length l)}
-      or (throw "system string has invalid number of hyphen-separated components");
+    or (throw "system string has invalid number of hyphen-separated components");
 
   # This should revert the job done by config.guess from the gcc compiler.
   mkSystemFromSkeleton =
