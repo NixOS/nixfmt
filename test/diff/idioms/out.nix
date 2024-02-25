@@ -8,7 +8,8 @@
   }
 
   {
-    meta = with lib;
+    meta =
+      with lib;
       # comment
       {
         a = 1;

@@ -31,7 +31,8 @@
     };
   }
   {
-    a = with b; # comment
+    a =
+      with b; # comment
       [
         1
         2

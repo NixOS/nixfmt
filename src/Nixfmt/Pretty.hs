@@ -353,14 +353,18 @@ prettyApp indentFunction pre hasPost f a
 prettyWith :: Bool -> Expression -> Doc
 -- absorb the body
 prettyWith True (With with expr0 semicolon (Term expr1))
-        = pretty with <> hardspace
-          <> nest (group expr0) <> pretty semicolon
-          -- Force-expand attrsets
-          <> hardspace <> prettyTermWide expr1
+        = group' RegularG $
+            line' <>
+            pretty with <> hardspace
+            <> nest (group expr0) <> pretty semicolon
+            -- Force-expand attrsets
+            <> hardspace <> group' Priority (prettyTermWide expr1)
 -- Normal case
 prettyWith _ (With with expr0 semicolon expr1)
-        = pretty with <> hardspace
-          <> nest (group expr0) <> pretty semicolon
+        = group (
+            pretty with <> hardspace
+            <> nest (group expr0) <> pretty semicolon
+          )
           <> line <> pretty expr1
 prettyWith _ _ = error "unreachable"
 
