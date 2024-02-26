@@ -517,13 +517,13 @@ instance Pretty Expression where
 
     -- Simple parameter
     pretty (Abstraction (IDParameter param) colon body)
-        = pretty param <> pretty colon <> absorbAbs 1 body
+        = group' RegularG $ line' <> pretty param <> pretty colon <> absorbAbs 1 body
         where
             absorbAbs :: Int -> Expression -> Doc
             -- If there are multiple ID parameters to that function, treat them all at once
             absorbAbs depth (Abstraction (IDParameter param0) colon0 body0) =
                 hardspace <> pretty param0 <> pretty colon0 <> absorbAbs (depth + 1) body0
-            absorbAbs _ expr | isAbsorbableExpr expr = hardspace <> absorbExpr False expr
+            absorbAbs _ expr | isAbsorbableExpr expr = hardspace <> group' Priority (absorbExpr False expr)
             -- Force the content onto a new line when it is not absorbable and there are more than two arguments
             absorbAbs depth x
                 = (if depth <= 2 then line else hardline) <> pretty x

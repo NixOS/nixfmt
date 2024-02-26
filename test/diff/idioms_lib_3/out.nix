@@ -266,8 +266,7 @@ rec {
             else
               { ${head path} = value; };
         in
-        attrs:
-        lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs));
+        attrs: lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs));
 
       toINI_ = toINI { inherit mkKeyValue mkSectionName; };
     in
