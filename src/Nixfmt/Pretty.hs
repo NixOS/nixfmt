@@ -430,7 +430,7 @@ absorbRHS expr = case expr of
       group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
     -- Case 2a: LHS fits onto first line, RHS is an absorbable term
     (Operation l (Ann [] op Nothing) (Term t)) | isAbsorbable t && isUpdateOrConcat op ->
-      group' RegularG $ line <> pretty l <> line <> group' Priority (pretty op <> hardspace <> prettyTermWide t)
+      group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
     -- Case 2b: LHS fits onto first line, RHS is a function application
     (Operation l (Ann [] op Nothing) (Application f a)) | isUpdateOrConcat op ->
       line <> (group l) <> line <> prettyApp False (pretty op <> hardspace) False f a
