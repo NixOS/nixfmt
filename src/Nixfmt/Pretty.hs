@@ -172,8 +172,11 @@ prettyTerm (List (Ann pre paropen post) items parclose) =
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
 
 -- Parentheses
-prettyTerm (Parenthesized paropen expr parclose)
-    = group $ pretty (moveTrailingCommentUp paropen) <> nest inner <> pretty parclose
+prettyTerm (Parenthesized paropen expr (Ann closePre parclose closePost))
+    = group $
+        pretty (moveTrailingCommentUp paropen)
+        <> nest (inner <> pretty closePre)
+        <> pretty (Ann [] parclose closePost)
   where
     inner =
       case expr of
@@ -323,15 +326,8 @@ prettyApp indentFunction pre hasPost f a
 
         absorbLast (Term t) | isAbsorbable t
             = group' Priority $ nest $ prettyTerm t
-        absorbLast (Term (Parenthesized (Ann pre' open post') expr close))
-            = group' Priority $ nest $ pretty (Ann pre' open Nothing)
-                -- Move any trailing comments on the opening parenthesis down into the body
-                <> (surroundWith line' $ group $ nest $
-                    mapFirstToken
-                        (\(Ann leading token trailing') -> (Ann (maybeToList (toLineComment <$> post') ++ leading) token trailing'))
-                        expr
-                )
-                <> pretty close
+        absorbLast (Term (Parenthesized open expr close))
+            = absorbParen open expr close
         absorbLast arg = group' RegularG $ nest $ pretty arg
 
         -- Extract comment before the first function and move it out, to prevent functions being force-expanded
@@ -393,6 +389,19 @@ isAbsorbable _                                                           = False
 isAbsorbableTerm :: Term -> Bool
 isAbsorbableTerm = isAbsorbable
 
+absorbParen :: Ann Token -> Expression -> Ann Token -> Doc
+absorbParen (Ann pre' open post') expr (Ann pre'' close post'')
+    = group' Priority $ nest $ pretty (Ann pre' open Nothing)
+        -- Move any trailing comments on the opening parenthesis down into the body
+        <> (surroundWith line' $ group' RegularG $ nest $
+            pretty (mapFirstToken
+                (\(Ann leading token trailing') -> (Ann (maybeToList (toLineComment <$> post') ++ leading) token trailing'))
+                expr)
+            -- Move any leading comments on the closing parenthesis up into the nest
+            <> pretty pre''
+        )
+        <> pretty (Ann [] close post'')
+
 -- Note that unlike for absorbable terms which can be force-absorbed, some expressions
 -- may turn out to not be absorbable. In that case, they should start with a line' so that
 -- they properly start on the next line if necessary.
@@ -409,11 +418,7 @@ absorbRHS expr = case expr of
     -- Absorbable expression. Always start on the same line
     _ | isAbsorbableExpr expr -> hardspace <> group (absorbExpr True expr)
     -- Parenthesized expression. Same thing as the special case for parenthesized last argument in function calls.
-    (Term (Parenthesized open expr' close)) ->
-      group' Priority $ nest $
-        hardspace <> pretty open
-        <> (surroundWith line' . group . nest) expr'
-        <> pretty close
+    (Term (Parenthesized open expr' close)) -> hardspace <> absorbParen open expr' close
     -- Not all strings are absorbable, but in this case we always want to keep them attached.
     -- Because there's nothing to gain from having them start on a new line.
     (Term (SimpleString _)) -> hardspace <> group expr
