@@ -249,4 +249,19 @@
     c = (with a; if null then true else false);
     d = (with a; let in [ 1 2 3]);
   }
+
+  # Comments
+  {
+    fontsForXServer = config.fonts.fonts ++
+      # We don't want these fonts in fonts.conf, because then modern,
+      # fontconfig-based applications will get horrible bitmapped
+      # Helvetica fonts.  It's better to get a substitution (like Nimbus
+      # Sans) than that horror.  But we do need the Adobe fonts for some
+      # old non-fontconfig applications.  (Possibly this could be done
+      # better using a fontconfig rule.)
+      [
+        pkgs.xorg.fontadobe100dpi
+        pkgs.xorg.fontadobe75dpi
+      ];
+  }
 ]

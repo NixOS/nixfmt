@@ -424,31 +424,26 @@ absorbRHS expr = case expr of
     -- Absorb if all arguments except the last fit into the line, start on new line otherwise
     (Application f a) -> prettyApp False line False f a
     (With _ _ _ _) -> group' RegularG $ line <> pretty expr
-    -- Special case `//` operations to be more compact in some cases
+    -- Special case `//` and `++` operations to be more compact in some cases
     -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
-    (Operation (Term t) (Ann [] TUpdate Nothing) b) | isAbsorbable t ->
-      group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty TUpdate <> hardspace <> pretty b
+    (Operation (Term t) (Ann [] op Nothing) b) | isAbsorbable t && isUpdateOrConcat op ->
+      group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
     -- Case 2a: LHS fits onto first line, RHS is an absorbable term
-    (Operation l (Ann [] TUpdate Nothing) (Term t)) | isAbsorbable t ->
-      group' RegularG $ line <> pretty l <> line <> group' Priority (pretty TUpdate <> hardspace <> prettyTermWide t)
+    (Operation l (Ann [] op Nothing) (Term t)) | isAbsorbable t && isUpdateOrConcat op ->
+      group' RegularG $ line <> pretty l <> line <> group' Priority (pretty op <> hardspace <> prettyTermWide t)
     -- Case 2b: LHS fits onto first line, RHS is a function application
-    (Operation l (Ann [] TUpdate Nothing) (Application f a)) ->
-      line <> (group l) <> line <> prettyApp False (pretty TUpdate <> hardspace) False f a
-    -- Special case `++` operations to be more compact in some cases
-    -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
-    (Operation (Term t) (Ann [] TConcat Nothing) b) | isAbsorbable t ->
-      group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty TConcat <> hardspace <> pretty b
-    -- Case 2a: LHS fits onto first line, RHS is an absorbable term
-    (Operation l (Ann [] TConcat Nothing) (Term t)) | isAbsorbable t ->
-      group' RegularG $ line <> pretty l <> line <> group' Priority (pretty TConcat <> hardspace <> prettyTermWide t)
-    -- Case 2b: LHS fits onto first line, RHS is a function application
-    (Operation l (Ann [] TConcat Nothing) (Application f a)) ->
-      line <> (group l) <> line <> prettyApp False (pretty TConcat <> hardspace) False f a
+    (Operation l (Ann [] op Nothing) (Application f a)) | isUpdateOrConcat op ->
+      line <> (group l) <> line <> prettyApp False (pretty op <> hardspace) False f a
     -- Everything else:
     -- If it fits on one line, it fits
     -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
     -- Otherwise, start on new line, expand fully (including the semicolon)
     _ -> line <> group expr
+
+    where
+        isUpdateOrConcat TUpdate = True
+        isUpdateOrConcat TConcat = True
+        isUpdateOrConcat _ = False
 
 instance Pretty Expression where
     pretty (Term t) = pretty t
