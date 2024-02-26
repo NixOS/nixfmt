@@ -313,6 +313,8 @@ fixup [] = []
 fixup (Spacing a : Spacing b : xs) = fixup $ Spacing (mergeSpacings a b) : xs
 -- Merge consecutive texts. Take indentation and offset from the left one
 fixup (Text level off ann a : Text _ _ ann' b : xs) | ann == ann' = fixup $ Text level off ann (a <> b) : xs
+-- Move/Merge hard spaces into groups
+fixup ((Spacing Hardspace) : Group ann xs : ys) = fixup $ Group ann (Spacing Hardspace:xs) : ys
 -- Handle group, with stuff in front of it to potentially merge with
 fixup (a@(Spacing _) : Group ann xs : ys) =
     let
