@@ -347,7 +347,7 @@ prettyApp indentFunction pre hasPost f a
         pretty comment'
         <> (
             if isSimple (Application f a) && isJust (renderedFUnexpanded) then
-                (group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a <> post)
+                (group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a)
             else
                 (group' RegularG $ renderedF <> line <> absorbLast a <> post)
         )

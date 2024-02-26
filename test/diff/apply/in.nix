@@ -312,4 +312,6 @@
       # ...
     ) { }
   )
+
+  (badge "https://github.com/maralorn/haskell-taskwarrior/actions/workflows/haskell.yml/badge.svg" "https://github.com/maralorn/haskell-taskwarrior/actions")
 ]
