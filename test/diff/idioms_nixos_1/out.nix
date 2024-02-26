@@ -46,13 +46,11 @@ in
         kernelPackages:
         kernelPackages.extend (
           self: super: {
-            kernel = super.kernel.override (
-              originalArgs: {
-                inherit randstructSeed;
-                kernelPatches = (originalArgs.kernelPatches or [ ]) ++ kernelPatches;
-                features = lib.recursiveUpdate super.kernel.features features;
-              }
-            );
+            kernel = super.kernel.override (originalArgs: {
+              inherit randstructSeed;
+              kernelPatches = (originalArgs.kernelPatches or [ ]) ++ kernelPatches;
+              features = lib.recursiveUpdate super.kernel.features features;
+            });
           }
         );
       # We don't want to evaluate all of linuxPackages for the manual

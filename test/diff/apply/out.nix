@@ -94,12 +94,10 @@
           l.mapAttrs (
             pname: subOutputs:
             let
-              pkg = subOutputs.packages."${pname}".overrideAttrs (
-                old: {
-                  buildScript = "true";
-                  installMethod = "copy";
-                }
-              );
+              pkg = subOutputs.packages."${pname}".overrideAttrs (old: {
+                buildScript = "true";
+                installMethod = "copy";
+              });
             in
             "${pkg}/lib/node_modules/${pname}/node_modules"
           ) outputs.subPackages
@@ -311,33 +309,27 @@
       (callPackage ../generic-builders/manifest.nix {
         # A lot of values here
       }).overrideAttrs
-        (
-          prevAttrs: {
-            # stuff here
-          }
-        );
+        (prevAttrs: {
+          # stuff here
+        });
     # Variant with a selection on the function without parentheses
     foo2 =
       {
         # A lot of values here
       }
       .overrideAttrs
-        (
-          prevAttrs: {
-            # stuff here
-          }
-        );
+        (prevAttrs: {
+          # stuff here
+        });
     # Also test within parenthesized function instead of just attribute sets
     foo3 = (
       (callPackage ../generic-builders/manifest.nix {
         # A lot of values here
       }).overrideAttrs
         stuff
-        (
-          prevAttrs: {
-            # stuff here
-          }
-        )
+        (prevAttrs: {
+          # stuff here
+        })
     );
     # Add a comment at a bad place
     foo4 = (
@@ -346,11 +338,9 @@
         # A lot of values here
       }).overrideAttrs
         stuff
-        (
-          prevAttrs: {
-            # stuff here
-          }
-        )
+        (prevAttrs: {
+          # stuff here
+        })
     );
   }
   (function (

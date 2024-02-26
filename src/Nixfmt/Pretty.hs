@@ -24,7 +24,7 @@ import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
   ParamAttr(..), Parameter(..), Selector(..), SimpleSelector(..),
   StringPart(..), Term(..), Token(..), TrailingComment(..), Trivium(..),
-  Whole(..), tokenText, mapFirstToken, mapFirstToken', mapLastToken')
+  Whole(..), tokenText, mapFirstToken, mapFirstToken', mapLastToken', hasTrivia)
 
 toLineComment :: TrailingComment -> Trivium
 toLineComment (TrailingComment c) = LineComment $ " " <> c
@@ -326,6 +326,26 @@ prettyApp indentFunction pre hasPost f a
 
         absorbLast (Term t) | isAbsorbable t
             = group' Priority $ nest $ prettyTerm t
+        -- Special case: Absorb parenthesized function declaration with absorbable body
+        absorbLast
+            (Term (Parenthesized
+                open (Abstraction (IDParameter name) colon (Term body)) close
+            ))
+            | isAbsorbableTerm body && all (not . hasTrivia) [open, name, colon]
+            = group' Priority $ nest $
+                pretty open <> pretty name <> pretty colon <> hardspace
+                <> prettyTermWide body
+                <> pretty close
+        -- Special case: Absorb parenthesized function application with absorbable body
+        absorbLast
+            (Term (Parenthesized
+                open (Application (Term (Token ident@(Ann _ fn@(Identifier _) _))) (Term body)) close
+            ))
+            | isAbsorbableTerm body && all (not . hasTrivia) [open, ident, close]
+            = group' Priority $ nest $
+                pretty open <> pretty fn <> hardspace
+                <> prettyTermWide body
+                <> pretty close
         absorbLast (Term (Parenthesized open expr close))
             = absorbParen open expr close
         absorbLast arg = group' RegularG $ nest $ pretty arg

@@ -39,6 +39,13 @@ newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
 data Ann a
     = Ann Trivia a (Maybe TrailingComment)
 
+hasTrivia :: Ann a -> Bool
+hasTrivia (Ann [] _ Nothing) = False
+hasTrivia _ = True
+
+ann :: a -> Ann a
+ann a = Ann [] a Nothing
+
 -- | Equality of annotated syntax is defined as equality of their corresponding
 -- semantics, thus ignoring the annotations.
 instance Eq a => Eq (Ann a) where
