@@ -10,8 +10,9 @@ in
     foo
   )
   (
-    /* Collection of functions useful for debugging
-       Some comment
+    /*
+      Collection of functions useful for debugging
+      Some comment
     */
     { lib }:
     let

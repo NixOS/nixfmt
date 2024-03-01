@@ -2,89 +2,101 @@
 
   # @
 
-  /* *
-      @
-     *
+  /**
+     @
+    *
   */
 
-  /* @
-      @
+  /*
+    @
+     @
+    @
+  */
+
+  /*
+    @
+    @
      @
   */
 
-  /* @
-     @
-      @
+  /*
+    @
+    @
+        @
   */
 
-  /* @
+  /*
+    @
      @
-         @
+    @
   */
 
-  /* @
-      @
-     @
+  /*
+    test
+    test
   */
 
-  # test
-  # test
-
-  # * FOO
-
-  #
   # FOO
 
-  # FOO
-  # BAR
-
-  /* *
-     Concatenate a list of strings with a separator between each element
-
-     # Example
-
-     ```nix
-     concatStringsSep "/" ["usr" "local" "bin"]
-     => "usr/local/bin"
-     ```
-
-     # Type
-
-     ```
-     concatStringsSep :: string -> [string] -> string
-     ```
+  /**
+    FOO
   */
 
-  /* Concatenate a list of strings with a separator between each element
-
-     # Example
-
-     ```nix
-     concatStringsSep "/" ["usr" "local" "bin"]
-     => "usr/local/bin"
-     ```
-
-     # Type
-
-     ```
-     concatStringsSep :: string -> [string] -> string
-     ```
+  /*
+    FOO
+    BAR
   */
 
-  # Concatenate a list of strings with a separator between each element
-  #
-  # # Example
-  #
-  # ```nix
-  # concatStringsSep "/" ["usr" "local" "bin"]
-  # => "usr/local/bin"
-  # ```
-  #
-  # # Type
-  #
-  # ```
-  # concatStringsSep :: string -> [string] -> string
-  # ```
+  /**
+    Concatenate a list of strings with a separator between each element
+
+    # Example
+
+    ```nix
+    concatStringsSep "/" ["usr" "local" "bin"]
+    => "usr/local/bin"
+    ```
+
+    # Type
+
+    ```
+    concatStringsSep :: string -> [string] -> string
+    ```
+  */
+
+  /*
+    Concatenate a list of strings with a separator between each element
+
+    # Example
+
+    ```nix
+    concatStringsSep "/" ["usr" "local" "bin"]
+    => "usr/local/bin"
+    ```
+
+    # Type
+
+    ```
+    concatStringsSep :: string -> [string] -> string
+    ```
+  */
+
+  /*
+    Concatenate a list of strings with a separator between each element
+
+    # Example
+
+    ```nix
+    concatStringsSep "/" ["usr" "local" "bin"]
+    => "usr/local/bin"
+    ```
+
+    # Type
+
+    ```
+    concatStringsSep :: string -> [string] -> string
+    ```
+  */
 
   [
     # 1

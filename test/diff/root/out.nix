@@ -1,10 +1,12 @@
-/* Some functions f
-       name attribute.
+/*
+  Some functions f
+      name attribute.
 */
-/* Add to or over
-   derivation.
+/*
+  Add to or over
+  derivation.
 
-   Example:
-     addMetaAttrs {des
+  Example:
+    addMetaAttrs {des
 */
 1

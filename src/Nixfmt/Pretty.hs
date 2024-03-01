@@ -12,7 +12,7 @@ import Prelude hiding (String)
 
 import Data.Char (isSpace)
 import Data.Maybe (fromMaybe, isJust, fromJust, maybeToList)
-import Data.Text (Text, isPrefixOf, stripPrefix)
+import Data.Text (Text)
 import qualified Data.Text as Text (null, takeWhile)
 
 -- import Debug.Trace (traceShowId)
@@ -29,10 +29,6 @@ import Nixfmt.Types
 toLineComment :: TrailingComment -> Trivium
 toLineComment (TrailingComment c) = LineComment $ " " <> c
 
--- The prime variant also strips leading * prefix
-toLineComment' :: Text -> Trivium
-toLineComment' c = LineComment $ fromMaybe (" " <> c) $ stripPrefix "*" c
-
 -- If the token has some trailing comment after it, move that in front of the token
 moveTrailingCommentUp :: Ann a -> Ann a
 moveTrailingCommentUp (Ann pre a (Just post)) = Ann (pre ++ [toLineComment post]) a Nothing
@@ -45,18 +41,17 @@ instance Pretty TrailingComment where
 instance Pretty Trivium where
     pretty EmptyLine        = emptyline
     pretty (LineComment c)  = comment ("#" <> c) <> hardline
-    pretty (BlockComment c)
-        | all ("*" `isPrefixOf`) (tail c) = hcat (map toLineComment' c)
-        | otherwise
-            = comment "/*" <> hardspace
-              -- Add an offset to manually indent the comment by one
-              <> (offset 3 $ hcat $ map prettyCommentLine c)
+    pretty (BlockComment isDoc c) =
+              comment (if isDoc then "/**" else "/*") <> hardline
+              -- Indent the comment using offset instead of nest
+              <> (offset 2 $ hcat $ map prettyCommentLine c)
               <> comment "*/" <> hardline
-              where
-                prettyCommentLine :: Text -> Doc
-                prettyCommentLine l
-                    | Text.null l = emptyline
-                    | otherwise   = comment l <> hardline
+        where
+        prettyCommentLine :: Text -> Doc
+        prettyCommentLine l
+            | Text.null l = emptyline
+            | otherwise   = comment l <> hardline
+
 
 instance Pretty a => Pretty (Item a) where
     pretty (DetachedComments trivia) = pretty trivia

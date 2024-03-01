@@ -28,8 +28,12 @@ type ParseErrorBundle = MP.ParseErrorBundle Text Void
 
 data Trivium
     = EmptyLine
-    | LineComment     Text
-    | BlockComment    [Text]
+    -- Single line comments, either with # or /*. (We don't need to track which one it is,
+    -- as they will all be normalized to # comments.
+    | LineComment  Text
+    -- Multi-line comments with /* or /**. Multiple # comments are treated as a list of `LineComment`.
+    -- The bool indicates a doc comment (/**)
+    | BlockComment Bool [Text]
     deriving (Eq, Show)
 
 type Trivia = [Trivium]
@@ -277,21 +281,33 @@ instance LanguageElement Term where
         (Parenthesized open expr close) -> first (Parenthesized open expr) (f close)
 
     walkSubprograms = \case
+        -- Map each item to a singleton list, then handle that
+        (List _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
+            (CommentedItem c item) -> [emptySet c, Term item]
+            (DetachedComments _) -> []
         (List _ items _) -> unItems items >>= \case
-            CommentedItem _ item -> [Term item]
-            DetachedComments _ -> []
+            CommentedItem comment item ->
+                [ Term (List (ann TBrackOpen) (Items [CommentedItem comment item]) (ann TBrackClose)) ]
+            DetachedComments c ->
+                [ Term (List (ann TBrackOpen) (Items [DetachedComments c]) (ann TBrackClose)) ]
+
         (Set _ _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
-            (CommentedItem _ (Inherit _ from sels _)) -> (Term <$> maybeToList from) ++ concatMap walkSubprograms sels
-            (CommentedItem _ (Assignment sels _ expr _)) -> expr : concatMap walkSubprograms sels
+            (CommentedItem c (Inherit _ from sels _)) ->
+                (Term <$> maybeToList from) ++ concatMap walkSubprograms sels ++ [emptySet c]
+            (CommentedItem c (Assignment sels _ expr _)) ->
+                expr : concatMap walkSubprograms sels ++ [emptySet c]
             (DetachedComments _) -> []
         (Set _ _ items _) -> unItems items >>= \case
             -- Map each binding to a singleton set
-            (CommentedItem _ item) -> [ Term (Set Nothing (Ann [] TBraceOpen Nothing) (Items [(CommentedItem [] item)]) (Ann [] TBraceClose Nothing)) ]
-            (DetachedComments _) -> []
+            (CommentedItem comment item) ->
+                [ Term (Set Nothing (ann TBraceOpen) (Items [CommentedItem comment item]) (ann TBraceClose)) ]
+            (DetachedComments c) -> [ emptySet c ]
         (Selection term sels) -> Term term : (sels >>= walkSubprograms)
         (Parenthesized _ expr _) -> [expr]
         -- The others are already minimal
         _ -> []
+      where
+        emptySet c = Term (Set Nothing (ann TBraceOpen) (Items [DetachedComments c]) (ann TBraceClose))
 
 instance LanguageElement Expression where
     mapFirstToken' f = \case
@@ -326,12 +342,12 @@ instance LanguageElement Expression where
         (With _ expr0 _ expr1) -> [expr0, expr1]
         (Let _ items _ body) -> body : (unItems items >>= \case
                 -- Map each binding to a singleton set
-                (CommentedItem _ item) -> [ Term (Set Nothing (Ann [] TBraceOpen Nothing) (Items [(CommentedItem [] item)]) (Ann [] TBraceClose Nothing)) ]
+                (CommentedItem _ item) -> [ Term (Set Nothing (ann TBraceOpen) (Items [(CommentedItem [] item)]) (ann TBraceClose)) ]
                 (DetachedComments _) -> []
             )
         (Assert _ cond _ body) -> [cond, body]
         (If _ expr0 _ expr1 _ expr2) -> [expr0, expr1, expr2]
-        (Abstraction param _ body) -> [(Abstraction param (Ann [] TColon Nothing) (Term (Token (Ann [] (Identifier "_") Nothing)))), body]
+        (Abstraction param _ body) -> [(Abstraction param (ann TColon) (Term (Token (ann (Identifier "_"))))), body]
         (Application g a) -> [g, a]
         (Operation left _ right) -> [left, right]
         (MemberCheck name _ sels) -> name : (sels >>= walkSubprograms)

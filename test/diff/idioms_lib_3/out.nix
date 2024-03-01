@@ -330,9 +330,10 @@ rec {
   # as possible.
   toPretty =
     {
-      /* If this option is true, attrsets like { __pretty = fn; val = …; }
-         will use fn to convert val to a pretty printed representation.
-         (This means fn is type Val -> String.)
+      /*
+        If this option is true, attrsets like { __pretty = fn; val = …; }
+        will use fn to convert val to a pretty printed representation.
+        (This means fn is type Val -> String.)
       */
       allowPrettyValues ? false,
       # If this option is true, the output is indented with newlines for attribute sets and lists

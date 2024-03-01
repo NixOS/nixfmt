@@ -1,13 +1,14 @@
 {
   lib = {
 
-    /* Concatenate two lists
+    /*
+      Concatenate two lists
 
-       Type: concat :: [a] -> [a] -> [a]
+      Type: concat :: [a] -> [a] -> [a]
 
-       Example:
-         concat [ 1 2 ] [ 3 4 ]
-         => [ 1 2 3 4 ]
+      Example:
+        concat [ 1 2 ] [ 3 4 ]
+        => [ 1 2 3 4 ]
     */
     concat = x: y: x ++ y;
   };
