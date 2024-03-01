@@ -656,9 +656,26 @@ instance Pretty StringPart where
 
 instance Pretty [StringPart] where
     -- When the interpolation is the only thing on the string line,
-    -- then absorb the content (i.e. don't surround with line')
+    -- then absorb the content (i.e. don't surround with line').
+    -- Only do this when there are no comments
+    pretty [Interpolation (Whole expr [])]
+        = group $ text "${" <> nest inner <> text "}"
+        where
+            -- Code copied over from parentheses. Could be factored out into a common function one day
+            inner = case expr of
+                -- Start on the same line for these
+                _ | isAbsorbableExpr expr -> group $ absorbExpr False expr
+                -- Parenthesized application
+                (Application f a) -> prettyApp True mempty True f a
+                -- Same thing for selections
+                (Term (Selection t _)) | isAbsorbable t -> line' <> group expr <> line'
+                (Term (Selection _ _)) -> group expr <> line'
+                -- Start on a new line for the others
+                _ -> line' <> group expr <> line'
+
+    -- Fallback case: there are some comments around it. Always surround with line' then
     pretty [Interpolation expr]
-        = group $ text "${" <> pretty expr <> text "}"
+        = group $ text "${" <> surroundWith line' (nest expr) <> text "}"
 
     -- If we split a string line over multiple code lines due to large
     -- interpolations, make sure to indent based on the indentation of the line
