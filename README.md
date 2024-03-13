@@ -12,6 +12,14 @@ You are encouraged to test this out on your code and submit any undesirable form
 
 ![Build Status](https://github.com/serokell/nixfmt/actions/workflows/main.yml/badge.svg?branch=master)
 
+## State
+
+`nixfmt` will form the basis for the initial official standard Nix formatter, as established by [RFC 166](https://github.com/NixOS/rfcs/pull/166).
+
+The established standard Nix formatting differs considerably from the original one. Be aware of this if you track the main branch. Until the first new release the main branch should be considered **very unstable**.
+
+For more details, see the [RFC implementation tracking issue](https://github.com/serokell/nixfmt/issues/153).
+
 ## Installation
 
 - `nixfmt` is in nixpkgs master as of 2019-09-04: 
