@@ -8,7 +8,6 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-23.05";
 
     flake-utils.url = "github:numtide/flake-utils";
 
@@ -22,7 +21,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-stable, flake-utils, serokell-nix, ... }:
+  outputs = { self, nixpkgs, flake-utils, serokell-nix, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlay = self: super: {
@@ -38,25 +37,7 @@
           overlays = [ overlay serokell-nix.overlay ];
         };
 
-        pkgs-stable = import nixpkgs-stable {
-          inherit system;
-          overlays = [ overlay ];
-        };
-
         inherit (pkgs) haskell lib;
-
-        ghcjsPackages = pkgs-stable.haskell.packages.ghcjs810.override (old: {
-          overrides = (self: super: {
-            QuickCheck = haskell.lib.dontCheck super.QuickCheck;
-            tasty-quickcheck = haskell.lib.dontCheck super.tasty-quickcheck;
-            scientific = haskell.lib.dontCheck super.scientific;
-            temporary = haskell.lib.dontCheck super.temporary;
-            time-compat = haskell.lib.dontCheck super.time-compat;
-            text-short = haskell.lib.dontCheck super.text-short;
-            vector = haskell.lib.dontCheck super.vector;
-            aeson = super.aeson_1_5_6_0;
-          });
-        });
 
         regexes =
           [ ".*.cabal$" "^src.*" "^main.*" "^Setup.hs$" "^js.*" "LICENSE" ];
@@ -74,14 +55,6 @@
           nixfmt = pkgs.haskellPackages.nixfmt;
           nixfmt-static = haskell.lib.justStaticExecutables nixfmt;
           nixfmt-deriver = nixfmt-static.cabal2nixDeriver;
-          nixfmt-js = ghcjsPackages.callCabal2nix "nixfmt" src { };
-          nixfmt-webdemo = pkgs.runCommandNoCC "nixfmt-webdemo" { } ''
-            mkdir $out
-            cp ${./js/index.html} $out/index.html
-            cp ${./js/404.html} $out/404.html
-            cp ${nixfmt-js}/bin/js-interface.jsexe/{rts,lib,out,runmain}.js $out
-            substituteInPlace $out/index.html --replace ../dist/build/js-interface/js-interface.jsexe/ ./
-          '';
 
           nixfmt-shell = nixfmt.env.overrideAttrs (oldAttrs: {
             buildInputs = oldAttrs.buildInputs ++ (with pkgs; [
@@ -91,7 +64,7 @@
             ]);
           });
 
-          inherit (pkgs) awscli reuse;
+          inherit (pkgs) reuse;
         };
 
         apps.default = {
