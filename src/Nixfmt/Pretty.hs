@@ -11,14 +11,13 @@ module Nixfmt.Pretty where
 import Prelude hiding (String)
 
 import Data.Char (isSpace)
-import Data.Maybe (fromMaybe, isJust, fromJust, maybeToList)
+import Data.Maybe (fromMaybe, isJust, isNothing, fromJust, maybeToList)
 import Data.Text (Text)
 import qualified Data.Text as Text (null, takeWhile)
 
--- import Debug.Trace (traceShowId)
 import Nixfmt.Predoc
   (Doc, GroupAnn(..), Pretty, emptyline, group, group', hardline, hardspace, hcat, line, line',
-  nest, offset, newline, pretty, sepBy, surroundWith, softline, softline', text, comment, trailingComment, trailing, textWidth,
+  nest, offset, newline, pretty, sepBy, surroundWith, softline, text, comment, trailingComment, trailing, textWidth,
   unexpandSpacing')
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
@@ -87,14 +86,9 @@ instance Pretty SimpleSelector where
         = pretty leading <> prettySimpleString s <> pretty trailing'
 
 instance Pretty Selector where
-    pretty (Selector dot sel Nothing)
+    pretty (Selector dot sel)
         = pretty dot <> pretty sel
 
-    pretty (Selector dot sel (Just (kw, def)))
-        = pretty dot <> pretty sel
-          <> softline <> nest (pretty kw <> hardspace <> pretty def)
-
--- in attrsets and let bindings
 instance Pretty Binder where
     -- `inherit bar` statement
     pretty (Inherit inherit Nothing ids semicolon)
@@ -145,13 +139,9 @@ prettyTerm (Token t) = pretty t
 prettyTerm (SimpleString (Ann leading s trailing')) = pretty leading <> prettySimpleString s <> pretty trailing'
 prettyTerm (IndentedString (Ann leading s trailing')) = pretty leading <> prettyIndentedString s <> pretty trailing'
 prettyTerm (Path p) = pretty p
--- Selection (`foo.bar.baz`) case distinction on the first element (`foo`):
--- If it is an ident, keep it all together
-prettyTerm (Selection term@(Token _) selectors) = pretty term <> hcat selectors
--- If it is a parenthesized expression, maybe add a line break
-prettyTerm (Selection term@(Parenthesized _ _ _) selectors) = pretty term <> softline' <> hcat selectors
--- Otherwise, very likely add a line break
-prettyTerm (Selection term selectors) = pretty term <> line' <> hcat selectors
+prettyTerm (Selection term selectors Nothing) = pretty term <> hcat selectors
+prettyTerm (Selection term selectors (Just (kw, def))) =
+    pretty term <> hcat selectors <> hardspace <> pretty kw <> hardspace <> pretty def
 
 -- Empty list
 prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trailing'))
@@ -180,8 +170,8 @@ prettyTerm (Parenthesized paropen expr (Ann closePre parclose closePost))
         -- Parenthesized application
         (Application f a) -> prettyApp True mempty True f a
         -- Same thing for selections
-        (Term (Selection t _)) | isAbsorbable t -> line' <> group expr <> line'
-        (Term (Selection _ _)) -> group expr <> line'
+        (Term (Selection t _ _)) | isAbsorbable t -> line' <> group expr <> line'
+        (Term (Selection _ _ _)) -> group expr <> line'
         -- Start on a new line for the others
         _ -> line' <> group expr <> line'
 
@@ -608,16 +598,16 @@ instance Pretty Token where
 
 
 isSimpleSelector :: Selector -> Bool
-isSimpleSelector (Selector _ (IDSelector _) Nothing) = True
-isSimpleSelector _                                   = False
+isSimpleSelector (Selector _ (IDSelector _)) = True
+isSimpleSelector _                           = False
 
 isSimple :: Expression -> Bool
 isSimple (Term (SimpleString (Ann [] _ Nothing))) = True
 isSimple (Term (IndentedString (Ann [] _ Nothing))) = True
 isSimple (Term (Path (Ann [] _ Nothing))) = True
 isSimple (Term (Token (Ann [] (Identifier _) Nothing))) = True
-isSimple (Term (Selection t selectors))
-    = isSimple (Term t) && all isSimpleSelector selectors
+isSimple (Term (Selection t selectors def))
+    = isSimple (Term t) && all isSimpleSelector selectors && isNothing def
 isSimple (Term (Parenthesized (Ann [] _ Nothing) e (Ann [] _ Nothing))) = isSimple e
 -- Function applications of simple terms are simple up to two arguments
 isSimple (Application (Application (Application _ _) _) _) = False
@@ -668,8 +658,8 @@ instance Pretty [StringPart] where
                 -- Parenthesized application
                 (Application f a) -> prettyApp True mempty True f a
                 -- Same thing for selections
-                (Term (Selection t _)) | isAbsorbable t -> line' <> group expr <> line'
-                (Term (Selection _ _)) -> group expr <> line'
+                (Term (Selection t _ _)) | isAbsorbable t -> line' <> group expr <> line'
+                (Term (Selection _ _ _)) -> group expr <> line'
                 -- Start on a new line for the others
                 _ -> line' <> group expr <> line'
 

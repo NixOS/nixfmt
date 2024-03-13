@@ -7,6 +7,7 @@
 module Nixfmt
     ( errorBundlePretty
     , ParseErrorBundle
+    , Width
     , format
     , formatVerify
     ) where

@@ -1,0 +1,26 @@
+# © 2019-2023 Serokell <hi@serokell.io>
+# © 2019-2023 Lars Jellema <lars.jellema@gmail.com>
+#
+# SPDX-License-Identifier: MPL-2.0
+
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v26
+
+      - name: reuse lint
+        run: nix shell .#packages.x86_64-linux.reuse -c reuse lint
+
+      - name: build nixfmt
+        run: nix build -L .#nixfmt-static
+        if: success() || failure()

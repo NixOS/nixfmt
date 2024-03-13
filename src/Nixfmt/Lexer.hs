@@ -23,7 +23,6 @@ import Text.Megaparsec.Char (eol, char)
 
 import Nixfmt.Types
   (Ann(..), Whole(..), Parser, TrailingComment(..), Trivia, Trivium(..))
--- import Debug.Trace (traceShow, traceShowId)
 import Nixfmt.Util (manyP, isSpaces)
 
 data ParseTrivium

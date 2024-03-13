@@ -31,9 +31,9 @@ import qualified Text.Megaparsec.Char.Lexer as L (decimal)
 import Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole)
 import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Types
-  (Ann, Binder(..), Expression(..), File, Fixity(..), Item(..), Items(..), Leaf,
+  (Ann(..), Binder(..), Expression(..), File, Fixity(..), Item(..), Items(..), Leaf,
   Operator(..), ParamAttr(..), Parameter(..), Parser, Path, Selector(..),
-  SimpleSelector(..), StringPart(..), Term(..), Token(..), Trivium(..),
+  SimpleSelector(..), StringPart(..), Term(..), Token(..), Trivium(..), Whole(..),
   operators, tokenText)
 import Nixfmt.Util
   (commonIndentation, identChar, isSpaces, manyP, manyText, pathChar,
@@ -113,6 +113,15 @@ uri = fmap (pure . pure . TextPart) $ try $
 interpolation :: Parser StringPart
 interpolation = Interpolation <$>
     (rawSymbol TInterOpen *> lift (whole expression) <* rawSymbol TInterClose)
+
+-- Interpolation, but only allowing identifiers and simple strings inside
+interpolationRestricted :: Parser StringPart
+interpolationRestricted = do
+  interpol <- interpolation
+  case interpol of
+    -- Interpolation (Whole (Term (Token (Ann _ (Identifier _) _))) _) -> pure interpol
+    Interpolation (Whole (Term (SimpleString _)) _) -> pure interpol
+    _ -> empty
 
 simpleStringPart :: Parser StringPart
 simpleStringPart = TextPart <$> someText (
@@ -222,18 +231,25 @@ parens :: Parser Term
 parens = Parenthesized <$>
     symbol TParenOpen <*> expression <*> symbol TParenClose
 
+simpleSelector :: Parser StringPart -> Parser SimpleSelector
+simpleSelector parseInterpolation =
+    ((IDSelector <$> identifier) <|>
+     (InterpolSelector <$> lexeme parseInterpolation) <|>
+     (StringSelector <$> lexeme simpleString))
+
 selector :: Maybe (Parser Leaf) -> Parser Selector
 selector parseDot = Selector <$>
-    sequence parseDot <* notFollowedBy path <*>
-    ((IDSelector <$> identifier) <|>
-     (InterpolSelector <$> lexeme interpolation) <|>
-     (StringSelector <$> lexeme simpleString)) <*>
-    optional (liftM2 (,) (reserved KOr) term)
+    sequence parseDot <* notFollowedBy path <*> simpleSelector interpolation
 
 selectorPath :: Parser [Selector]
 selectorPath = (pure <$> selector Nothing) <>
     many (selector $ Just $ symbol TDot)
 
+-- Path with a leading dot
+selectorPath' :: Parser [Selector]
+selectorPath' = many $ try $ selector $ Just $ symbol TDot
+
+-- Everything but selection
 simpleTerm :: Parser Term
 simpleTerm =
     (SimpleString <$> (lexeme $ simpleString <|> uri))
@@ -247,9 +263,11 @@ simpleTerm =
 term :: Parser Term
 term = label "term" $ do
     t <- simpleTerm
-    s <- many $ try $ selector $ Just $ symbol TDot
-    return $ case s of [] -> t
-                       _  -> Selection t s
+    sel <- selectorPath'
+    def <- optional (liftM2 (,) (reserved KOr) term)
+    return $ case sel of
+        [] -> t
+        _  -> Selection t sel def
 
 items :: Parser a -> Parser (Items a)
 items p = Items <$> many (item p) <> (toList <$> optional lastItem)
@@ -306,7 +324,7 @@ abstraction = try (Abstraction <$>
 
 inherit :: Parser Binder
 inherit = Inherit <$> reserved KInherit <*> optional parens <*>
-    many identifier <*> symbol TSemicolon
+    many (simpleSelector interpolationRestricted) <*> symbol TSemicolon
 
 assignment :: Parser Binder
 assignment = Assignment <$>

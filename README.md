@@ -10,8 +10,15 @@
 
 You are encouraged to test this out on your code and submit any undesirable formatting you find as an issue
 
-[![Build Status](https://badge.buildkite.com/b37f73adea391439e63288e8fd3b47f4b98fb9640bb864ccfa.svg)](https://buildkite.com/serokell/nixfmt)
-[![Cachix](https://img.shields.io/badge/cachix-nixfmt-blue.svg)](https://nixfmt.cachix.org)
+![Build Status](https://github.com/serokell/nixfmt/actions/workflows/main.yml/badge.svg?branch=master)
+
+## State
+
+`nixfmt` will form the basis for the initial official standard Nix formatter, as established by [RFC 166](https://github.com/NixOS/rfcs/pull/166).
+
+The established standard Nix formatting differs considerably from the original one. Be aware of this if you track the main branch. Until the first new release the main branch should be considered **very unstable**.
+
+For more details, see the [RFC implementation tracking issue](https://github.com/serokell/nixfmt/issues/153).
 
 ## Installation
 
@@ -21,8 +28,6 @@ You are encouraged to test this out on your code and submit any undesirable form
 
 - To get the most recent version, install from master:
 
-      # Optional: use cachix to get cached builds even for master
-      cachix use nixfmt
       nix-env -f https://github.com/serokell/nixfmt/archive/master.tar.gz -i
 
 - Nix with flakes
@@ -49,11 +54,6 @@ Haskell dependencies will be built by Cabal.
 
 * `nixfmt < input.nix` – reads Nix code from `stdin`, formats it, and outputs to `stdout`
 * `nixfmt file.nix` – format the file in place
-
-
-## For Contributors
-
-We welcome issues and pull requests on GitHub.
 
 
 ## About Serokell

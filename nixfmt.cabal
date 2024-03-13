@@ -6,7 +6,7 @@ cabal-version:       2.0
 -- SPDX-License-Identifier: MPL-2.0
 
 name:                nixfmt
-version:             0.5.0
+version:             0.6.0
 synopsis:            An opinionated formatter for Nix
 description:
   A formatter for Nix that ensures consistent and clear formatting by forgetting
@@ -36,10 +36,6 @@ executable nixfmt
     Paths_nixfmt
   other-extensions:    DeriveDataTypeable
   hs-source-dirs:      main
-  if impl(ghcjs)
-    buildable: False
-  else
-    buildable: True
   build-depends:
       base             >= 4.12.0 && < 4.19
     , cmdargs          >= 0.10.20 && < 0.11
@@ -101,25 +97,3 @@ library
     -Wincomplete-uni-patterns
     -Wredundant-constraints
     -Wno-orphans
-
-executable js-interface
-  main-is: JSInterface.hs
-
-  if impl(ghcjs)
-    buildable: True
-    ghc-options:
-      -Wall
-      -Wcompat
-      -Wincomplete-record-updates
-      -Wincomplete-uni-patterns
-      -Wredundant-constraints
-      -Wno-orphans
-    build-depends:
-      base             >= 4.12.0 && < 4.19
-      , ghcjs-base     >= 0.2.0 && < 0.3
-      , nixfmt
-    hs-source-dirs:    js/
-  else
-    buildable: False
-
-  default-language: Haskell2010

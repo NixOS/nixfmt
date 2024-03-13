@@ -42,6 +42,7 @@ newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
 
 data Ann a
     = Ann Trivia a (Maybe TrailingComment)
+    deriving (Show)
 
 hasTrivia :: Ann a -> Bool
 hasTrivia (Ann [] _ Nothing) = False
@@ -56,8 +57,8 @@ instance Eq a => Eq (Ann a) where
     Ann _ x _ == Ann _ y _ = x == y
 
 -- Trivia is ignored for Eq, so also don't show
-instance Show a => Show (Ann a) where
-    show (Ann _ a _) = show a
+--instance Show a => Show (Ann a) where
+--    show (Ann _ a _) = show a
 
 data Item a
     -- | An item with a list of line comments that apply to it. There is no
@@ -74,7 +75,8 @@ instance Eq a => Eq (Items a) where
     (==) = (==) `on` concatMap Data.Foldable.toList . unItems
 
 instance Show a => Show (Items a) where
-    show = show . concatMap Data.Foldable.toList . unItems
+    -- show = show . concatMap Data.Foldable.toList . unItems
+    show = show . unItems
 
 type Leaf = Ann Token
 
@@ -97,12 +99,12 @@ data SimpleSelector
     deriving (Eq, Show)
 
 data Selector
-    -- maybe dot, ident, maybe "or" and default value
-    = Selector (Maybe Leaf) SimpleSelector (Maybe (Leaf, Term))
+    -- `.selector`
+    = Selector (Maybe Leaf) SimpleSelector
     deriving (Eq, Show)
 
 data Binder
-    = Inherit Leaf (Maybe Term) [Leaf] Leaf
+    = Inherit Leaf (Maybe Term) [SimpleSelector] Leaf
     | Assignment [Selector] Leaf Expression Leaf
     deriving (Eq, Show)
 
@@ -115,7 +117,7 @@ data Term
     | Path Path
     | List Leaf (Items Term) Leaf
     | Set (Maybe Leaf) Leaf (Items Binder) Leaf
-    | Selection Term [Selector]
+    | Selection Term [Selector] (Maybe (Leaf, Term))
     | Parenthesized Leaf Expression Leaf
     deriving (Eq, Show)
 
@@ -220,17 +222,12 @@ instance LanguageElement SimpleSelector where
         (StringSelector str) -> [Term (SimpleString str)]
 
 instance LanguageElement Selector where
-    mapFirstToken' f = \case
-        (Selector Nothing ident def) -> first (\ident' -> Selector Nothing ident' def) $ mapFirstToken' f ident
-        (Selector (Just dot) ident def) -> first (\dot' -> Selector (Just dot') ident def) $ mapFirstToken' f dot
+    mapFirstToken' f (Selector Nothing ident) = first (\ident' -> Selector Nothing ident') $ mapFirstToken' f ident
+    mapFirstToken' f (Selector (Just dot) ident) = first (\dot' -> Selector (Just dot') ident) $ mapFirstToken' f dot
 
-    mapLastToken' f = \case
-        (Selector dot ident Nothing) -> first (\ident' -> Selector dot ident' Nothing) $ mapLastToken' f ident
-        (Selector dot ident (Just (qmark, def))) -> first (Selector dot ident . Just . (qmark,)) $ mapLastToken' f def
+    mapLastToken' f (Selector dot ident) = first (\ident' -> Selector dot ident') $ mapLastToken' f ident
 
-    walkSubprograms = \case
-        (Selector _ ident Nothing) -> walkSubprograms ident
-        (Selector _ ident (Just (_, def))) -> (Term def) : walkSubprograms ident
+    walkSubprograms (Selector _ ident) = walkSubprograms ident
 
 instance LanguageElement ParamAttr where
     mapFirstToken' _ _ = error "unreachable"
@@ -266,7 +263,7 @@ instance LanguageElement Term where
         (List open items close) -> first (\open' -> List open' items close) (f open)
         (Set (Just rec) open items close) -> first (\rec' -> Set (Just rec') open items close) (f rec)
         (Set Nothing open items close) -> first (\open' -> Set Nothing open' items close) (f open)
-        (Selection term selector) -> first (\term' -> Selection term' selector) (mapFirstToken' f term)
+        (Selection term selector def) -> first (\term' -> Selection term' selector def) (mapFirstToken' f term)
         (Parenthesized open expr close) -> first (\open' -> Parenthesized open' expr close) (f open)
 
     mapLastToken' f = \case
@@ -276,8 +273,11 @@ instance LanguageElement Term where
         (Path path) -> first Path (f path)
         (List open items close) -> first (List open items) (f close)
         (Set rec open items close) -> first (Set rec open items) (f close)
-        (Selection term []) -> first (\term' -> Selection term' []) (mapLastToken' f term)
-        (Selection term sels) -> first (Selection term . NonEmpty.toList) (mapLastToken' f $ NonEmpty.fromList sels)
+        (Selection term sels (Just (orToken, def))) -> first (\def' -> Selection term sels (Just (orToken, def'))) (mapLastToken' f def)
+        (Selection term sels Nothing) ->
+          case NonEmpty.nonEmpty sels of
+            Just nonEmptySels -> first (\sels' -> Selection term (NonEmpty.toList sels') Nothing) (mapLastToken' f nonEmptySels)
+            Nothing -> first (\term' -> Selection term' [] Nothing) (mapLastToken' f term)
         (Parenthesized open expr close) -> first (Parenthesized open expr) (f close)
 
     walkSubprograms = \case
@@ -302,7 +302,8 @@ instance LanguageElement Term where
             (CommentedItem comment item) ->
                 [ Term (Set Nothing (ann TBraceOpen) (Items [CommentedItem comment item]) (ann TBraceClose)) ]
             (DetachedComments c) -> [ emptySet c ]
-        (Selection term sels) -> Term term : (sels >>= walkSubprograms)
+        (Selection term sels Nothing) -> Term term : (sels >>= walkSubprograms)
+        (Selection term sels (Just (_, def))) -> Term term : (sels >>= walkSubprograms) ++ [ Term def ]
         (Parenthesized _ expr _) -> [expr]
         -- The others are already minimal
         _ -> []

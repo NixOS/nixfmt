@@ -64,7 +64,8 @@ options =
 data Target = Target
     { tDoRead :: IO Text
     , tPath :: FilePath
-    , tDoWrite :: Text -> IO ()
+      -- The bool is true when the formatted file differs from the input
+    , tDoWrite :: Bool -> Text -> IO ()
     }
 
 -- | Recursively collect nix files in a directory
@@ -84,8 +85,8 @@ collectAllNixFiles paths = concat <$> mapM collectNixFiles paths
 formatTarget :: Formatter -> Target -> IO Result
 formatTarget format Target{tDoRead, tPath, tDoWrite} = do
     contents <- tDoRead
-    let formatted = format tPath contents
-    mapM tDoWrite formatted
+    let formatResult = format tPath contents
+    mapM (\formatted -> tDoWrite (formatted /= contents) formatted) formatResult
 
 -- | Return an error if target could not be parsed or was not formatted
 -- correctly.
@@ -99,17 +100,19 @@ checkTarget format Target{tDoRead, tPath} = do
             | otherwise             -> Left $ tPath ++ ": not formatted"
 
 stdioTarget :: Target
-stdioTarget = Target TextIO.getContents "<stdin>" TextIO.putStr
+stdioTarget = Target TextIO.getContents "<stdin>" (const $ TextIO.putStr)
 
 fileTarget :: FilePath -> Target
 fileTarget path = Target (readFileUtf8 path) path atomicWriteFile
   where
-    atomicWriteFile t = withOutputFile path $ \h -> do
+    atomicWriteFile True t = withOutputFile path $ \h -> do
       hSetEncoding h utf8
       TextIO.hPutStr h t
+    -- Don't do anything if the file is already formatted
+    atomicWriteFile False _ = mempty
 
 checkFileTarget :: FilePath -> Target
-checkFileTarget path = Target (readFileUtf8 path) path (const $ pure ())
+checkFileTarget path = Target (readFileUtf8 path) path (const $ const $ pure ())
 
 toTargets :: Nixfmt -> IO [Target]
 toTargets Nixfmt{ files = [] }    = pure [stdioTarget]
