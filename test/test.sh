@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# © 2024 piegames <git@piegames.de>
+# SPDX-License-Identifier: MPL-2.0
+
 set -euo pipefail
 
 # Simple test runner for nixfmt.
