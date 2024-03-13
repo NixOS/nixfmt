@@ -17,7 +17,7 @@ import qualified Data.Text as Text (null, takeWhile)
 
 import Nixfmt.Predoc
   (Doc, GroupAnn(..), Pretty, emptyline, group, group', hardline, hardspace, hcat, line, line',
-  nest, offset, newline, pretty, sepBy, surroundWith, softline, text, comment, trailingComment, trailing, textWidth,
+  nest, offset, newline, pretty, sepBy, surroundWith, softline, softline', text, comment, trailingComment, trailing, textWidth,
   unexpandSpacing')
 import Nixfmt.Types
   (Ann(..), Binder(..), Expression(..), Item(..), Items(..), Leaf,
@@ -139,9 +139,18 @@ prettyTerm (Token t) = pretty t
 prettyTerm (SimpleString (Ann leading s trailing')) = pretty leading <> prettySimpleString s <> pretty trailing'
 prettyTerm (IndentedString (Ann leading s trailing')) = pretty leading <> prettyIndentedString s <> pretty trailing'
 prettyTerm (Path p) = pretty p
-prettyTerm (Selection term selectors Nothing) = pretty term <> hcat selectors
-prettyTerm (Selection term selectors (Just (kw, def))) =
-    pretty term <> hcat selectors <> hardspace <> pretty kw <> hardspace <> pretty def
+prettyTerm (Selection term selectors rest) =
+    pretty term <> sep <> hcat selectors
+    <> pretty ((\(kw, def) -> softline <> nest (pretty kw <> hardspace <> pretty def)) <$> rest)
+    where
+        -- Selection (`foo.bar.baz`) case distinction on the first element (`foo`):
+        sep = case term of
+            -- If it is an ident, keep it all together
+            (Token _) -> mempty
+            -- If it is a parenthesized expression, maybe add a line break
+            (Parenthesized _ _ _) -> softline'
+            -- Otherwise, very likely add a line break
+            _ -> line'
 
 -- Empty list
 prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trailing'))
