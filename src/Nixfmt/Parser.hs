@@ -342,12 +342,20 @@ list = List <$> symbol TBrackOpen <*> items term <*> symbol TBrackClose
 
 -- OPERATORS
 
-opChars :: [Char]
-opChars = "<>=+*/."
-
 operator :: Token -> Parser Leaf
 operator t = label "operator" $ try $ lexeme $
-    rawSymbol t <* notFollowedBy (oneOf opChars)
+    rawSymbol t <* notFollowedBy (oneOf (
+        -- Resolve ambiguities between operators which are prefixes of others
+        case t of
+            TPlus -> "+" :: [Char]
+            TMinus -> ">"
+            TMul -> "/"
+            TDiv -> "/*"
+            TLess -> "="
+            TGreater -> "="
+            TNot -> "="
+            _ -> ""
+    ))
 
 opCombiner :: Operator -> MPExpr.Operator Parser Expression
 opCombiner Apply = MPExpr.InfixL $ return Application
