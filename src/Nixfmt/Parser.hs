@@ -4,7 +4,7 @@
  - SPDX-License-Identifier: MPL-2.0
  -}
 
-{-# LANGUAGE LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
 
 module Nixfmt.Parser where
 
@@ -14,22 +14,27 @@ import Control.Monad (guard, liftM2)
 import Control.Monad.Combinators (sepBy)
 import qualified Control.Monad.Combinators.Expr as MPExpr
   (Operator(..), makeExprParser)
+import Control.Monad.Trans.Class (lift)
 import Data.Char (isAlpha)
 import Data.Foldable (toList)
+import Data.Functor (($>))
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
-import Data.Text as Text (Text, cons, empty, singleton, split, stripPrefix)
+import Data.Text (Text)
+import qualified Data.Text as Text
+import Data.Void (Void)
 import Text.Megaparsec
-  (anySingle, chunk, eof, label, lookAhead, many, notFollowedBy, oneOf,
-  optional, satisfy, some, try, (<|>))
+  (Parsec, anySingle, chunk, empty, eof, label, lookAhead, many, notFollowedBy,
+  oneOf, optional, satisfy, some, try, (<|>))
 import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L (decimal)
 
-import Nixfmt.Lexer (lexeme)
-import Nixfmt.Types
-  (Ann(..), Binder(..), Expression(..), File(..), Fixity(..), Leaf, Operator(..),
-  ParamAttr(..), Parameter(..), Parser, Path, Selector(..), SimpleSelector(..),
-  String, StringPart(..), Term(..), Token(..), operators, tokenText)
+import Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole)
 import Nixfmt.Parser.Float (floatParse)
+import Nixfmt.Types
+  (Ann(..), Binder(..), Expression(..), File, Fixity(..), Item(..), Items(..), Leaf,
+  Operator(..), ParamAttr(..), Parameter(..), Parser, Path, Selector(..),
+  SimpleSelector(..), StringPart(..), Term(..), Token(..), Trivium(..), Whole(..),
+  operators, tokenText)
 import Nixfmt.Util
   (commonIndentation, identChar, isSpaces, manyP, manyText, pathChar,
   schemeChar, someP, someText, uriChar)
@@ -41,7 +46,7 @@ ann f p = try $ lexeme $ f <$> p
 
 -- | parses a token without parsing trivia after it
 rawSymbol :: Token -> Parser Token
-rawSymbol t = chunk (tokenText t) *> return t
+rawSymbol t = chunk (tokenText t) $> t
 
 symbol :: Token -> Parser (Ann Token)
 symbol = lexeme . rawSymbol
@@ -72,11 +77,17 @@ identifier :: Parser (Ann Token)
 identifier = ann Identifier $ do
     ident <- Text.cons <$> satisfy (\x -> isAlpha x || x == '_')
                        <*> manyP identChar
-    guard $ not $ ident `elem` reservedNames
+    guard $ ident `notElem` reservedNames
     return ident
 
 slash :: Parser Text
 slash = chunk "/" <* notFollowedBy (char '/')
+
+instance Semigroup a => Semigroup (Parser a) where
+  fx <> fy = do
+    x <- fx
+    y <- fy
+    pure $ x <> y
 
 envPath :: Parser (Ann Token)
 envPath = ann EnvPath $ char '<' *>
@@ -101,41 +112,35 @@ uri = fmap (pure . pure . TextPart) $ try $
 
 interpolation :: Parser StringPart
 interpolation = Interpolation <$>
-    symbol TInterOpen <*> expression <*> rawSymbol TInterClose
+    (rawSymbol TInterOpen *> lift (whole expression) <* rawSymbol TInterClose)
 
 -- Interpolation, but only allowing identifiers and simple strings inside
 interpolationRestricted :: Parser StringPart
-interpolationRestricted = Interpolation <$>
-    symbol TInterOpen <*>
-    -- simple string without dynamic interpolations
-    (Term <$> String <$> do
-        str <- string
-        guard $ not $ containsInterpolation str
-        return str
-    ) <*>
-    rawSymbol TInterClose
-    where
-        containsInterpolation (Ann str _ _) =
-            any (\part -> case part of { Interpolation _ _ _ -> True; _ -> False }) $ concat str
+interpolationRestricted = do
+  interpol <- interpolation
+  case interpol of
+    -- Interpolation (Whole (Term (Token (Ann _ (Identifier _) _))) _) -> pure interpol
+    Interpolation (Whole (Term (SimpleString _)) _) -> pure interpol
+    _ -> empty
 
 simpleStringPart :: Parser StringPart
 simpleStringPart = TextPart <$> someText (
-    chunk "\\n" *> pure "\n" <|>
-    chunk "\\r" *> pure "\r" <|>
-    chunk "\\t" *> pure "\t" <|>
-    chunk "\\" *> (Text.singleton <$> anySingle) <|>
+    chunk "\\n" <|>
+    chunk "\\r" <|>
+    chunk "\\t" <|>
+    ((<>) <$> chunk "\\" <*> (Text.singleton <$> anySingle)) <|>
     chunk "$$" <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     someP (\t -> t /= '"' && t /= '\\' && t /= '$'))
 
 indentedStringPart :: Parser StringPart
 indentedStringPart = TextPart <$> someText (
-    chunk "''\\n" *> pure "\n" <|>
-    chunk "''\\r" *> pure "\r" <|>
-    chunk "''\\t" *> pure "\t" <|>
+    chunk "''\\n" <|>
+    chunk "''\\r" <|>
+    chunk "''\\t" <|>
     chunk "''\\" *> (Text.singleton <$> anySingle) <|>
-    chunk "''$" *> pure "$" <|>
-    chunk "'''" *> pure "''" <|>
+    chunk "''$" <|>
+    chunk "'''" <|>
     chunk "$$" <|>
     try (chunk "$" <* notFollowedBy (char '{')) <|>
     try (chunk "'" <* notFollowedBy (char '\'')) <|>
@@ -150,9 +155,10 @@ isEmptyLine [TextPart t] = isSpaces t
 isEmptyLine _            = False
 
 -- | Drop the first line of a string if it is empty.
+-- However, don't drop it if it is the only line (empty string)
 fixFirstLine :: [[StringPart]] -> [[StringPart]]
 fixFirstLine []       = []
-fixFirstLine (x : xs) = if isEmptyLine x' then xs else x' : xs
+fixFirstLine (x : xs) = if isEmptyLine x' && not (null xs) then xs else x' : xs
     where x' = normalizeLine x
 
 -- | Empty the last line if it contains only spaces.
@@ -166,7 +172,7 @@ lineHead :: [StringPart] -> Maybe Text
 lineHead []                        = Nothing
 lineHead line | isEmptyLine line   = Nothing
 lineHead (TextPart t : _)          = Just t
-lineHead (Interpolation _ _ _ : _) = Just ""
+lineHead (Interpolation{} : _) = Just ""
 
 stripParts :: Text -> [StringPart] -> [StringPart]
 stripParts indentation (TextPart t : xs) =
@@ -185,7 +191,7 @@ splitLines (TextPart t : xs) =
 
 splitLines (x : xs) =
     case splitLines xs of
-        (xs' : xss) -> ((x : xs') : xss)
+        (xs' : xss) -> (x : xs') : xss
         _           -> error "unreachable"
 
 stripIndentation :: [[StringPart]] -> [[StringPart]]
@@ -219,10 +225,6 @@ indentedString :: Parser [[StringPart]]
 indentedString = rawSymbol TDoubleSingleQuote *>
     fmap fixIndentedString (sepBy indentedLine (chunk "\n")) <*
     rawSymbol TDoubleSingleQuote
-
-string :: Parser String
-string = lexeme $ simpleString <|> indentedString <|> uri
-
 -- TERMS
 
 parens :: Parser Term
@@ -249,9 +251,14 @@ selectorPath' = many $ try $ selector $ Just $ symbol TDot
 
 -- Everything but selection
 simpleTerm :: Parser Term
-simpleTerm = (String <$> string) <|> (Path <$> path) <|>
-    (Token <$> (envPath <|> float <|> integer <|> identifier)) <|>
-    parens <|> set <|> list
+simpleTerm =
+    (SimpleString <$> (lexeme $ simpleString <|> uri))
+    <|> (IndentedString <$> lexeme indentedString)
+    <|> (Path <$> path)
+    <|> (Token <$> (envPath <|> float <|> integer <|> identifier))
+    <|> parens
+    <|> set
+    <|> list
 
 term :: Parser Term
 term = label "term" $ do
@@ -261,6 +268,28 @@ term = label "term" $ do
     return $ case sel of
         [] -> t
         _  -> Selection t sel def
+
+items :: Parser a -> Parser (Items a)
+items p = Items <$> many (item p) <> (toList <$> optional lastItem)
+
+item :: Parser a -> Parser (Item a)
+item p = detachedComment <|> CommentedItem <$> takeTrivia <*> p
+
+lastItem :: Parser (Item a)
+lastItem = do
+    trivia <- takeTrivia
+    case trivia of
+        [] -> empty
+        _  -> pure $ DetachedComments trivia
+
+detachedComment :: Parser (Item a)
+detachedComment = do
+    trivia <- takeTrivia
+    case break (== EmptyLine) trivia of
+        -- Return a set of comments that don't annotate the next item
+        (detached, EmptyLine : trivia') -> pushTrivia trivia' >> pure (DetachedComments detached)
+        -- The remaining trivia annotate the next item
+        _ -> pushTrivia trivia >> empty
 
 -- ABSTRACTIONS
 
@@ -279,7 +308,7 @@ setParameter = SetParameter <$> bopen <*> attrs <*> bclose
           commaAttrs = many $ try $ attrParameter $ Just $ symbol TComma
           ellipsis   = ParamEllipsis <$> symbol TEllipsis
           lastAttr   = attrParameter Nothing <|> ellipsis
-          attrs      = commaAttrs <> (toList <$> optional (lastAttr))
+          attrs      = commaAttrs <> (toList <$> optional lastAttr)
 
 contextParameter :: Parser Parameter
 contextParameter =
@@ -301,24 +330,32 @@ assignment :: Parser Binder
 assignment = Assignment <$>
     selectorPath <*> symbol TAssign <*> expression <*> symbol TSemicolon
 
-binders :: Parser [Binder]
-binders = many (assignment <|> inherit)
+binders :: Parser (Items Binder)
+binders = items (assignment <|> inherit)
 
 set :: Parser Term
 set = Set <$> optional (reserved KRec <|> reserved KLet) <*>
     symbol TBraceOpen <*> binders <*> symbol TBraceClose
 
 list :: Parser Term
-list = List <$> symbol TBrackOpen <*> many term <*> symbol TBrackClose
+list = List <$> symbol TBrackOpen <*> items term <*> symbol TBrackClose
 
 -- OPERATORS
 
-opChars :: [Char]
-opChars = "<>=+*/."
-
 operator :: Token -> Parser Leaf
 operator t = label "operator" $ try $ lexeme $
-    rawSymbol t <* notFollowedBy (oneOf opChars)
+    rawSymbol t <* notFollowedBy (oneOf (
+        -- Resolve ambiguities between operators which are prefixes of others
+        case t of
+            TPlus -> "+" :: [Char]
+            TMinus -> ">"
+            TMul -> "/"
+            TDiv -> "/*"
+            TLess -> "="
+            TGreater -> "="
+            TNot -> "="
+            _ -> ""
+    ))
 
 opCombiner :: Operator -> MPExpr.Operator Parser Expression
 opCombiner Apply = MPExpr.InfixL $ return Application
@@ -365,5 +402,5 @@ expression :: Parser Expression
 expression = label "expression" $ try operation <|> abstraction <|>
     with <|> letIn <|> ifThenElse <|> assert
 
-file :: Parser File
-file = File <$> lexeme (return SOF) <*> expression <* eof
+file :: Parsec Void Text File
+file = whole (expression <* eof)
