@@ -30,23 +30,14 @@ let
 
   inherit (pkgs) haskell lib;
 
-  regexes = [
-    ".*.cabal$"
-    "^src.*"
-    "^main.*"
-    "^Setup.hs$"
-    "^js.*"
-    "LICENSE"
-  ];
-  src = builtins.path {
-    path = ./.;
-    name = "nixfmt-src";
-    filter =
-      path: type:
-      let
-        relPath = lib.removePrefix (toString ./. + "/") (toString path);
-      in
-      lib.any (re: builtins.match re relPath != null) regexes;
+  src = lib.fileset.toSource {
+    root = ./.;
+    fileset = lib.fileset.unions [
+      ./nixfmt.cabal
+      ./src
+      ./main
+      ./LICENSE
+    ];
   };
 
   build = pkgs.haskellPackages.nixfmt;
