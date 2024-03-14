@@ -47,26 +47,21 @@ let
   ];
 in
 build
-// rec {
+// {
   packages = {
     nixfmt = build;
-
-    nixfmt-shell = packages.nixfmt.env.overrideAttrs (oldAttrs: {
-      buildInputs =
-        oldAttrs.buildInputs
-        ++ (with pkgs; [
-          # nixfmt: expand
-          cabal-install
-          stylish-haskell
-          shellcheck
-          npins
-        ]);
-    });
-
     inherit (pkgs) reuse;
   };
 
-  shell = packages.nixfmt-shell;
+  shell = pkgs.haskellPackages.shellFor {
+    packages = p: [ p.nixfmt ];
+    nativeBuildInputs = with pkgs; [
+      cabal-install
+      stylish-haskell
+      shellcheck
+      npins
+    ];
+  };
 
   checks = {
     hlint = pkgs.build.haskell.hlint ./.;
