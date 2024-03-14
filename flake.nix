@@ -6,13 +6,14 @@
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  outputs = { flake-utils, self }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    { flake-utils, self }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
-        result = import ./default.nix {
-          inherit system;
-        };
-      in {
+        result = import ./default.nix { inherit system; };
+      in
+      {
         packages = result.packages // {
           default = result;
         };
@@ -23,5 +24,6 @@
         };
 
         checks = result.checks;
-      });
+      }
+    );
 }
