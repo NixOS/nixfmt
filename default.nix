@@ -50,7 +50,6 @@ build
 // rec {
   packages = {
     nixfmt = build;
-    nixfmt-deriver = build.cabal2nixDeriver;
 
     nixfmt-shell = packages.nixfmt.env.overrideAttrs (oldAttrs: {
       buildInputs =
