@@ -58,6 +58,7 @@ build
     nativeBuildInputs = with pkgs; [
       cabal-install
       stylish-haskell
+      haskellPackages.haskell-language-server
       shellcheck
       npins
     ];
