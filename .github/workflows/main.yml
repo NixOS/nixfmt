@@ -22,5 +22,5 @@ jobs:
         run: nix shell .#packages.x86_64-linux.reuse -c reuse lint
 
       - name: build nixfmt
-        run: nix build -L .#nixfmt-static
+        run: nix build -L .
         if: success() || failure()

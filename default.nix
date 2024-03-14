@@ -40,14 +40,17 @@ let
     ];
   };
 
-  build = pkgs.haskellPackages.nixfmt;
+  build = lib.pipe pkgs.haskellPackages.nixfmt [
+    haskell.lib.justStaticExecutables
+    haskell.lib.dontHaddock
+    (drv: lib.lazyDerivation { derivation = drv; })
+  ];
 in
 build
 // rec {
   packages = {
     nixfmt = build;
-    nixfmt-static = haskell.lib.justStaticExecutables packages.nixfmt;
-    nixfmt-deriver = packages.nixfmt-static.cabal2nixDeriver;
+    nixfmt-deriver = build.cabal2nixDeriver;
 
     nixfmt-shell = packages.nixfmt.env.overrideAttrs (oldAttrs: {
       buildInputs =
