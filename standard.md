@@ -1,3 +1,16 @@
+<!-- © 2024 piegames <git@piegames.de>
+   - © 2024 Silvan Mosberger <contact@infinisil.com>
+   -
+   - SPDX-License-Identifier: MPL-2.0
+   -->
+
+# Standard Nix format
+
+This document describes the standard Nix format, as first established [by RFC 166](https://github.com/NixOS/rfcs/blob/master/rfcs/0166-nix-formatting.md#standard-nix-format).
+
+Controversial changes to this document must go through another RFC.
+It is up to the Nix formatting team to decide when an RFC is necessary.
+
 ## Terms and definitions:
 
 - **Brackets:** `[]`
@@ -54,7 +67,7 @@
 - **Absorbable Terms:**
   Attribute sets, lists, and multiline `''` strings are called absorbable terms. Parenthesized absorbable terms are absorbable terms again too.
 
-## Initial standard Nix format
+## General
 
 - The formatter should be as "pure" as possible, i.e. different input formats of the "same" code (same AST with comments) should result in the same output format.
   - The formatter may take the input formatting into account in some cases in order to preserve multi-line syntax elements (which would otherwise have been contracted by the rules).
