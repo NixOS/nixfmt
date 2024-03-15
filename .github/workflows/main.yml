@@ -19,8 +19,8 @@ jobs:
       - uses: cachix/install-nix-action@v26
 
       - name: reuse lint
-        run: nix shell .#packages.x86_64-linux.reuse -c reuse lint
+        run: nix-build -A packages.reuse && result/bin/reuse lint
 
       - name: build nixfmt
-        run: nix build -L .
+        run: nix-build
         if: success() || failure()
