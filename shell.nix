@@ -1,17 +1,3 @@
-# SPDX-FileCopyrightText: 2020 Serokell <https://serokell.io/>
-#
+# © 2024 Silvan Mosberger <contact@infinisil.com>
 # SPDX-License-Identifier: MPL-2.0
-
-(import
-  (
-    let
-      lock = builtins.fromJSON (builtins.readFile ./flake.lock);
-    in
-    fetchTarball {
-      url = "https://github.com/edolstra/flake-compat/archive/${lock.nodes.flake-compat.locked.rev}.tar.gz";
-      sha256 = lock.nodes.flake-compat.locked.narHash;
-    }
-  )
-  {
-    src = ./.;
-  }).shellNix
+(import ./default.nix { }).shell

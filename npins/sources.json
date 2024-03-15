@@ -1,0 +1,23 @@
+{
+  "pins": {
+    "nixpkgs": {
+      "type": "Channel",
+      "name": "nixpkgs-unstable",
+      "url": "https://releases.nixos.org/nixpkgs/nixpkgs-24.05pre596549.db001797591b/nixexprs.tar.xz",
+      "hash": "0260ylnd8kawcd3i9xkm8j295hf3bs377vjff8pm3v914jzld9v9"
+    },
+    "serokell-nix": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "serokell",
+        "repo": "serokell.nix"
+      },
+      "branch": "master",
+      "revision": "b6bbeda170469574789f9128c9aadc3a9e91e512",
+      "url": "https://github.com/serokell/serokell.nix/archive/b6bbeda170469574789f9128c9aadc3a9e91e512.tar.gz",
+      "hash": "1p6gsw00sbnpm01r6dg0m975xnr31xax1ciznl5rdpxarsrkibnn"
+    }
+  },
+  "version": 3
+}

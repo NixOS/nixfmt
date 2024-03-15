@@ -5,6 +5,10 @@ Copyright: 2019 Serokell <hi@serokell.io>
            2019 Lars Jellema <lars.jellema@gmail.com>
 License: MPL-2.0
 
+Files: npins/*
+Copyright: 2024 Silvan Mosberger <contact@infinisil.com>
+License: MPL-2.0
+
 Files: test/diff/*
 Copyright: 2024 piegames <git@piegames.de>
 License: MPL-2.0
