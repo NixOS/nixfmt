@@ -20,7 +20,7 @@
 
         apps.default = {
           type = "app";
-          program = "${self.packages.${system}.nixfmt-static}/bin/nixfmt";
+          program = "${result}/bin/nixfmt";
         };
 
         checks = result.checks;
