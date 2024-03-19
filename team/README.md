@@ -9,6 +9,7 @@ This page collects information and processes for the Nix formatting team.
 
 ## Links
 
+- Official team page and current members: [Nix formatting team on `nixos.org`](https://nixos.org/community/teams/formatting)
 - GitHub team: [@NixOS/nix-formatting](https://github.com/orgs/NixOS/teams/nix-formatting/members)
 - Matrix room: [#nix-formatting:nixos.org](https://matrix.to/#/#nix-formatting:nixos.org)
 - Meeting calendar: [Search for "Nix formatting"](https://calendar.google.com/calendar/u/0/embed?src=b9o52fobqjak8oq8lfkhg3t0qg@group.calendar.google.com)
