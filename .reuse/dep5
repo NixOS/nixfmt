@@ -1,34 +1,8 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
-Files: .github/ISSUE_TEMPLATE/formatting-suggestion.md
-Copyright: 2019 Serokell <hi@serokell.io>
-           2019 Lars Jellema <lars.jellema@gmail.com>
-License: MPL-2.0
-
-Files: npins/*
-Copyright: 2024 Silvan Mosberger <contact@infinisil.com>
-License: MPL-2.0
-
-Files: test/diff/*
-Copyright: 2024 piegames <git@piegames.de>
-License: MPL-2.0
-
-Files: test/correct/*
-Copyright: 2022 Serokell <hi@serokell.io>
-           2022 Lars Jellema <lars.jellema@gmail.com>
-License: MPL-2.0
-
-Files: test/changed/*
-Copyright: 2022 Serokell <hi@serokell.io>
-           2022 Lars Jellema <lars.jellema@gmail.com>
-License: MPL-2.0
-
-Files: test/invalid/*
-Copyright: 2022 Serokell <hi@serokell.io>
-           2022 Lars Jellema <lars.jellema@gmail.com>
-License: MPL-2.0
-
-Files: flake.lock
-Copyright: 2020 Serokell <hi@serokell.io>
-           2022 Yorick van Pelt <yorickvanpelt@gmail.com>
+Files: *
+Copyright: 2019-2022 Serokell <hi@serokell.io>
+           2019-2022 Lars Jellema <lars.jellema@gmail.com>
+           2023-2024 piegames <git@piegames.de>
+           2024 Silvan Mosberger <contact@infinisil.com>
 License: MPL-2.0
