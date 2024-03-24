@@ -24,3 +24,6 @@ jobs:
       - name: build nixfmt
         run: nix-build
         if: success() || failure()
+
+      - name: run tests
+        run: nix-shell --run ./test/test.sh
