@@ -1,9 +1,3 @@
-<!-- © 2024 piegames <git@piegames.de>
-   - © 2024 Silvan Mosberger <contact@infinisil.com>
-   -
-   - SPDX-License-Identifier: MPL-2.0
-   -->
-
 # Standard Nix format
 
 This document describes the standard Nix format, as first established [by RFC 166](https://github.com/NixOS/rfcs/blob/master/rfcs/0166-nix-formatting.md#standard-nix-format).

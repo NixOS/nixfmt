@@ -1,8 +1,3 @@
-{- © 2019 Serokell <hi@serokell.io>
- -
- - SPDX-License-Identifier: MPL-2.0
- -}
-
 -- | Atomic file IO.
 --
 -- This modules allows one to replace the contents of a file atomically by

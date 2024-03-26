@@ -1,8 +1,3 @@
-{- © 2019 Serokell <hi@serokell.io>
- -
- - SPDX-License-Identifier: MPL-2.0
- -}
-
 {-# LANGUAGE LambdaCase   #-}
 {-# LANGUAGE ViewPatterns #-}
 

@@ -1,9 +1,3 @@
-{- © 2022 Serokell <hi@serokell.io>
- - © 2022 Lars Jellema <lars.jellema@gmail.com>
- -
- - SPDX-License-Identifier: MPL-2.0
- -}
-
 {-# LANGUAGE TypeFamilies, TypeApplications, ScopedTypeVariables, TypeOperators #-}
 
 module Nixfmt.Parser.Float (floatParse) where

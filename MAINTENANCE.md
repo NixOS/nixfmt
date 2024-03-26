@@ -1,8 +1,3 @@
-<!-- © 2023 piegames <git@piegames.de>
-   -
-   - SPDX-License-Identifier: MPL-2.0
-   -->
-
 # Maintainer documentation
 
 ## Making a new release

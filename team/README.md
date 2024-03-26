@@ -1,8 +1,3 @@
-<!-- © 2024 Silvan Mosberger <contact@infinisil.com>
-   -
-   - SPDX-License-Identifier: MPL-2.0
-   -->
-
 # Nix formatting team
 
 This page collects information and processes for the Nix formatting team.
