@@ -1,8 +1,3 @@
-# © 2019-2023 Serokell <hi@serokell.io>
-# © 2019-2023 Lars Jellema <lars.jellema@gmail.com>
-#
-# SPDX-License-Identifier: MPL-2.0
-
 name: CI
 on:
   pull_request:
