@@ -2,7 +2,5 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Files: *
 Copyright: 2019-2022 Serokell <hi@serokell.io>
-           2019-2022 Lars Jellema <lars.jellema@gmail.com>
-           2023-2024 piegames <git@piegames.de>
-           2024 Silvan Mosberger <contact@infinisil.com>
+           2019-2024 Nixfmt Contributors
 License: MPL-2.0
