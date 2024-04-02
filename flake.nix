@@ -23,5 +23,9 @@
       });
 
       checks = forAllSystems (system: result.${system}.checks);
+
+      devShells = forAllSystems (system: {
+        default = result.${system}.shell;
+      });
     };
 }
