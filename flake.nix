@@ -20,6 +20,8 @@
         };
 
         checks = result.checks;
+
+        devShells.default = result.shell;
       }
     );
 }
