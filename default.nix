@@ -55,11 +55,12 @@ build
       haskellPackages.haskell-language-server
       shellcheck
       npins
+      hlint
     ];
   };
 
   checks = {
-    hlint = pkgs.build.haskell.hlint ./.;
+    hlint = pkgs.build.haskell.hlint src;
     stylish-haskell = pkgs.build.haskell.stylish-haskell ./.;
   };
 }
