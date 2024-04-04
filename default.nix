@@ -49,6 +49,9 @@ let
     programs.nixfmt-rfc-style.enable = true;
     # We don't want to format the files we use to test the formatter!
     settings.formatter.nixfmt-rfc-style.excludes = [ "test/*" ];
+
+    # Haskell formatter
+    programs.fourmolu.enable = true;
   };
 in
 build
