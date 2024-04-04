@@ -94,7 +94,7 @@ checkTarget format Target{tDoRead, tPath} = do
             | otherwise             -> Left $ tPath ++ ": not formatted"
 
 stdioTarget :: Target
-stdioTarget = Target TextIO.getContents "<stdin>" (const $ TextIO.putStr)
+stdioTarget = Target TextIO.getContents "<stdin>" (const TextIO.putStr)
 
 fileTarget :: FilePath -> Target
 fileTarget path = Target (readFileUtf8 path) path atomicWriteFile

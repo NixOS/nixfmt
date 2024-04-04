@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFoldable, OverloadedStrings, RankNTypes, LambdaCase, TupleSections, FlexibleInstances #-}
+{-# LANGUAGE DeriveFoldable, OverloadedStrings, RankNTypes, LambdaCase, FlexibleInstances #-}
 
 module Nixfmt.Types where
 
@@ -136,7 +136,7 @@ instance Eq Parameter where
         where
             -- Compare two lists of paramters, but for the last argument don't compare whether or not there is a trailing comma
             cmp [] [] = True
-            cmp [(ParamAttr x1 x2 _)] [(ParamAttr y1 y2 _)] = x1 == y1 && x2 == y2
+            cmp [ParamAttr x1 x2 _] [ParamAttr y1 y2 _] = x1 == y1 && x2 == y2
             cmp (x:xs) (y:ys) = x == y && cmp xs ys
             cmp _ _ = False
     (ContextParameter l1 l2 l3) == (ContextParameter r1 r2 r3) = l1 == r1 && l2 == r2 && l3 == r3
@@ -216,10 +216,10 @@ instance LanguageElement SimpleSelector where
         (StringSelector str) -> [Term (SimpleString str)]
 
 instance LanguageElement Selector where
-    mapFirstToken' f (Selector Nothing ident) = first (\ident' -> Selector Nothing ident') $ mapFirstToken' f ident
+    mapFirstToken' f (Selector Nothing ident) = first (Selector Nothing) $ mapFirstToken' f ident
     mapFirstToken' f (Selector (Just dot) ident) = first (\dot' -> Selector (Just dot') ident) $ mapFirstToken' f dot
 
-    mapLastToken' f (Selector dot ident) = first (\ident' -> Selector dot ident') $ mapLastToken' f ident
+    mapLastToken' f (Selector dot ident) = first (Selector dot) $ mapLastToken' f ident
 
     walkSubprograms (Selector _ ident) = walkSubprograms ident
 
@@ -244,7 +244,7 @@ instance LanguageElement Parameter where
         (ContextParameter first' at second) -> first (ContextParameter first' at) (mapLastToken' f second)
 
     walkSubprograms = \case
-        (IDParameter ident) -> [(Term $ Token ident)]
+        (IDParameter ident) -> [Term $ Token ident]
         (SetParameter _ bindings _) -> bindings >>= walkSubprograms
         (ContextParameter left _ right) -> walkSubprograms left ++ walkSubprograms right
 
@@ -312,11 +312,11 @@ instance LanguageElement Expression where
         (Assert assert cond semicolon body) -> first (\assert' -> Assert assert' cond semicolon body) (f assert)
         (If if_ expr0 then_ expr1 else_ expr2) -> first (\if_' -> If if_' expr0 then_ expr1 else_ expr2) (f if_)
         (Abstraction param colon body) -> first (\param' -> Abstraction param' colon body) (mapFirstToken' f param)
-        (Application g a) -> first (\g' -> Application g' a) (mapFirstToken' f g)
+        (Application g a) -> first (`Application` a) (mapFirstToken' f g)
         (Operation left op right) -> first (\left' -> Operation left' op right) (mapFirstToken' f left)
         (MemberCheck name dot selectors) -> first (\name' -> MemberCheck name' dot selectors) (mapFirstToken' f name)
-        (Negation not_ expr) -> first (\not_' -> Negation not_' expr) (f not_)
-        (Inversion tilde expr) -> first (\tilde' -> Inversion tilde' expr) (f tilde)
+        (Negation not_ expr) -> first (`Negation` expr) (f not_)
+        (Inversion tilde expr) -> first (`Inversion` expr) (f tilde)
 
     mapLastToken' f = \case
         (Term term) -> first Term (mapLastToken' f term)
@@ -337,12 +337,12 @@ instance LanguageElement Expression where
         (With _ expr0 _ expr1) -> [expr0, expr1]
         (Let _ items _ body) -> body : (unItems items >>= \case
                 -- Map each binding to a singleton set
-                (CommentedItem _ item) -> [ Term (Set Nothing (ann TBraceOpen) (Items [(CommentedItem [] item)]) (ann TBraceClose)) ]
+                (CommentedItem _ item) -> [ Term (Set Nothing (ann TBraceOpen) (Items [CommentedItem [] item]) (ann TBraceClose)) ]
                 (DetachedComments _) -> []
             )
         (Assert _ cond _ body) -> [cond, body]
         (If _ expr0 _ expr1 _ expr2) -> [expr0, expr1, expr2]
-        (Abstraction param _ body) -> [(Abstraction param (ann TColon) (Term (Token (ann (Identifier "_"))))), body]
+        (Abstraction param _ body) -> [Abstraction param (ann TColon) (Term (Token (ann (Identifier "_")))), body]
         (Application g a) -> [g, a]
         (Operation left _ right) -> [left, right]
         (MemberCheck name _ sels) -> name : (sels >>= walkSubprograms)
@@ -351,10 +351,10 @@ instance LanguageElement Expression where
 
 instance LanguageElement (Whole Expression) where
     mapFirstToken' f (Whole a trivia)
-        = first (\a' -> Whole a' trivia) (mapFirstToken' f a)
+        = first (`Whole` trivia) (mapFirstToken' f a)
 
     mapLastToken' f (Whole a trivia)
-        = first (\a' -> Whole a' trivia) (mapLastToken' f a)
+        = first (`Whole` trivia) (mapLastToken' f a)
 
     walkSubprograms (Whole a _) = [a]
 

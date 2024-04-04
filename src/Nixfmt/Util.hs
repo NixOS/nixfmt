@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections #-}
+
 
 module Nixfmt.Util
     ( manyP

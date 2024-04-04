@@ -61,8 +61,7 @@ withUtf8StdHandles :: IO a -> IO a
 withUtf8StdHandles action =
     withConfiguredHandle stdin $
     withConfiguredHandle stdout $
-    withConfiguredHandle stderr $
-      action
+    withConfiguredHandle stderr action
   where
     withConfiguredHandle :: IO.Handle -> IO a -> IO a
     withConfiguredHandle h = bracket (hSetBestUtf8Enc h) ($ h) . const

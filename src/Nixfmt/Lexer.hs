@@ -1,4 +1,4 @@
-{-# LANGUAGE BlockArguments, FlexibleContexts, LambdaCase, OverloadedStrings, TupleSections #-}
+{-# LANGUAGE BlockArguments, FlexibleContexts, LambdaCase, OverloadedStrings #-}
 
 module Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole) where
 
@@ -47,7 +47,7 @@ blockComment = try $ preLexeme $ do
     let pos' = unPos pos - 1
     _ <- chunk "/*"
     -- Try to parse /** before /*, but don't parse /**/ (i.e. the empty comment)
-    isDoc <- try (const True <$> char '*' <* notFollowedBy (char '/')) <|> pure False
+    isDoc <- try ((True <$ char '*') <* notFollowedBy (char '/')) <|> pure False
 
     chars <- manyTill anySingle $ chunk "*/"
     return $ PTBlockComment isDoc $ dropWhile Text.null $ fixIndent pos' $ removeStars pos' $ splitLines $ pack chars
@@ -83,7 +83,7 @@ blockComment = try $ preLexeme $ do
     stripIndentation n t = fromMaybe (stripStart t) $ stripPrefix (Text.replicate n " ") t
 
     commonIndentationLength :: Int -> [Text] -> Int
-    commonIndentationLength def = foldr min def . map (Text.length . Text.takeWhile (==' '))
+    commonIndentationLength = foldr (min . Text.length . Text.takeWhile (==' '))
 
 -- This should be called with zero or one elements, as per `span isTrailing`
 convertTrailing :: [ParseTrivium] -> Maybe TrailingComment
@@ -119,7 +119,7 @@ convertTrivia pts nextCol =
         -- This happens especially often after `{` or `[` tokens, where the comment of the first item
         -- starts on the same line ase the opening token.
         ([PTLineComment _ pos], (PTNewlines 1):(PTLineComment _ pos'):_) | pos == pos' -> (Nothing, convertLeading pts)
-        ([PTLineComment _ pos], [(PTNewlines 1)]) | pos == nextCol -> (Nothing, convertLeading pts)
+        ([PTLineComment _ pos], [PTNewlines 1]) | pos == nextCol -> (Nothing, convertLeading pts)
         _ -> (convertTrailing trailing, convertLeading leading)
 
 trivia :: Parser [ParseTrivium]

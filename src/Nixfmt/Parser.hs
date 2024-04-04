@@ -227,9 +227,9 @@ parens = Parenthesized <$>
 
 simpleSelector :: Parser StringPart -> Parser SimpleSelector
 simpleSelector parseInterpolation =
-    ((IDSelector <$> identifier) <|>
+    (IDSelector <$> identifier) <|>
      (InterpolSelector <$> lexeme parseInterpolation) <|>
-     (StringSelector <$> lexeme simpleString))
+     (StringSelector <$> lexeme simpleString)
 
 selector :: Maybe (Parser Leaf) -> Parser Selector
 selector parseDot = Selector <$>
@@ -246,7 +246,7 @@ selectorPath' = many $ try $ selector $ Just $ symbol TDot
 -- Everything but selection
 simpleTerm :: Parser Term
 simpleTerm =
-    (SimpleString <$> (lexeme $ simpleString <|> uri))
+    (SimpleString <$> lexeme (simpleString <|> uri))
     <|> (IndentedString <$> lexeme indentedString)
     <|> (Path <$> path)
     <|> (Token <$> (envPath <|> float <|> integer <|> identifier))
