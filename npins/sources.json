@@ -17,6 +17,18 @@
       "revision": "b6bbeda170469574789f9128c9aadc3a9e91e512",
       "url": "https://github.com/serokell/serokell.nix/archive/b6bbeda170469574789f9128c9aadc3a9e91e512.tar.gz",
       "hash": "1p6gsw00sbnpm01r6dg0m975xnr31xax1ciznl5rdpxarsrkibnn"
+    },
+    "treefmt-nix": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "numtide",
+        "repo": "treefmt-nix"
+      },
+      "branch": "main",
+      "revision": "49dc4a92b02b8e68798abd99184f228243b6e3ac",
+      "url": "https://github.com/numtide/treefmt-nix/archive/49dc4a92b02b8e68798abd99184f228243b6e3ac.tar.gz",
+      "hash": "0qlhb0xvcc3al19irclxk7vnppd9m6b5vi3nbjb9dylphs306x1p"
     }
   },
   "version": 3

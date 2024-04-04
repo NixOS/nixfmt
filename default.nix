@@ -39,6 +39,11 @@ let
     haskell.lib.dontHaddock
     (drv: lib.lazyDerivation { derivation = drv; })
   ];
+
+  treefmtEval = (import sources.treefmt-nix).evalModule pkgs {
+    # Used to find the project root
+    projectRootFile = ".git/config";
+  };
 in
 build
 // {
@@ -56,11 +61,17 @@ build
       shellcheck
       npins
       hlint
+      treefmtEval.config.build.wrapper
     ];
   };
 
   checks = {
     hlint = pkgs.build.haskell.hlint src;
-    stylish-haskell = pkgs.build.haskell.stylish-haskell ./.;
+    treefmt = treefmtEval.config.build.check (
+      lib.fileset.toSource {
+        root = ./.;
+        fileset = lib.fileset.gitTracked ./.;
+      }
+    );
   };
 }
