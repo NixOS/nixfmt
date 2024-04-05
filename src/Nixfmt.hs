@@ -62,7 +62,7 @@ formatVerify width path unformatted = do
     else Right formattedOnce
     where
         parse = first errorBundlePretty . Megaparsec.parse file path
-        pleaseReport x = path <> ": " <> x <> " This is a bug in nixfmt. Please report it at https://github.com/serokell/nixfmt"
+        pleaseReport x = path <> ": " <> x <> " This is a bug in nixfmt. Please report it at https://github.com/NixOS/nixfmt"
 
 
 minimize :: Expression -> (Expression -> Bool) -> Expression

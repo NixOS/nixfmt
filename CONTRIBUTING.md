@@ -1,6 +1,6 @@
 # Contribution Guidelines
 
-We welcome issues and pull requests at https://github.com/serokell/nixfmt.
+We welcome issues and pull requests at https://github.com/NixOS/nixfmt.
 
 We use stylish-haskell to format our code. Make sure to format your
 contributions with it. It is available within the `nix-shell` and it should pick

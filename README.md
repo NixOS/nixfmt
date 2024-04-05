@@ -4,7 +4,7 @@
 
 You are encouraged to test this out on your code and submit any undesirable formatting you find as an issue
 
-![Build Status](https://github.com/serokell/nixfmt/actions/workflows/main.yml/badge.svg?branch=master)
+![Build Status](https://github.com/NixOS/nixfmt/actions/workflows/main.yml/badge.svg?branch=master)
 
 ## State
 
@@ -12,7 +12,7 @@ You are encouraged to test this out on your code and submit any undesirable form
 
 The established standard Nix formatting differs considerably from the original one. Be aware of this if you track the main branch. Until the first new release the main branch should be considered **very unstable**.
 
-For more details, see the [RFC implementation tracking issue](https://github.com/serokell/nixfmt/issues/153).
+For more details, see the [RFC implementation tracking issue](https://github.com/NixOS/nixfmt/issues/153).
 
 ## Installation
 
@@ -22,11 +22,11 @@ For more details, see the [RFC implementation tracking issue](https://github.com
 
 - To get the most recent version, install from master:
 
-      nix-env -f https://github.com/serokell/nixfmt/archive/master.tar.gz -i
+      nix-env -f https://github.com/NixOS/nixfmt/archive/master.tar.gz -i
 
 - Nix with flakes
 
-      nix profile install github:serokell/nixfmt
+      nix profile install github:NixOS/nixfmt
 
 ## Development
 

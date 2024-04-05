@@ -5,20 +5,19 @@ synopsis:            An opinionated formatter for Nix
 description:
   A formatter for Nix that ensures consistent and clear formatting by forgetting
   all existing formatting during parsing.
-homepage:            https://github.com/serokell/nixfmt
-bug-reports:         https://github.com/serokell/nixfmt/issues
+homepage:            https://github.com/NixOS/nixfmt
+bug-reports:         https://github.com/NixOS/nixfmt/issues
 license:             MPL-2.0
 license-file:        LICENSE
-author:              Lars Jellema
-maintainer:          lars.jellema@gmail.com
-copyright:           2022 Serokell, 2022 Lars Jellema
+author:              Serokell <hi@serokell.io> and nixfmt contributors
+copyright:           Serokell <hi@serokell.io> and nixfmt contributors
 category:            Development
 build-type:          Simple
 extra-source-files:  README.md, CHANGELOG.md
 
 source-repository head
   type:     git
-  location: git://github.com/serokell/nixfmt.git
+  location: git://github.com/NixOS/nixfmt.git
 
 executable nixfmt
   main-is:             Main.hs
