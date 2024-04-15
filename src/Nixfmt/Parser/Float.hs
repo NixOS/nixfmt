@@ -20,8 +20,8 @@ import "scientific" Data.Scientific (toRealFloat, scientific)
 data SP = SP !Integer {-# UNPACK #-} !Int
 floatParse :: (MonadParsec e s m, Token s ~ Char, RealFloat a) => m a
 floatParse = do
-  notFollowedBy $ (char '0') >> digitChar
-  notFollowedBy $ (char' 'e')
+  notFollowedBy $ char '0' >> digitChar
+  notFollowedBy (char' 'e')
   c' <- (decimal <?> "decimal") <|> return 0
   toRealFloat
     <$> (( do

@@ -39,8 +39,7 @@ formatVerify :: Width -> FilePath -> Text -> Either String Text
 formatVerify width path unformatted = do
     unformattedParsed@(Whole unformattedParsed' _) <- parse unformatted
     let formattedOnce = layout width unformattedParsed
-    formattedOnceParsed <- flip first (parse formattedOnce) $
-        (\x -> pleaseReport "Fails to parse after formatting.\n" <> x <> "\n\nAfter Formatting:\n" <> unpack formattedOnce)
+    formattedOnceParsed <- first (\x -> pleaseReport "Fails to parse after formatting.\n" <> x <> "\n\nAfter Formatting:\n" <> unpack formattedOnce) (parse formattedOnce)
     let formattedTwice = layout width formattedOnceParsed
     if formattedOnceParsed /= unformattedParsed
     then Left $
@@ -48,8 +47,8 @@ formatVerify width path unformatted = do
             minimized = minimize unformattedParsed' (\e -> parse (layout width e) == Right (Whole e []))
         in
         pleaseReport "Parses differently after formatting."
-        <> "\n\nBefore formatting:\n" <> (show minimized)
-        <> "\n\nAfter formatting:\n" <> (show $ fromRight (error "TODO") $ parse (layout width minimized))
+        <> "\n\nBefore formatting:\n" <> show minimized
+        <> "\n\nAfter formatting:\n" <> show (fromRight (error "TODO") $ parse (layout width minimized))
     else if formattedOnce /= formattedTwice
     then Left $
         let
@@ -67,6 +66,6 @@ formatVerify width path unformatted = do
 
 minimize :: Expression -> (Expression -> Bool) -> Expression
 minimize expr test =
-    case concatMap (\e -> case test e of { False -> [minimize e test]; True -> [] }) $ walkSubprograms expr of
+    case concatMap (\e -> ([minimize e test | not (test e)])) $ walkSubprograms expr of
          result:_ -> result
          [] -> expr

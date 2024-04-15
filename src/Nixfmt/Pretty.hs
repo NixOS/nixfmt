@@ -37,7 +37,7 @@ instance Pretty Trivium where
     pretty (BlockComment isDoc c) =
               comment (if isDoc then "/**" else "/*") <> hardline
               -- Indent the comment using offset instead of nest
-              <> (offset 2 $ hcat $ map prettyCommentLine c)
+              <> offset 2 (hcat $ map prettyCommentLine c)
               <> comment "*/" <> hardline
         where
         prettyCommentLine :: Text -> Doc
@@ -94,7 +94,7 @@ instance Pretty Binder where
     -- `inherit (foo) bar` statement
     pretty (Inherit inherit (Just source) ids semicolon)
         = group $ pretty inherit <> nest (
-            (group' RegularG (line <> pretty source))
+            group' RegularG (line <> pretty source)
             <> if null ids then pretty semicolon else line
             <> sepBy (if length ids < 4 then line else hardline) ids
             <> line' <> pretty semicolon
@@ -118,7 +118,7 @@ prettySet _ (krec, Ann [] paropen Nothing, Items [], parclose@(Ann [] _ _))
 prettySet wide (krec, Ann pre paropen post, binders, parclose)
     = pretty (fmap (, hardspace) krec) <>
         pretty (Ann pre paropen Nothing)
-        <> (surroundWith sep $ nest $ pretty post <> prettyItems hardline binders)
+        <> surroundWith sep (nest $ pretty post <> prettyItems hardline binders)
         <> pretty parclose
     where
         sep = if wide && not (null (unItems binders)) then hardline else line
@@ -142,7 +142,7 @@ prettyTerm (Selection term selectors rest) =
             -- If it is an ident, keep it all together
             (Token _) -> mempty
             -- If it is a parenthesized expression, maybe add a line break
-            (Parenthesized _ _ _) -> softline'
+            (Parenthesized {}) -> softline'
             -- Otherwise, very likely add a line break
             _ -> line'
 
@@ -154,7 +154,7 @@ prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trail
 -- Always expand if len > 1
 prettyTerm (List (Ann pre paropen post) items parclose) =
     pretty (Ann pre paropen Nothing)
-    <> (surroundWith line $ nest $ pretty post <> prettyItems hardline items)
+    <> surroundWith line (nest $ pretty post <> prettyItems hardline items)
     <> pretty parclose
 
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
@@ -174,7 +174,7 @@ prettyTerm (Parenthesized paropen expr (Ann closePre parclose closePost))
         (Application f a) -> prettyApp True mempty True f a
         -- Same thing for selections
         (Term (Selection t _ _)) | isAbsorbable t -> line' <> group expr <> line'
-        (Term (Selection _ _ _)) -> group expr <> line'
+        (Term (Selection {})) -> group expr <> line'
         -- Start on a new line for the others
         _ -> line' <> group expr <> line'
 
@@ -229,19 +229,19 @@ moveParamsComments
     ((ParamAttr name maybeDefault (Just (Ann trivia comma Nothing))) :
      (ParamAttr (Ann trivia' name' Nothing) maybeDefault' maybeComma') :
     xs)
-    = (ParamAttr name maybeDefault (Just (Ann [] comma Nothing)))
-    : moveParamsComments ((ParamAttr (Ann (trivia ++ trivia') name' Nothing) maybeDefault' maybeComma') : xs)
+    = ParamAttr name maybeDefault (Just (Ann [] comma Nothing))
+    : moveParamsComments (ParamAttr (Ann (trivia ++ trivia') name' Nothing) maybeDefault' maybeComma' : xs)
 -- This may seem like a nonsensical case, but keep in mind that blank lines also count as comments (trivia)
 moveParamsComments
     -- , name
     -- # comment
     -- ellipsis
-    [(ParamAttr name maybeDefault (Just (Ann trivia comma Nothing)))
-    ,(ParamEllipsis (Ann trivia' name' trailing'))]
-    = [(ParamAttr name maybeDefault (Just (Ann [] comma Nothing)))
-    , (ParamEllipsis (Ann (trivia ++ trivia') name' trailing'))]
+    [ParamAttr name maybeDefault (Just (Ann trivia comma Nothing))
+    ,ParamEllipsis (Ann trivia' name' trailing')]
+    = [ParamAttr name maybeDefault (Just (Ann [] comma Nothing))
+    , ParamEllipsis (Ann (trivia ++ trivia') name' trailing')]
 -- Inject a trailing comma on the last element if nessecary
-moveParamsComments [(ParamAttr name def Nothing)] = [ParamAttr name def (Just (Ann [] TComma Nothing))]
+moveParamsComments [ParamAttr name def Nothing] = [ParamAttr name def (Just (Ann [] TComma Nothing))]
 moveParamsComments (x : xs) = x : moveParamsComments xs
 moveParamsComments [] = []
 
@@ -257,7 +257,7 @@ instance Pretty Parameter where
     pretty (SetParameter bopen attrs bclose) =
         group $
             pretty (moveTrailingCommentUp bopen)
-            <> (surroundWith sep $ nest $ sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments $ attrs)
+            <> surroundWith sep (nest $ sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments attrs)
             <> pretty bclose
         where
         -- pretty all ParamAttrs, but mark the trailing comma of the last element specially
@@ -265,7 +265,7 @@ instance Pretty Parameter where
         handleTrailingComma :: [ParamAttr] -> [Doc]
         handleTrailingComma [] = []
         -- That's the case we're interested in
-        handleTrailingComma [(ParamAttr name maybeDefault (Just (Ann [] TComma Nothing)))]
+        handleTrailingComma [ParamAttr name maybeDefault (Just (Ann [] TComma Nothing))]
             = [pretty (ParamAttr name maybeDefault Nothing) <> trailing ","]
         handleTrailingComma (x:xs) = pretty x : handleTrailingComma xs
 
@@ -307,9 +307,9 @@ instance Pretty Parameter where
 prettyApp :: Bool -> Doc -> Bool -> Expression -> Expression -> Doc
 prettyApp indentFunction pre hasPost f a
     = let
-        absorbApp (Application f' a') = (group' Transparent $ absorbApp f') <> line <> (nest (group' Priority a'))
+        absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority a')
         absorbApp expr
-            | indentFunction && (null comment') = nest $ group' RegularG $ line' <> pretty expr
+            | indentFunction && null comment' = nest $ group' RegularG $ line' <> pretty expr
             | otherwise = pretty expr
 
         absorbLast (Term t) | isAbsorbable t
@@ -319,7 +319,7 @@ prettyApp indentFunction pre hasPost f a
             (Term (Parenthesized
                 open (Abstraction (IDParameter name) colon (Term body)) close
             ))
-            | isAbsorbableTerm body && all (not . hasTrivia) [open, name, colon]
+            | isAbsorbableTerm body && not (any hasTrivia [open, name, colon])
             = group' Priority $ nest $
                 pretty open <> pretty name <> pretty colon <> hardspace
                 <> prettyTermWide body
@@ -329,7 +329,7 @@ prettyApp indentFunction pre hasPost f a
             (Term (Parenthesized
                 open (Application (Term (Token ident@(Ann _ fn@(Identifier _) _))) (Term body)) close
             ))
-            | isAbsorbableTerm body && all (not . hasTrivia) [open, ident, close]
+            | isAbsorbableTerm body && not (any hasTrivia [open, ident, close])
             = group' Priority $ nest $
                 pretty open <> pretty fn <> hardspace
                 <> prettyTermWide body
@@ -350,10 +350,10 @@ prettyApp indentFunction pre hasPost f a
       in
         pretty comment'
         <> (
-            if isSimple (Application f a) && isJust (renderedFUnexpanded) then
-                (group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a)
+            if isSimple (Application f a) && isJust renderedFUnexpanded then
+                group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a
             else
-                (group' RegularG $ renderedF <> line <> absorbLast a <> post)
+                group' RegularG $ renderedF <> line <> absorbLast a <> post
         )
         <> (if hasPost && not (null comment') then hardline else mempty)
 
@@ -381,7 +381,7 @@ isAbsorbableExpr expr = case expr of
     (With _ _ _ (Term t)) | isAbsorbableTerm t -> True
     -- Absorb function declarations but only those with simple parameter(s)
     (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t -> True
-    (Abstraction (IDParameter _) _ body@(Abstraction _ _ _)) -> isAbsorbableExpr body
+    (Abstraction (IDParameter _) _ body@(Abstraction {})) -> isAbsorbableExpr body
     _ -> False
 
 isAbsorbable :: Term -> Bool
@@ -401,13 +401,12 @@ absorbParen :: Ann Token -> Expression -> Ann Token -> Doc
 absorbParen (Ann pre' open post') expr (Ann pre'' close post'')
     = group' Priority $ nest $ pretty (Ann pre' open Nothing)
         -- Move any trailing comments on the opening parenthesis down into the body
-        <> (surroundWith line' $ group' RegularG $ nest $
+        <> surroundWith line' (group' RegularG $ nest $
             pretty (mapFirstToken
-                (\(Ann leading token trailing') -> (Ann (maybeToList (toLineComment <$> post') ++ leading) token trailing'))
+                (\(Ann leading token trailing') -> Ann (maybeToList (toLineComment <$> post') ++ leading) token trailing')
                 expr)
             -- Move any leading comments on the closing parenthesis up into the nest
-            <> pretty pre''
-        )
+            <> pretty pre'')
         <> pretty (Ann [] close post'')
 
 -- Note that unlike for absorbable terms which can be force-absorbed, some expressions
@@ -439,7 +438,7 @@ absorbRHS expr = case expr of
     -- Function call
     -- Absorb if all arguments except the last fit into the line, start on new line otherwise
     (Application f a) -> prettyApp False line False f a
-    (With _ _ _ _) -> group' RegularG $ line <> pretty expr
+    (With {}) -> group' RegularG $ line <> pretty expr
     -- Special case `//` and `++` operations to be more compact in some cases
     -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
     (Operation (Term t) (Ann [] op Nothing) b) | isAbsorbable t && isUpdateOrConcat op ->
@@ -449,7 +448,7 @@ absorbRHS expr = case expr of
       group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
     -- Case 2b: LHS fits onto first line, RHS is a function application
     (Operation l (Ann [] op Nothing) (Application f a)) | isUpdateOrConcat op ->
-      line <> (group l) <> line <> prettyApp False (pretty op <> hardspace) False f a
+      line <> group l <> line <> prettyApp False (pretty op <> hardspace) False f a
     -- Everything else:
     -- If it fits on one line, it fits
     -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
@@ -464,7 +463,7 @@ absorbRHS expr = case expr of
 instance Pretty Expression where
     pretty (Term t) = pretty t
 
-    pretty with@(With _ _ _ _) = prettyWith False with
+    pretty with@(With {}) = prettyWith False with
 
     -- Let bindings are always fully expanded (no single-line form)
     -- We also take the comments around the `in` (trailing, leading and detached binder comments)
@@ -474,7 +473,7 @@ instance Pretty Expression where
         where
           -- Convert the TrailingComment to a Trivium, if present
           convertTrailing Nothing = []
-          convertTrailing (Just (TrailingComment t)) = [(LineComment (" " <> t))]
+          convertTrailing (Just (TrailingComment t)) = [LineComment (" " <> t)]
 
           -- Extract detached comments at the bottom.
           -- This uses a custom variant of span/spanJust/spanMaybe.
@@ -482,8 +481,7 @@ instance Pretty Expression where
           -- are constructed in a way that they end up correct again.
           (binderComments, bindersWithoutComments)
             = foldr
-                (\item -> \(start, rest) ->
-                    case item of
+                (\ item (start, rest) -> case item of
                         (DetachedComments inner) | null rest -> (inner : start, rest)
                         _ -> (start, item : rest)
                 )
@@ -506,10 +504,10 @@ instance Pretty Expression where
                 -- Add something to the left of a function application
                 -- We need to walk down the arguments here because applications are left-associative.
                 insertIntoApp :: Expression -> Expression -> (Expression, Expression)
-                insertIntoApp insert (Application f a) = ((uncurry Application $ insertIntoApp insert f), a)
+                insertIntoApp insert (Application f a) = (uncurry Application $ insertIntoApp insert f, a)
                 insertIntoApp insert other = (insert, other)
 
-    pretty expr@(If _ _ _ _ _ _)
+    pretty expr@(If {})
         -- If the first `if` or any `else` has a trailing comment, move it up.
         -- However, don't any subsequent `if` (`else if`). We could do that, but that
         -- would require taking care of edge cases which are not worth handling.
@@ -520,7 +518,7 @@ instance Pretty Expression where
             prettyIf sep (If if_ cond then_ expr0 else_ expr1)
                 -- `if cond then` if it fits on one line, otherwise `if\n  cond\nthen` (with cond indented)
                 = group (pretty if_ <> line <> nest (pretty cond) <> line <> pretty then_)
-                <> (surroundWith sep $ nest $ group expr0)
+                <> surroundWith sep (nest $ group expr0)
                 -- Using hardline here is okay because it will only apply to nested ifs, which should not be inline anyways.
                 <> pretty (moveTrailingCommentUp else_) <> hardspace <> prettyIf hardline expr1
             prettyIf _ x
@@ -560,14 +558,14 @@ instance Pretty Expression where
             -- We still need to keep the operators around because they might have comments attached to them.
             -- An operator is put together with its succeeding expression. Only the first operand has none.
             flatten :: Maybe Leaf -> Expression -> [(Maybe Leaf, Expression)]
-            flatten opL (Operation a opR b) | opR == op = (flatten opL a) ++ (flatten (Just opR) b)
+            flatten opL (Operation a opR b) | opR == op = flatten opL a ++ flatten (Just opR) b
             flatten opL x = [(opL, x)]
 
             -- Called on every operand except the first one (a.k.a. RHS)
             absorbOperation :: Expression -> Doc
-            absorbOperation (Term t) | isAbsorbable t = hardspace <> (pretty t)
+            absorbOperation (Term t) | isAbsorbable t = hardspace <> pretty t
             -- Force nested operations to start on a new line
-            absorbOperation x@(Operation _ _ _) = group' RegularG $ line <> pretty x
+            absorbOperation x@(Operation {}) = group' RegularG $ line <> pretty x
             -- Force applications to start on a new line if more than the last argument is multiline
             absorbOperation (Application f a) = group $ prettyApp False line False f a
             absorbOperation x = hardspace <> pretty x
@@ -576,11 +574,11 @@ instance Pretty Expression where
             -- First element
             prettyOperation (Nothing, expr) = pretty expr
             -- The others
-            prettyOperation ((Just op'), expr) =
+            prettyOperation (Just op', expr) =
                 line <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
           in
             group' RegularG $
-                (concat . map prettyOperation . (flatten Nothing)) operation
+                (concatMap prettyOperation . flatten Nothing) operation
 
     pretty (MemberCheck expr qmark sel)
         = pretty expr <> softline
@@ -643,7 +641,7 @@ instance Pretty StringPart where
         whole' = pretty whole
         inner = fromMaybe
             -- default
-            (surroundWith line' $ nest $ whole')
+            (surroundWith line' $ nest whole')
             -- force on one line if possible
             (unexpandSpacing' (Just 30) whole')
 
@@ -662,7 +660,7 @@ instance Pretty [StringPart] where
                 (Application f a) -> prettyApp True mempty True f a
                 -- Same thing for selections
                 (Term (Selection t _ _)) | isAbsorbable t -> line' <> group expr <> line'
-                (Term (Selection _ _ _)) -> group expr <> line'
+                (Term (Selection {})) -> group expr <> line'
                 -- Start on a new line for the others
                 _ -> line' <> group expr <> line'
 
@@ -694,5 +692,5 @@ prettyIndentedString parts = group $
     -- However, for single-line strings it should be omitted, because often times a line break will
     -- not reduce the indentation at all
     <> (case parts of { _:_:_ -> line'; _ -> mempty })
-    <> (nest $ sepBy newline $ map pretty parts)
+    <> nest (sepBy newline $ map pretty parts)
     <> text "''"

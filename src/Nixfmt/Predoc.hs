@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, OverloadedStrings, LambdaCase #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
 
 module Nixfmt.Predoc
     ( text
@@ -151,7 +151,7 @@ trailing t = [Text 0 0 Trailing t]
 -- Must not contain non-hard whitespace (e.g. line, softline' etc.) at the start of the end.
 -- Use group' for that instead if you are sure of what you are doing.
 group :: HasCallStack => Pretty a => a -> Doc
-group x = pure . (Group RegularG) $
+group x = pure . Group RegularG $
     if p /= [] && (isSoftSpacing (head p) || isSoftSpacing (last p)) then
         error $ "group should not start or end with whitespace, use `group'` if you are sure; " <> show p
     else
@@ -166,7 +166,7 @@ group x = pure . (Group RegularG) $
 --
 -- Also allows to create priority groups (see Node Group documentation)
 group' :: Pretty a => GroupAnn -> a -> Doc
-group' ann = pure . (Group ann) . pretty
+group' ann = pure . Group ann . pretty
 
 -- | @nest doc@ declarse @doc@ to have a higher nesting depth
 -- than before. Not all nestings actually result in indentation changes,
@@ -276,10 +276,10 @@ spanEnd p = fmap reverse . span p . reverse
 unexpandSpacing' :: Maybe Int -> Doc -> Maybe Doc
 unexpandSpacing' (Just n) _ | n < 0 = Nothing
 unexpandSpacing' _ [] = Just []
-unexpandSpacing' n (txt@(Text _ _ _ t):xs) = (txt :) <$> unexpandSpacing' (n <&> (subtract $ textWidth t)) xs
-unexpandSpacing' n (Spacing Hardspace:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> (subtract 1)) xs
-unexpandSpacing' n (Spacing Space:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> (subtract 1)) xs
-unexpandSpacing' n (Spacing Softspace:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> (subtract 1)) xs
+unexpandSpacing' n (txt@(Text _ _ _ t):xs) = (txt :) <$> unexpandSpacing' (n <&> subtract (textWidth t)) xs
+unexpandSpacing' n (Spacing Hardspace:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> subtract 1) xs
+unexpandSpacing' n (Spacing Space:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> subtract 1) xs
+unexpandSpacing' n (Spacing Softspace:xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> subtract 1) xs
 unexpandSpacing' n (Spacing Break:xs) = unexpandSpacing' n xs
 unexpandSpacing' n (Spacing Softbreak:xs) = unexpandSpacing' n xs
 unexpandSpacing' _ (Spacing _:_) = Nothing
@@ -316,7 +316,7 @@ fixup (a@(Spacing _) : Group ann xs : ys) =
         -- For the leading side, also move out comments out of groups, they are kinda the same thing
         -- (We could move out trailing comments too but it would make no difference)
         (pre, rest)  = span (\x -> isHardSpacing x || isComment x) $ fixup xs
-        (post, body) = (second $ simplifyGroup ann) $ spanEnd isHardSpacing rest
+        (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
     in if null body then
         -- Dissolve empty group
         fixup $ (a : pre) ++ post ++ ys
@@ -326,7 +326,7 @@ fixup (a@(Spacing _) : Group ann xs : ys) =
 fixup (Group ann xs : ys) =
     let
         (pre, rest)  = span (\x -> isHardSpacing x || isComment x) $ fixup xs
-        (post, body) = (second $ simplifyGroup ann) $ spanEnd isHardSpacing rest
+        (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
     in if null body then
         fixup $ pre ++ post ++ ys
     else
@@ -380,7 +380,7 @@ priorityGroups = explode . mergeSegments . segments
         | prio = [([], x, [])]
         | otherwise = []
     explode ((prio, x):xs)
-        | prio = ([], x, concatMap (snd) xs) : (map (\(a, b, c) -> (x<>a, b, c)) $ explode xs)
+        | prio = ([], x, concatMap snd xs) : map (\(a, b, c) -> (x<>a, b, c)) (explode xs)
         | otherwise = map (\(a, b, c) -> (x<>a, b, c)) (explode xs)
 
 -- | To support i18n, this function needs to be patched.
@@ -434,7 +434,7 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
     where go c _ | c < 0                = False
           go c []                       = maxWidth - c <= targetWidth
           go c (Text _ _ RegularT t : xs)  = go (c - textWidth t) xs
-          go c (Text _ _ _ _ : xs)        = go c xs
+          go c (Text {} : xs)        = go c xs
           -- This case is impossible in the input thanks to fixup, but may happen
           -- due to our recursion on groups below
           go c (Spacing a : Spacing b : xs) = go c $ Spacing (mergeSpacings a b) : xs
@@ -534,7 +534,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
         -- [  # comment
         --   1
         -- ]
-        Text _ _ TrailingComment t | cc == 2 && (fst $ nextIndent xs) > lineNL -> putText' [" ", t]
+        Text _ _ TrailingComment t | cc == 2 && fst (nextIndent xs) > lineNL -> putText' [" ", t]
             where lineNL = snd $ NonEmpty.head indents
         Text nl off _ t -> putText nl off t
 
@@ -572,7 +572,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
             -- Ignore transparent groups as their priority children have already been handled up in the parent (and failed)
             <|> (if ann /= Transparent then
                     -- Each priority group will be handled individually, and the priority groups are tried in reverse order
-                    asum $ map (flip goPriorityGroup xs) $ reverse $ priorityGroups ys
+                    asum $ map (`goPriorityGroup` xs) $ reverse $ priorityGroups ys
                 else
                     empty
             )
@@ -593,7 +593,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
         -- Try to render post onto one line
         postRendered <- goGroup post rest
         -- If none of these failed, put together and return
-        return $ (preRendered ++ prioRendered ++ postRendered)
+        return (preRendered ++ prioRendered ++ postRendered)
 
     -- Try to fit the group onto a single line, while accounting for the fact that the first
     -- bits of rest must fit as well (until the first possibility for a line break within rest).
@@ -610,7 +610,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
                 -- therefore drop any leading whitespace within the group to avoid duplicate newlines
                 grp' = case head grp of
                     Spacing _ -> tail grp
-                    Group ann ((Spacing _) : inner) -> (Group ann inner) : tail grp
+                    Group ann ((Spacing _) : inner) -> Group ann inner : tail grp
                     _ -> grp
                 (nl, off) = nextIndent grp'
 

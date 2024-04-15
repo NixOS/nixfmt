@@ -20,6 +20,9 @@ jobs:
       - name: reuse lint
         run: nix-build -A packages.reuse && result/bin/reuse lint
 
+      - name: hlint
+        run: nix-build -A checks.hlint
+
       - name: build nixfmt
         run: nix-build
         if: success() || failure()
