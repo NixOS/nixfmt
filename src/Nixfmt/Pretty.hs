@@ -104,6 +104,8 @@ prettyItems sep items = prettyItems' $ unItems items
     prettyItems' :: (Pretty a) => [Item a] -> Doc
     prettyItems' [] = mempty
     prettyItems' [item] = pretty item
+    -- Fix for https://github.com/NixOS/nixfmt/issues/188
+    prettyItems' [item, DetachedComments []] = pretty item
     prettyItems' (item : xs) =
       pretty item
         <> case item of CommentedItem _ _ -> sep; DetachedComments _ -> emptyline
