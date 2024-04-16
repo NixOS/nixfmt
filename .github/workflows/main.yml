@@ -44,6 +44,7 @@ jobs:
 
       - name: Create or update comment
         uses: peter-evans/create-or-update-comment@v4
+        id: couc
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -66,7 +67,7 @@ jobs:
       - name: Create or update comment
         uses: peter-evans/create-or-update-comment@v4
         with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
+          comment-id: ${{ steps.couc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
           edit-mode: replace
           body: |
