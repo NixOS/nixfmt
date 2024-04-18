@@ -23,6 +23,9 @@ jobs:
       - name: hlint
         run: nix-build -A checks.hlint
 
+      - name: treefmt
+        run: nix-build -A checks.treefmt
+
       - name: build nixfmt
         run: nix-build
         if: success() || failure()

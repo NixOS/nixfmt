@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase   #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | Helpers for implementing tools that process UTF-8 encoded data.
@@ -15,21 +15,19 @@
 -- encoding is not UTF-8, using UTF-8 might actually be unsafe.
 --
 -- Functions in this module help deal with all these issues.
-module System.IO.Utf8
-  ( withUtf8StdHandles
-
-  , openFileUtf8
-  , readFileUtf8
-  ) where
+module System.IO.Utf8 (
+  withUtf8StdHandles,
+  openFileUtf8,
+  readFileUtf8,
+)
+where
 
 import Control.Exception (bracket)
 import Data.Text (Text)
+import qualified Data.Text.IO as T
 import GHC.IO.Encoding (mkTextEncoding, textEncodingName, utf8)
 import System.IO (stderr, stdin, stdout)
-
-import qualified Data.Text.IO as T
 import qualified System.IO as IO
-
 
 type EncRestoreAction = IO.Handle -> IO ()
 
@@ -41,7 +39,8 @@ type EncRestoreAction = IO.Handle -> IO ()
 -- Otherwise, keeps its current encoding, but augments it to transliterate
 -- unsupported characters.
 hSetBestUtf8Enc :: IO.Handle -> IO EncRestoreAction
-hSetBestUtf8Enc h = IO.hGetEncoding h >>= \case
+hSetBestUtf8Enc h =
+  IO.hGetEncoding h >>= \case
     Nothing -> pure (\_ -> pure ())
     Just enc -> do
       isTerm <- IO.hIsTerminalDevice h
@@ -59,14 +58,12 @@ hSetBestUtf8Enc h = IO.hGetEncoding h >>= \case
 -- After the action finishes, restores the original encodings.
 withUtf8StdHandles :: IO a -> IO a
 withUtf8StdHandles action =
-    withConfiguredHandle stdin $
+  withConfiguredHandle stdin $
     withConfiguredHandle stdout $
-    withConfiguredHandle stderr action
+      withConfiguredHandle stderr action
   where
     withConfiguredHandle :: IO.Handle -> IO a -> IO a
     withConfiguredHandle h = bracket (hSetBestUtf8Enc h) ($ h) . const
-
-
 
 -- | Like @openFile@, but sets the file encoding to UTF-8, regardless
 -- of the current locale.
