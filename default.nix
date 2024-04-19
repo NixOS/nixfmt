@@ -11,6 +11,16 @@ let
     haskell = super.haskell // {
       packageOverrides = self: super: { nixfmt = self.callCabal2nix "nixfmt" src { }; };
     };
+
+    treefmt = super.treefmt.overrideAttrs (old: {
+      patches = [
+        # Makes it work in parallel: https://github.com/numtide/treefmt/pull/282
+        (self.fetchpatch {
+          url = "https://github.com/numtide/treefmt/commit/f596795cd24b50f048cc395866bb90a89d99152d.patch";
+          hash = "sha256-EPn+JAT3aZLSWmpdi9ULZ8o8RvrX+UFp0cQWfBcQgVg=";
+        })
+      ];
+    });
   };
 
   pkgs = import nixpkgs {
