@@ -17,21 +17,8 @@ jobs:
 
       - uses: cachix/install-nix-action@v26
 
-      - name: reuse lint
-        run: nix-build -A packages.reuse && result/bin/reuse lint
-
-      - name: hlint
-        run: nix-build -A checks.hlint
-
-      - name: treefmt
-        run: nix-build -A checks.treefmt
-
-      - name: build nixfmt
-        run: nix-build
-        if: success() || failure()
-
-      - name: run tests
-        run: nix-shell --run ./test/test.sh
+      - name: checks
+        run: nix-build -A checks
 
   nixpkgs-diff:
     runs-on: ubuntu-latest

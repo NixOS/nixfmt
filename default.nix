@@ -56,10 +56,7 @@ let
 in
 build
 // {
-  packages = {
-    nixfmt = build;
-    inherit (pkgs) reuse;
-  };
+  packages.nixfmt = build;
 
   shell = pkgs.haskellPackages.shellFor {
     packages = p: [ p.nixfmt ];
@@ -75,7 +72,32 @@ build
   };
 
   checks = {
+    inherit build;
     hlint = pkgs.build.haskell.hlint src;
+    reuse = pkgs.stdenvNoCC.mkDerivation {
+      name = "nixfmt-reuse";
+      src = lib.fileset.toSource {
+        root = ./.;
+        fileset = lib.fileset.gitTracked ./.;
+      };
+      nativeBuildInputs = with pkgs; [ reuse ];
+      buildPhase = "reuse lint";
+      installPhase = "touch $out";
+    };
+    tests = pkgs.stdenvNoCC.mkDerivation {
+      name = "nixfmt-tests";
+      src = lib.fileset.toSource {
+        root = ./.;
+        fileset = ./test;
+      };
+      nativeBuildInputs = with pkgs; [
+        shellcheck
+        build
+      ];
+      patchPhase = "patchShebangs .";
+      buildPhase = "./test/test.sh";
+      installPhase = "touch $out";
+    };
     treefmt = treefmtEval.config.build.check (
       lib.fileset.toSource {
         root = ./.;

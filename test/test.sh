@@ -12,7 +12,13 @@ shellcheck "$0"
 cd "$(dirname "$0")/.."
 
 shopt -s expand_aliases
-alias nixfmt="cabal v2-run --verbose=0 nixfmt -- -w 80"
+if command -v cabal &> /dev/null; then
+  # If we have cabal we're probably developing
+  alias nixfmt="cabal v2-run --verbose=0 nixfmt -- -w 80"
+else
+  # Otherwise assume we're in CI, where instead nixfmt will be prebuilt
+  alias nixfmt="nixfmt -w 80"
+fi
 
 # Do a test run to make sure it compiles fine
 nixfmt --version
