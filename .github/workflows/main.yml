@@ -1,6 +1,10 @@
 name: CI
 on:
-  pull_request:
+  # We use pull_request_target such that Nixpkgs diff processing also works,
+  # because we need repository secrets for that, which pull_request doesn't allow from forks.
+  # However, it's very important that we don't run code from forks without sandboxing it,
+  # because that way anybody could potentially extract repository secrets!
+  pull_request_target:
   push:
     branches:
       - master
@@ -14,6 +18,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request_target'
+
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request_target'
+        with:
+          # To prevent running untrusted code from forks,
+          # pull_request_target will cause the base branch to be checked out, not the PR branch.
+          # In our case we check out the PR branch regardless,
+          # because we're sandboxing all untrusted code with a `nix-build`.
+          # (and the sandbox is enabled by default at least on Linux)
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - uses: cachix/install-nix-action@v26
 
@@ -22,7 +37,7 @@ jobs:
 
   nixpkgs-diff:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request_target'
     steps:
       - name: Find Comment
         uses: peter-evans/find-comment@v3
@@ -44,6 +59,11 @@ jobs:
 
             Will be available [here](https://github.com/${{ vars.MACHINE_USER }}/nixpkgs/commits/nixfmt-${{ github.event.pull_request.number }})
 
+      # To prevent running untrusted code from forks,
+      # pull_request_target will cause the base branch to be checked out, not the PR branch.
+      # This is exactly what we want in this case,
+      # because the sync-pr.sh script cannot be run sandboxed since it needs to have side effects.
+      # Instead, the script itself fetches the PR, but then runs its code within sandboxed derivations.
       - uses: actions/checkout@v4
 
       - uses: cachix/install-nix-action@v26
