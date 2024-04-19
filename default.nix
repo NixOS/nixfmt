@@ -9,7 +9,7 @@ in
 let
   overlay = self: super: {
     haskell = super.haskell // {
-      packageOverrides = self: super: { nixfmt = self.callCabal2nix "nixfmt" src { }; };
+      packageOverrides = self: super: { nixfmt = self.callCabal2nix "nixfmt" haskellSource { }; };
     };
 
     treefmt = super.treefmt.overrideAttrs (old: {
@@ -33,15 +33,27 @@ let
   };
 
   inherit (pkgs) haskell lib;
+  fs = lib.fileset;
 
-  src = lib.fileset.toSource {
+  allFiles = fs.gitTracked ./.;
+
+  # Used for source-wide checks
+  source = fs.toSource {
     root = ./.;
-    fileset = lib.fileset.unions [
-      ./nixfmt.cabal
-      ./src
-      ./main
-      ./LICENSE
-    ];
+    fileset = allFiles;
+  };
+
+  haskellSource = fs.toSource {
+    root = ./.;
+    # Limit to only files needed for the Haskell build
+    fileset = fs.intersection allFiles (
+      fs.unions [
+        ./nixfmt.cabal
+        ./src
+        ./main
+        ./LICENSE
+      ]
+    );
   };
 
   build = lib.pipe pkgs.haskellPackages.nixfmt [
@@ -85,22 +97,19 @@ build
 
   checks = {
     inherit build;
-    hlint = pkgs.build.haskell.hlint src;
+    hlint = pkgs.build.haskell.hlint haskellSource;
     reuse = pkgs.stdenvNoCC.mkDerivation {
       name = "nixfmt-reuse";
-      src = lib.fileset.toSource {
-        root = ./.;
-        fileset = lib.fileset.gitTracked ./.;
-      };
+      src = source;
       nativeBuildInputs = with pkgs; [ reuse ];
       buildPhase = "reuse lint";
       installPhase = "touch $out";
     };
     tests = pkgs.stdenvNoCC.mkDerivation {
       name = "nixfmt-tests";
-      src = lib.fileset.toSource {
+      src = fs.toSource {
         root = ./.;
-        fileset = ./test;
+        fileset = fs.intersection allFiles ./test;
       };
       nativeBuildInputs = with pkgs; [
         shellcheck
@@ -110,11 +119,6 @@ build
       buildPhase = "./test/test.sh";
       installPhase = "touch $out";
     };
-    treefmt = treefmtEval.config.build.check (
-      lib.fileset.toSource {
-        root = ./.;
-        fileset = lib.fileset.gitTracked ./.;
-      }
-    );
+    treefmt = treefmtEval.config.build.check source;
   };
 }
