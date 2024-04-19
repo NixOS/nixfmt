@@ -68,6 +68,8 @@ build
 // {
   packages.nixfmt = build;
 
+  inherit pkgs;
+
   shell = pkgs.haskellPackages.shellFor {
     packages = p: [ p.nixfmt ];
     nativeBuildInputs = with pkgs; [
