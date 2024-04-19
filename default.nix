@@ -75,25 +75,6 @@ let
     # Haskell formatter
     programs.fourmolu.enable = true;
   };
-in
-build
-// {
-  packages.nixfmt = build;
-
-  inherit pkgs;
-
-  shell = pkgs.haskellPackages.shellFor {
-    packages = p: [ p.nixfmt ];
-    nativeBuildInputs = with pkgs; [
-      cabal-install
-      stylish-haskell
-      haskellPackages.haskell-language-server
-      shellcheck
-      npins
-      hlint
-      treefmtEval.config.build.wrapper
-    ];
-  };
 
   checks = {
     inherit build;
@@ -121,4 +102,27 @@ build
     };
     treefmt = treefmtEval.config.build.check source;
   };
+in
+build
+// {
+  packages.nixfmt = build;
+
+  inherit pkgs;
+
+  shell = pkgs.haskellPackages.shellFor {
+    packages = p: [ p.nixfmt ];
+    nativeBuildInputs = with pkgs; [
+      cabal-install
+      stylish-haskell
+      haskellPackages.haskell-language-server
+      shellcheck
+      npins
+      hlint
+      treefmtEval.config.build.wrapper
+    ];
+  };
+
+  inherit checks;
+
+  ci = pkgs.linkFarm "ci" checks;
 }

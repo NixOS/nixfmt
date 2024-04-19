@@ -33,7 +33,7 @@ jobs:
       - uses: cachix/install-nix-action@v26
 
       - name: checks
-        run: nix-build -A checks
+        run: nix-build -A ci
 
   nixpkgs-diff:
     runs-on: ubuntu-latest
