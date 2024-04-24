@@ -28,6 +28,11 @@ jobs:
 
       - uses: cachix/install-nix-action@v26
 
+      - uses: cachix/cachix-action@v14
+        with:
+          name: nixos-nixfmt
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
       - name: checks
         run: nix-build -A ci
 
@@ -67,6 +72,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: cachix/install-nix-action@v26
+
+      - uses: cachix/cachix-action@v14
+        with:
+          name: nixos-nixfmt
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       - run: |
           ./scripts/sync-pr.sh \
