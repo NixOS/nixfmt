@@ -9,10 +9,6 @@ on:
     branches:
       - master
 
-concurrency:
-  group: ${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -38,6 +34,10 @@ jobs:
   nixpkgs-diff:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request_target'
+    # Ensures that we don't run two comment-posting workflows at the same time
+    concurrency:
+      group: ${{ github.workflow_ref }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     steps:
       - name: Find Comment
         uses: peter-evans/find-comment@v3
