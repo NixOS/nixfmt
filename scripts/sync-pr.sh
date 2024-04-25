@@ -49,7 +49,7 @@ isLinear() {
 }
 
 step "Fetching nixfmt pull request and creating a branch for the head commit"
-git init nixfmt
+git init nixfmt -b unused
 git -C nixfmt fetch "$nixfmtUrl" "refs/pull/$nixfmtPrNumber/merge"
 nixfmtBaseCommit=$(git -C nixfmt rev-parse FETCH_HEAD^1)
 nixfmtHeadCommit=$(git -C nixfmt rev-parse FETCH_HEAD^2)
@@ -97,7 +97,7 @@ bodyForCommitIndex() {
 }
 
 step "Fetching upstream Nixpkgs commit history"
-git init --bare nixpkgs.git
+git init --bare nixpkgs.git -b unused
 
 git -C nixpkgs.git remote add upstream "$nixpkgsUpstreamUrl"
 # This makes sure that we don't actually have to fetch any contents, otherwise we'd wait forever!
@@ -201,16 +201,16 @@ else
 fi
 
 
-git init nixpkgs
+git init nixpkgs -b unused
 git -C nixpkgs config user.name "GitHub Actions"
 git -C nixpkgs config user.email "actions@users.noreply.github.com"
 
 step "Fetching contents of Nixpkgs base commit $nixpkgsBaseCommit"
 # This is needed because for every commit we reset Nixpkgs to the base branch before formatting
-git -C nixpkgs fetch --no-tags --depth 1 "$nixpkgsUpstreamUrl" "$nixpkgsBaseCommit"
+git -C nixpkgs fetch --no-tags --depth 1 "$nixpkgsUpstreamUrl" "$nixpkgsBaseCommit":base
 
 step "Checking out Nixpkgs at the base commit"
-git -C nixpkgs checkout "$nixpkgsBaseCommit"
+git -C nixpkgs checkout base
 
 # Because we run the formatter in a Nix derivation, we need to get its input files into the Nix store.
 # Since they never change, it would be wasteful to import them multiple times for each nixfmt run.
@@ -257,7 +257,7 @@ next() {
   update "$index"
 
   step "Checking out Nixpkgs at the base commit"
-  git -C nixpkgs checkout "$nixpkgsBaseCommit" -- .
+  git -C nixpkgs checkout base -- .
 
   step "Running nixfmt on nixpkgs in a derivation"
 
