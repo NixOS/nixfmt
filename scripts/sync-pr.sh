@@ -181,9 +181,12 @@ else
           echo "Checking whether commit with index $(( nixpkgsCommitCount + 1 )) ($nixpkgsCommit) in nixpkgs corresponds to commit with index $nixpkgsCommitCount ($nixfmtCommit) in nixfmt"
 
           # We generate the bodies of the commits to contain the nixfmt commit so we can check against it here to verify it's the same
-          body=$(git -C nixpkgs.git log -1 "$nixpkgsCommit" --pretty=%B)
-          expectedBody=$(bodyForCommitIndex "$nixpkgsCommitCount")
-          if [[ "$body" == "$expectedBody" ]]; then
+          # Note that `--format=format:` makes it so that there's no extra newline
+          git -C nixpkgs.git log -1 "$nixpkgsCommit" --format=format:%B > "$tmp/body"
+          bodyForCommitIndex "$nixpkgsCommitCount" > "$tmp/expected-body"
+
+          # Ignore case so that we don't need to be worried about things like NixOS vs nixos in the URL
+          if diff --ignore-case "$tmp/body" "$tmp/expected-body"; then
             echo "It does!"
           else
             echo "It does not, this indicates a force push was done"
