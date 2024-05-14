@@ -3,5 +3,5 @@
 /dist/
 /dist-newstyle
 /.ghc.environment.*
-/result
+/result*
 /.direnv

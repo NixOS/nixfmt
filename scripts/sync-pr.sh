@@ -4,7 +4,7 @@
 # - It only minimally depends on GitHub: All operations are done using Git directly
 # - Reuse of previous work: Formatting all of Nixpkgs takes some time, we don't want to recompute it if not necessary
 # - Handles force pushes gracefully and linearises merge commits
-#
+# - Runs all external code in Nix derivations, so this is safe to use for PRs from forks too
 
 set -euo pipefail
 
@@ -23,6 +23,8 @@ nixpkgsUrl=$3
 
 nixpkgsUpstreamUrl=https://github.com/NixOS/nixpkgs
 nixpkgsMirrorBranch=nixfmt-$nixfmtPrNumber
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 tmp=$(mktemp -d)
 cd "$tmp"
@@ -47,7 +49,7 @@ isLinear() {
 }
 
 step "Fetching nixfmt pull request and creating a branch for the head commit"
-git init nixfmt
+git init nixfmt -b unused
 git -C nixfmt fetch "$nixfmtUrl" "refs/pull/$nixfmtPrNumber/merge"
 nixfmtBaseCommit=$(git -C nixfmt rev-parse FETCH_HEAD^1)
 nixfmtHeadCommit=$(git -C nixfmt rev-parse FETCH_HEAD^2)
@@ -95,7 +97,7 @@ bodyForCommitIndex() {
 }
 
 step "Fetching upstream Nixpkgs commit history"
-git init --bare nixpkgs.git
+git init --bare nixpkgs.git -b unused
 
 git -C nixpkgs.git remote add upstream "$nixpkgsUpstreamUrl"
 # This makes sure that we don't actually have to fetch any contents, otherwise we'd wait forever!
@@ -179,9 +181,12 @@ else
           echo "Checking whether commit with index $(( nixpkgsCommitCount + 1 )) ($nixpkgsCommit) in nixpkgs corresponds to commit with index $nixpkgsCommitCount ($nixfmtCommit) in nixfmt"
 
           # We generate the bodies of the commits to contain the nixfmt commit so we can check against it here to verify it's the same
-          body=$(git -C nixpkgs.git log -1 "$nixpkgsCommit" --pretty=%B)
-          expectedBody=$(bodyForCommitIndex "$nixpkgsCommitCount")
-          if [[ "$body" == "$expectedBody" ]]; then
+          # Note that `--format=format:` makes it so that there's no extra newline
+          git -C nixpkgs.git log -1 "$nixpkgsCommit" --format=format:%B > "$tmp/body"
+          bodyForCommitIndex "$nixpkgsCommitCount" > "$tmp/expected-body"
+
+          # Ignore case so that we don't need to be worried about things like NixOS vs nixos in the URL
+          if diff --ignore-case "$tmp/body" "$tmp/expected-body"; then
             echo "It does!"
           else
             echo "It does not, this indicates a force push was done"
@@ -199,13 +204,23 @@ else
 fi
 
 
-git init nixpkgs
+git init nixpkgs -b unused
 git -C nixpkgs config user.name "GitHub Actions"
 git -C nixpkgs config user.email "actions@users.noreply.github.com"
 
 step "Fetching contents of Nixpkgs base commit $nixpkgsBaseCommit"
 # This is needed because for every commit we reset Nixpkgs to the base branch before formatting
-git -C nixpkgs fetch --no-tags --depth 1 "$nixpkgsUpstreamUrl" "$nixpkgsBaseCommit"
+git -C nixpkgs fetch --no-tags --depth 1 "$nixpkgsUpstreamUrl" "$nixpkgsBaseCommit":base
+
+step "Checking out Nixpkgs at the base commit"
+git -C nixpkgs checkout base
+
+# Because we run the formatter in a Nix derivation, we need to get its input files into the Nix store.
+# Since they never change, it would be wasteful to import them multiple times for each nixfmt run.
+# So instead we just import them once and reuse that result throughout
+step "Importing Nix files from base commit into the Nix store"
+baseStorePath=$(nix-instantiate --eval --read-write-mode "$SCRIPT_DIR/sync-pr-support.nix" -A repoNixFiles.outPath --arg repo "$PWD/nixpkgs" | tr -d '"')
+echo "$baseStorePath"
 
 step "Fetching contents of the starting commit and updating the mirror branch"
 # This is only needed so we can push the resulting diff after formatting
@@ -234,9 +249,6 @@ update() {
 
   step "Checking out nixfmt at $nixfmtCommit"
   git -C nixfmt checkout -q "$nixfmtCommit"
-
-  step "Building nixfmt"
-  nix-build nixfmt
 }
 
 # Format Nixpkgs with a specific nixfmt version and push the result.
@@ -247,21 +259,21 @@ next() {
 
   update "$index"
 
-  if [[ -n "$appliedNixfmtPath" && "$appliedNixfmtPath" == "$(realpath result)" ]]; then
-    echo "The nixfmt store path didn't change, saving ourselves a formatting"
-  else
-    step "Checking out Nixpkgs at the base commit"
-    git -C nixpkgs checkout "$nixpkgsBaseCommit" -- .
+  step "Checking out Nixpkgs at the base commit"
+  git -C nixpkgs checkout base -- .
 
-    step "Running nixfmt on nixpkgs"
-    if ! time xargs -r -0 -P"$(nproc)" -n1 -a <(find nixpkgs -type f -name '*.nix' -print0) result/bin/nixfmt; then
-      echo -e "\e[31mFailed to run nixfmt on some files\e[0m"
-      exit 1
-    fi
-    git -C nixpkgs add -A
+  step "Running nixfmt on nixpkgs in a derivation"
 
-    appliedNixfmtPath=$(realpath result)
+  # This uses always the same sync-pr-support.nix file from the same nixfmt branch that this script is in,
+  # but doesn't use anything else from that nixfmt branch. Instead the nixfmtPath is used for the formatting.
+  if ! nix-build "$SCRIPT_DIR/sync-pr-support.nix" -A formattedGitRepo --arg storePath "$baseStorePath" --arg nixfmtPath "$PWD/nixfmt"; then
+    echo -e "\e[31mFailed to run nixfmt on some files\e[0m"
+    exit 1
   fi
+  step "Syncing changes into the Nixpkgs tree"
+  # We need to move the changed files in result/ back into the tree (without messing up the permissions and other files)
+  rsync --archive --no-perms result/ nixpkgs
+  git -C nixpkgs add -A
 
   step "Committing the formatted result"
   git -C nixpkgs commit --allow-empty -m "$(bodyForCommitIndex "$index")"
@@ -271,14 +283,12 @@ next() {
   nixpkgsCommitCount=$(( nixpkgsCommitCount + 1 ))
 }
 
-appliedNixfmtPath=
 if (( nixpkgsCommitCount == 0 )); then
   # If we don't have a base-formatted Nixpkgs commit yet, create it
   next 0
 else
   # Otherwise, just build the nixfmt that was used for the current commit, such that we know the store path
   update "$(( nixpkgsCommitCount - 1 ))"
-  appliedNixfmtPath=$(realpath result)
 fi
 
 while (( nixpkgsCommitCount - 1 < nixfmtCommitCount )); do

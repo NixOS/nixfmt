@@ -9,8 +9,18 @@ in
 let
   overlay = self: super: {
     haskell = super.haskell // {
-      packageOverrides = self: super: { nixfmt = self.callCabal2nix "nixfmt" src { }; };
+      packageOverrides = self: super: { nixfmt = self.callCabal2nix "nixfmt" haskellSource { }; };
     };
+
+    treefmt = super.treefmt.overrideAttrs (old: {
+      patches = [
+        # Makes it work in parallel: https://github.com/numtide/treefmt/pull/282
+        (self.fetchpatch {
+          url = "https://github.com/numtide/treefmt/commit/f596795cd24b50f048cc395866bb90a89d99152d.patch";
+          hash = "sha256-EPn+JAT3aZLSWmpdi9ULZ8o8RvrX+UFp0cQWfBcQgVg=";
+        })
+      ];
+    });
   };
 
   pkgs = import nixpkgs {
@@ -23,15 +33,27 @@ let
   };
 
   inherit (pkgs) haskell lib;
+  fs = lib.fileset;
 
-  src = lib.fileset.toSource {
+  allFiles = fs.gitTracked ./.;
+
+  # Used for source-wide checks
+  source = fs.toSource {
     root = ./.;
-    fileset = lib.fileset.unions [
-      ./nixfmt.cabal
-      ./src
-      ./main
-      ./LICENSE
-    ];
+    fileset = allFiles;
+  };
+
+  haskellSource = fs.toSource {
+    root = ./.;
+    # Limit to only files needed for the Haskell build
+    fileset = fs.intersection allFiles (
+      fs.unions [
+        ./nixfmt.cabal
+        ./src
+        ./main
+        ./LICENSE
+      ]
+    );
   };
 
   build = lib.pipe pkgs.haskellPackages.nixfmt [
@@ -53,13 +75,39 @@ let
     # Haskell formatter
     programs.fourmolu.enable = true;
   };
+
+  checks = {
+    inherit build;
+    hlint = pkgs.build.haskell.hlint haskellSource;
+    reuse = pkgs.stdenvNoCC.mkDerivation {
+      name = "nixfmt-reuse";
+      src = source;
+      nativeBuildInputs = with pkgs; [ reuse ];
+      buildPhase = "reuse lint";
+      installPhase = "touch $out";
+    };
+    tests = pkgs.stdenvNoCC.mkDerivation {
+      name = "nixfmt-tests";
+      src = fs.toSource {
+        root = ./.;
+        fileset = fs.intersection allFiles ./test;
+      };
+      nativeBuildInputs = with pkgs; [
+        shellcheck
+        build
+      ];
+      patchPhase = "patchShebangs .";
+      buildPhase = "./test/test.sh";
+      installPhase = "touch $out";
+    };
+    treefmt = treefmtEval.config.build.check source;
+  };
 in
 build
 // {
-  packages = {
-    nixfmt = build;
-    inherit (pkgs) reuse;
-  };
+  packages.nixfmt = build;
+
+  inherit pkgs;
 
   shell = pkgs.haskellPackages.shellFor {
     packages = p: [ p.nixfmt ];
@@ -74,13 +122,7 @@ build
     ];
   };
 
-  checks = {
-    hlint = pkgs.build.haskell.hlint src;
-    treefmt = treefmtEval.config.build.check (
-      lib.fileset.toSource {
-        root = ./.;
-        fileset = lib.fileset.gitTracked ./.;
-      }
-    );
-  };
+  inherit checks;
+
+  ci = pkgs.linkFarm "ci" checks;
 }
