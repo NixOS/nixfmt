@@ -41,7 +41,8 @@ data Nixfmt = Nixfmt
     width :: Width,
     check :: Bool,
     quiet :: Bool,
-    verify :: Bool
+    verify :: Bool,
+    ast :: Bool
   }
   deriving (Show, Data, Typeable)
 
@@ -60,7 +61,11 @@ options =
         verify =
           False
             &= help
-              "Apply sanity checks on the output after formatting"
+              "Apply sanity checks on the output after formatting",
+        ast =
+          False
+            &= help
+              "Pretty print the internal AST, only for debugging"
       }
       &= summary ("nixfmt v" ++ showVersion version)
       &= help "Format Nix source code"
@@ -128,6 +133,7 @@ toTargets Nixfmt{check = True, files = paths} = map checkFileTarget <$> collectA
 type Formatter = FilePath -> Text -> Either String Text
 
 toFormatter :: Nixfmt -> Formatter
+toFormatter Nixfmt{ast = True} = Nixfmt.printAst
 toFormatter Nixfmt{width, verify = True} = Nixfmt.formatVerify width
 toFormatter Nixfmt{width, verify = False} = Nixfmt.format width
 
