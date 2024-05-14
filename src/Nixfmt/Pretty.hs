@@ -95,18 +95,18 @@ instance (Pretty a) => Pretty (Item a) where
   pretty (CommentedItem trivia x) = pretty trivia <> group x
 
 -- For lists, attribute sets and let bindings
-prettyItems :: (Pretty a) => Doc -> Items a -> Doc
+prettyItems :: (Pretty a) => Items a -> Doc
 -- Special case: Preserve an empty line with no items
 -- usually, trailing newlines after the last element are not preserved
-prettyItems _ (Items [DetachedComments []]) = emptyline
-prettyItems sep items = prettyItems' $ unItems items
+prettyItems (Items [DetachedComments []]) = emptyline
+prettyItems items = prettyItems' $ unItems items
   where
     prettyItems' :: (Pretty a) => [Item a] -> Doc
     prettyItems' [] = mempty
     prettyItems' [item] = pretty item
     prettyItems' (item : xs) =
       pretty item
-        <> case item of CommentedItem _ _ -> sep; DetachedComments _ -> emptyline
+        <> case item of CommentedItem _ _ -> hardline; DetachedComments _ -> emptyline
         <> prettyItems' xs
 
 instance Pretty [Trivium] where
@@ -170,7 +170,7 @@ prettySet _ (krec, Ann [] paropen Nothing, Items [], parclose@(Ann [] _ _)) =
 prettySet wide (krec, Ann pre paropen post, binders, parclose) =
   pretty (fmap (,hardspace) krec)
     <> pretty (Ann pre paropen Nothing)
-    <> surroundWith sep (nest $ pretty post <> prettyItems hardline binders)
+    <> surroundWith sep (nest $ pretty post <> prettyItems binders)
     <> pretty parclose
   where
     sep = if wide && not (null (unItems binders)) then hardline else line
@@ -207,7 +207,7 @@ prettyTerm (List (Ann leading paropen Nothing) (Items []) (Ann [] parclose trail
 -- Always expand if len > 1
 prettyTerm (List (Ann pre paropen post) items parclose) =
   pretty (Ann pre paropen Nothing)
-    <> surroundWith line (nest $ pretty post <> prettyItems hardline items)
+    <> surroundWith line (nest $ pretty post <> prettyItems items)
     <> pretty parclose
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
 -- Parentheses
@@ -568,7 +568,7 @@ instance Pretty Expression where
           (unItems binders)
 
       letPart = group $ pretty let_ <> hardline <> letBody
-      letBody = nest $ prettyItems hardline (Items bindersWithoutComments)
+      letBody = nest $ prettyItems (Items bindersWithoutComments)
       inPart =
         group $
           pretty (Ann [] in_ Nothing)
