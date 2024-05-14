@@ -550,7 +550,11 @@ instance Pretty Expression where
       (binderComments, bindersWithoutComments) =
         foldr
           ( \item (start, rest) -> case item of
-              (Comments inner) | null rest -> (inner : start, rest)
+              (Comments inner)
+                | null rest ->
+                    -- Only move all non-empty-line trivia below the `in`
+                    let (comments, el) = break (== EmptyLine) (reverse inner)
+                    in (reverse comments : start, Comments (reverse el) : rest)
               _ -> (start, item : rest)
           )
           ([], [])

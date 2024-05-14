@@ -606,8 +606,8 @@ let
         .${validity.valid};
 
     };
-in
 
+in
 {
   inherit assertValidity commonMeta;
 }

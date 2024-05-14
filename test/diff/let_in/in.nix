@@ -31,6 +31,17 @@ let
     2
   ];
 
+  a =
+    let
+      b = 0;
+
+
+      # foo
+      # bar
+    in # baz
+    # qux
+    null;
+
 in
 
 

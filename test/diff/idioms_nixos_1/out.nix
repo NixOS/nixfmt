@@ -16,6 +16,7 @@ let
   kernelModulesConf = pkgs.writeText "nixos.conf" ''
     ${concatStringsSep "\n" config.boot.kernelModules}
   '';
+
 in
 
 {

@@ -31,6 +31,7 @@ let
       assert type.check value;
       setType type.name ({ inherit name; } // value)
     );
+
 in
 
 rec {
@@ -887,8 +888,8 @@ rec {
           else
             abis.unknown;
       };
-    in
 
+    in
     mkSystem parsed;
 
   mkSystemFromString =
