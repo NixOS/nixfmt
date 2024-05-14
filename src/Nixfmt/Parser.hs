@@ -341,26 +341,17 @@ term = label "term" $ do
     _ -> Selection t sel def
 
 items :: Parser a -> Parser (Items a)
-items p = Items <$> many (item p) <> (toList <$> optional lastItem)
+items p = Items <$> many (item p) <> (toList <$> optional itemComment)
 
 item :: Parser a -> Parser (Item a)
-item p = detachedComment <|> CommentedItem <$> takeTrivia <*> p
+item p = itemComment <|> Item <$> p
 
-lastItem :: Parser (Item a)
-lastItem = do
+itemComment :: Parser (Item a)
+itemComment = do
   trivia <- takeTrivia
   case trivia of
     [] -> empty
-    _ -> pure $ DetachedComments trivia
-
-detachedComment :: Parser (Item a)
-detachedComment = do
-  trivia <- takeTrivia
-  case break (== EmptyLine) trivia of
-    -- Return a set of comments that don't annotate the next item
-    (detached, EmptyLine : trivia') -> pushTrivia trivia' >> pure (DetachedComments detached)
-    -- The remaining trivia annotate the next item
-    _ -> pushTrivia trivia >> empty
+    _ -> pure $ Comments trivia
 
 -- ABSTRACTIONS
 

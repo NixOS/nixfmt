@@ -214,6 +214,7 @@ in
         lib.kernelConfig functions to build list elements.
       '';
     };
+
   };
 
   ###### implementation
@@ -262,6 +263,7 @@ in
               "hid_logitech_hidpp"
               "hid_logitech_dj"
               "hid_microsoft"
+
             ]
             ++ optionals pkgs.stdenv.hostPlatform.isx86 [
               # Misc. x86 keyboard stuff.
@@ -381,6 +383,9 @@ in
             assertion = attrs.assertion cfg;
             inherit (attrs) message;
           }) config.system.requiredKernelConfig;
+
     })
+
   ];
+
 }

@@ -68,6 +68,7 @@ let
 
   inherit (config.system) stateVersion;
 in
+
 {
 
   imports = [
@@ -383,6 +384,7 @@ in
           is used to also support MariaDB version >= 10.6.
         '';
       };
+
     };
 
     config = {
@@ -763,6 +765,7 @@ in
             `services.nextcloud.package`.
           '';
         in
+
         (optional (cfg.poolConfig != null) ''
           Using config.services.nextcloud.poolConfig is deprecated and will become unsupported in a future release.
           Please migrate your configuration to config.services.nextcloud.poolSettings.
@@ -1017,6 +1020,7 @@ in
               '') ([ cfg.hostName ] ++ cfg.config.extraTrustedDomains)
             );
           in
+
           {
             wantedBy = [ "multi-user.target" ];
             before = [ "phpfpm-nextcloud.service" ];

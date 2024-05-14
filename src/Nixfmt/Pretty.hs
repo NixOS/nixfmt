@@ -91,23 +91,12 @@ instance Pretty Trivium where
         | otherwise = comment l <> hardline
 
 instance (Pretty a) => Pretty (Item a) where
-  pretty (DetachedComments trivia) = pretty trivia
-  pretty (CommentedItem trivia x) = pretty trivia <> group x
+  pretty (Comments trivia) = pretty trivia
+  pretty (Item x) = group x
 
 -- For lists, attribute sets and let bindings
 prettyItems :: (Pretty a) => Items a -> Doc
--- Special case: Preserve an empty line with no items
--- usually, trailing newlines after the last element are not preserved
-prettyItems (Items [DetachedComments []]) = emptyline
-prettyItems items = prettyItems' $ unItems items
-  where
-    prettyItems' :: (Pretty a) => [Item a] -> Doc
-    prettyItems' [] = mempty
-    prettyItems' [item] = pretty item
-    prettyItems' (item : xs) =
-      pretty item
-        <> case item of CommentedItem _ _ -> hardline; DetachedComments _ -> emptyline
-        <> prettyItems' xs
+prettyItems (Items items) = sepBy hardline items
 
 instance Pretty [Trivium] where
   pretty [] = mempty
@@ -561,7 +550,7 @@ instance Pretty Expression where
       (binderComments, bindersWithoutComments) =
         foldr
           ( \item (start, rest) -> case item of
-              (DetachedComments inner) | null rest -> (inner : start, rest)
+              (Comments inner) | null rest -> (inner : start, rest)
               _ -> (start, item : rest)
           )
           ([], [])

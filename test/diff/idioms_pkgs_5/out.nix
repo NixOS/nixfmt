@@ -91,6 +91,7 @@ let
 
       finalPackage = mkDerivationSimple overrideAttrs args;
     in
+
     finalPackage;
 
   #makeDerivationExtensibleConst = attrs: makeDerivationExtensible (_: attrs);
@@ -786,6 +787,7 @@ let
           passthru
       ) (derivation (derivationArg // optionalAttrs envIsExportable checkedEnv));
 in
+
 fnOrAttrs:
 if builtins.isFunction fnOrAttrs then
   makeDerivationExtensible fnOrAttrs

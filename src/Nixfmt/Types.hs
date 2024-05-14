@@ -58,12 +58,10 @@ instance (Eq a) => Eq (Ann a) where
 --    show (Ann _ a _) = show a
 
 data Item a
-  = -- | An item with a list of line comments that apply to it. There is no
-    -- empty line between the comments and the stuff it applies to.
-    CommentedItem Trivia a
-  | -- | A list of line comments not associated with any item. Followed by an
-    -- empty line unless they're the last comments in a set or list.
-    DetachedComments Trivia
+  = -- | An item
+    Item a
+  | -- | Trivia interleaved in items
+    Comments Trivia
   deriving (Foldable, Show)
 
 newtype Items a = Items {unItems :: [Item a]}
@@ -279,33 +277,33 @@ instance LanguageElement Term where
   walkSubprograms = \case
     -- Map each item to a singleton list, then handle that
     (List _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
-      (CommentedItem c item) -> [emptySet c, Term item]
-      (DetachedComments _) -> []
+      (Item item) -> [Term item]
+      (Comments _) -> []
     (List _ items _) ->
       unItems items >>= \case
-        CommentedItem comment item ->
-          [Term (List (ann TBrackOpen) (Items [CommentedItem comment item]) (ann TBrackClose))]
-        DetachedComments c ->
-          [Term (List (ann TBrackOpen) (Items [DetachedComments c]) (ann TBrackClose))]
+        Item item ->
+          [Term (List (ann TBrackOpen) (Items [Item item]) (ann TBrackClose))]
+        Comments c ->
+          [Term (List (ann TBrackOpen) (Items [Comments c]) (ann TBrackClose))]
     (Set _ _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
-      (CommentedItem c (Inherit _ from sels _)) ->
-        (Term <$> maybeToList from) ++ concatMap walkSubprograms sels ++ [emptySet c]
-      (CommentedItem c (Assignment sels _ expr _)) ->
-        expr : concatMap walkSubprograms sels ++ [emptySet c]
-      (DetachedComments _) -> []
+      (Item (Inherit _ from sels _)) ->
+        (Term <$> maybeToList from) ++ concatMap walkSubprograms sels
+      (Item (Assignment sels _ expr _)) ->
+        expr : concatMap walkSubprograms sels
+      (Comments _) -> []
     (Set _ _ items _) ->
       unItems items >>= \case
         -- Map each binding to a singleton set
-        (CommentedItem comment item) ->
-          [Term (Set Nothing (ann TBraceOpen) (Items [CommentedItem comment item]) (ann TBraceClose))]
-        (DetachedComments c) -> [emptySet c]
+        (Item item) ->
+          [Term (Set Nothing (ann TBraceOpen) (Items [Item item]) (ann TBraceClose))]
+        (Comments c) -> [emptySet c]
     (Selection term sels Nothing) -> Term term : (sels >>= walkSubprograms)
     (Selection term sels (Just (_, def))) -> Term term : (sels >>= walkSubprograms) ++ [Term def]
     (Parenthesized _ expr _) -> [expr]
     -- The others are already minimal
     _ -> []
     where
-      emptySet c = Term (Set Nothing (ann TBraceOpen) (Items [DetachedComments c]) (ann TBraceClose))
+      emptySet c = Term (Set Nothing (ann TBraceOpen) (Items [Comments c]) (ann TBraceClose))
 
 instance LanguageElement Expression where
   mapFirstToken' f = \case
@@ -342,8 +340,8 @@ instance LanguageElement Expression where
       body
         : ( unItems items >>= \case
               -- Map each binding to a singleton set
-              (CommentedItem _ item) -> [Term (Set Nothing (ann TBraceOpen) (Items [CommentedItem [] item]) (ann TBraceClose))]
-              (DetachedComments _) -> []
+              (Item item) -> [Term (Set Nothing (ann TBraceOpen) (Items [Item item]) (ann TBraceClose))]
+              (Comments _) -> []
           )
     (Assert _ cond _ body) -> [cond, body]
     (If _ expr0 _ expr1 _ expr2) -> [expr0, expr1, expr2]
