@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Nixfmt.Predoc (
+  indentWidth,
   text,
   comment,
   trailingComment,
@@ -129,6 +130,10 @@ instance (Pretty a, Pretty b) => Pretty (a, b) where
 
 instance (Pretty a, Pretty b, Pretty c) => Pretty (a, b, c) where
   pretty (a, b, c) = pretty a <> pretty b <> pretty c
+
+-- | Default indentation spacing.
+indentWidth :: Int
+indentWidth = 2
 
 text :: Text -> Doc
 text "" = []
@@ -484,7 +489,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
           case textNL `compare` nl of
             -- Push the textNL onto the stack, but only increase the actual indentation (`ci`)
             -- if this is the first one of a line. All subsequent nestings within the line effectively get "swallowed"
-            GT -> putR ((if cc == 0 then ci + 2 else ci, textNL) <| indents) >> go'
+            GT -> putR ((if cc == 0 then ci + indentWidth else ci, textNL) <| indents) >> go'
             -- Need to go down one or more levels
             -- Just pop from the stack and recurse until the indent matches again
             LT -> putR (NonEmpty.fromList indents') >> putText textNL textOffset t
@@ -611,14 +616,14 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
                 _ -> grp
               (nl, off) = nextIndent grp'
 
-              indentWillIncrease = if fst (nextIndent rest) > lineNL then 2 else 0
+              indentWillIncrease = if fst (nextIndent rest) > lineNL then indentWidth else 0
                 where
                   lastLineNL = snd $ NonEmpty.head ci
-                  lineNL = lastLineNL + (if nl > lastLineNL then 2 else 0)
+                  lineNL = lastLineNL + (if nl > lastLineNL then indentWidth else 0)
           in fits indentWillIncrease (tw - firstLineWidth rest) grp'
               <&> \t -> runState (putText nl off t) (cc, ci)
         else
-          let indentWillIncrease = if fst (nextIndent rest) > lineNL then 2 else 0
+          let indentWillIncrease = if fst (nextIndent rest) > lineNL then indentWidth else 0
                 where
                   lineNL = snd $ NonEmpty.head ci
           in fits (indentWillIncrease - cc) (tw - cc - firstLineWidth rest) grp
