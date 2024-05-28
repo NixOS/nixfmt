@@ -4,18 +4,21 @@ module Nixfmt (
   Width,
   format,
   formatVerify,
+  printAst,
 )
 where
 
 import Data.Bifunctor (bimap, first)
 import Data.Either (fromRight)
 import Data.Text (Text, unpack)
-import Nixfmt.Parser (file)
+import Data.Text.Lazy (toStrict)
+import qualified Nixfmt.Parser as Parser
 import Nixfmt.Predoc (layout)
 import Nixfmt.Pretty ()
 import Nixfmt.Types (Expression, ParseErrorBundle, Whole (..), walkSubprograms)
 import qualified Text.Megaparsec as Megaparsec (parse)
 import Text.Megaparsec.Error (errorBundlePretty)
+import Text.Pretty.Simple (pShow)
 
 -- import Debug.Trace (traceShow, traceShowId)
 
@@ -27,7 +30,13 @@ type Width = Int
 format :: Width -> FilePath -> Text -> Either String Text
 format width filename =
   bimap errorBundlePretty (layout width)
-    . Megaparsec.parse file filename
+    . Megaparsec.parse Parser.file filename
+
+-- | Pretty print the internal AST for debugging
+printAst :: FilePath -> Text -> Either String Text
+printAst path unformatted = do
+  Whole unformattedParsed' _ <- first errorBundlePretty . Megaparsec.parse Parser.file path $ unformatted
+  Left (unpack $ toStrict $ pShow unformattedParsed')
 
 -- Same functionality as `format`, but add sanity checks to guarantee the following properties of the formatter:
 -- - Correctness: The formatted output parses, and the parse tree is identical to the input's
@@ -65,7 +74,7 @@ formatVerify width path unformatted = do
                 <> unpack (layout width (fromRight (error "TODO") $ parse $ layout width minimized))
         else Right formattedOnce
   where
-    parse = first errorBundlePretty . Megaparsec.parse file path
+    parse = first errorBundlePretty . Megaparsec.parse Parser.file path
     pleaseReport x = path <> ": " <> x <> " This is a bug in nixfmt. Please report it at https://github.com/NixOS/nixfmt"
 
 minimize :: Expression -> (Expression -> Bool) -> Expression

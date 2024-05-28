@@ -82,6 +82,7 @@ library
     , scientific       >= 0.3.0 && < 0.4.0
     , text             >= 1.2.3 && < 2.2
     , transformers
+    , pretty-simple
   default-language:    Haskell2010
   ghc-options:
     -Wall
