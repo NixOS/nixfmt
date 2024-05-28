@@ -90,6 +90,7 @@ let
         );
 
       finalPackage = mkDerivationSimple overrideAttrs args;
+
     in
     finalPackage;
 
@@ -727,6 +728,7 @@ let
               "The ‘env’ attribute set can only contain derivation, string, boolean or integer attributes. The ‘${n}’ attribute is of type ${builtins.typeOf v}.";
             v
           ) env;
+
       in
 
       extendDerivation validity.handled (
@@ -785,6 +787,7 @@ let
           # derivation (e.g., in assertions).
           passthru
       ) (derivation (derivationArg // optionalAttrs envIsExportable checkedEnv));
+
 in
 fnOrAttrs:
 if builtins.isFunction fnOrAttrs then

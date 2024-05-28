@@ -60,6 +60,18 @@ let
       1
       2
     ];
+
+  a =
+    let
+      b = 0;
+
+    in
+    # foo
+    # bar
+    # baz
+    # qux
+    null;
+
 in
 
 a

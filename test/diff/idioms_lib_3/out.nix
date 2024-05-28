@@ -19,6 +19,7 @@ let
   libAttr = lib.attrsets;
 
   inherit (lib) isFunction;
+
 in
 rec {
 
@@ -528,6 +529,7 @@ rec {
             ) x
           )
         );
+
     in
     ''
       <?xml version="1.0" encoding="UTF-8"?>

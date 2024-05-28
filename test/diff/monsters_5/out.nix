@@ -50,6 +50,7 @@ let
         ''
           ${concatStringsSep "\n" config.boot.kernelModules}
         '';
+
 in
 
 {
@@ -101,6 +102,7 @@ in
                       which would have separate nixos options.
                       `grep features pkgs/os-specific/linux/kernel/common-config.nix`
                     '';
+
               };
 
         boot.kernelPackages
@@ -132,6 +134,7 @@ in
                           =
 
                             mergeEqualOption;
+
                       };
 
                 apply
@@ -189,8 +192,10 @@ in
                                           super.kernel.features
 
                                           features;
+
                                   }
                                 );
+
                         }
                       );
 
@@ -229,6 +234,7 @@ in
                       then it also needs to contain an attribute
                       <varname>nvidia_x11</varname>.
                     '';
+
               };
 
         boot.kernelPatches
@@ -262,5 +268,6 @@ in
                       "[ pkgs.kernelPatches.ubuntu_fan_4_4 ]";
                 description = "A list of additional patches to apply to the kernel.";
               };
+
       };
 }

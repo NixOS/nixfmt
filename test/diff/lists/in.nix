@@ -7,6 +7,10 @@
 
   ] ]
 
+  [ "string"
+
+  ]
+
   [ {
     # multiline
     foo = "bar";

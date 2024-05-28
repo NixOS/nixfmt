@@ -145,6 +145,7 @@ let
         config
         ;
     };
+
 in
 
 [
@@ -189,6 +190,7 @@ in
         # Curl should be in /usr/bin or so.
         curl = null;
       };
+
     }
   )
 
@@ -212,4 +214,5 @@ in
         if localSystem.isLinux then [ prevStage.patchelf ] else [ ];
     };
   })
+
 ]
