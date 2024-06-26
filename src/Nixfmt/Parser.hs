@@ -193,17 +193,50 @@ indentedStringPart :: Parser StringPart
 indentedStringPart =
   TextPart
     <$> someText
-      ( chunk "''\\n"
-          <|> chunk "''\\r"
-          <|> chunk "''\\t"
-          <|> chunk "''\\"
-          *> (Text.singleton <$> anySingle)
-            <|> chunk "''$"
-            <|> chunk "'''"
-            <|> chunk "$$"
-            <|> try (chunk "$" <* notFollowedBy (char '{'))
-            <|> try (chunk "'" <* notFollowedBy (char '\''))
-            <|> someP (\t -> t /= '\'' && t /= '$' && t /= '\n')
+      ( {-
+          This should match https://github.com/NixOS/nix/blob/052f1320ddf72d617e337479ff1bf22cb4ee682a/src/libexpr/lexer.l#L182-L205
+          To understand that file, [this](https://westes.github.io/flex/manual/Matching.html#Matching) is important:
+          > If it finds more than one match, it takes the one matching the most text.
+          > If it finds two or more matches of the same length, the rule listed first in the flex input file is chosen.
+
+          There are some inconsequential differences though:
+          - We only parse one line at a time here, so we make sure to not process any newlines
+          - We don't want to transform the input in any way, e.g. don't turn ''' into ''
+            This is to preserve the input string as-is
+        -}
+
+        -- <IND_STRING>([^\$\']|\$[^\{\']|\'[^\'\$])+
+        -- While this rule doesn't have a fixed length, it's non-conflicting with the rules below,
+        -- so we can do it first without worrying about the length matching
+        someText
+          ( Text.singleton
+              <$> satisfy (\t -> t /= '$' && t /= '\'' && t /= '\n')
+                <|> try (Text.snoc <$> chunk "$" <*> satisfy (\t -> t /= '{' && t /= '\'' && t /= '\n'))
+                <|> try (Text.snoc <$> chunk "'" <*> satisfy (\t -> t /= '\'' && t /= '$' && t /= '\n'))
+          )
+          -- These rules are of length 3, they need to come before shorter ones
+          -- <IND_STRING>\'\'\$
+          <|> chunk "''$"
+          -- <IND_STRING>\'\'\'
+          <|> chunk "'''"
+          -- <IND_STRING>\'\'\\{ANY} -> Note that ANY can match newlines as well, but we need to ignore those
+          <|> do
+            prefix <- chunk "''\\"
+            -- If we do have a newline
+            rest <-
+              -- If there's no newline, take the next character
+              (notFollowedBy (char '\n') *> (Text.singleton <$> anySingle))
+                -- Otherwise there's an unconsumed newline, which we don't need to handle,
+                -- it's consumed elsewhere
+                <|> pure ""
+            pure $ prefix <> rest
+          -- These are rules with length 2 and 1
+          -- <IND_STRING>\$\{ -> don't match, this will be an interpolation
+          -- <IND_STRING>\$ -> do match, just a dollar
+          <|> try (chunk "$" <* notFollowedBy (char '{'))
+          -- <IND_STRING>\'\' -> don't match, indented string ends
+          -- <IND_STRING>\' -> do match, just a quote
+          <|> try (chunk "'" <* notFollowedBy (char '\''))
       )
 
 indentedLine :: Parser [StringPart]
