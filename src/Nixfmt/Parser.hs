@@ -196,7 +196,9 @@ indentedStringPart =
       ( chunk "''\\n"
           <|> chunk "''\\r"
           <|> chunk "''\\t"
+          <|> chunk "''\\'"
           <|> chunk "''\\"
+          -- ''\ followed by any char throws away the ''\ part, leaving just the char
           *> (Text.singleton <$> anySingle)
             <|> chunk "''$"
             <|> chunk "'''"
