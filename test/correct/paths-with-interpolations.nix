@@ -2,7 +2,8 @@ let
   foo = "foo";
   bar = "bar";
 
-in [
+in
+[
   /${foo}
   ./${foo}
   /foo/${bar}
