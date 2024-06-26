@@ -4,4 +4,12 @@ let
   ${"baz"} = 3;
   ${"in"} = 4;
 
-in { inherit ${"foo"} bar "baz" "in"; }
+in
+{
+  inherit
+    ${"foo"}
+    bar
+    "baz"
+    "in"
+    ;
+}
