@@ -21,6 +21,7 @@ import Nixfmt.Predoc (
   hardline,
   hardspace,
   hcat,
+  indentWidth,
   line,
   line',
   nest,
