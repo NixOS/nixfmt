@@ -170,26 +170,32 @@ group x =
 group' :: (Pretty a) => GroupAnn -> a -> Doc
 group' ann = pure . Group ann . pretty
 
--- | @nest doc@ declarse @doc@ to have a higher nesting depth
+-- | @nest doc@ declares @doc@ to have a higher nesting depth
 -- than before. Not all nestings actually result in indentation changes,
 -- this will be calculated automatically later on. As a rule of thumb:
 -- Multiple nesting levels on one line will be compacted and only result in a single
 -- indentation bump for the next line. This prevents excessive indentation.
 nest :: (Pretty a) => a -> Doc
-nest x = map go $ pretty x
+nest x = transform (+ 1) id (pretty x)
   where
-    go (Text i o ann t) = Text (i + 1) o ann t
-    go (Group ann inner) = Group ann (map go inner)
-    go spacing = spacing
+    transform :: (Int -> Int) -> (Int -> Int) -> Doc -> Doc
+    transform ni oi = map go
+      where
+        go (Text i o ann t) = Text (ni i) (oi o) ann t
+        go (Group ann inner) = Group ann (transform ni oi inner)
+        go spacing = spacing
 
 -- This is similar to nest, however it circumvents the "smart" rules that usually apply.
 -- This should only be useful to manage the indentation within indented strings.
 offset :: (Pretty a) => Int -> a -> Doc
-offset level x = map go $ pretty x
+offset level x = transform id (+ level) (pretty x)
   where
-    go (Text i o ann t) = Text i (o + level) ann t
-    go (Group ann inner) = Group ann (map go inner)
-    go spacing = spacing
+    transform :: (Int -> Int) -> (Int -> Int) -> Doc -> Doc
+    transform ni oi = map go
+      where
+        go (Text i o ann t) = Text (ni i) (oi o) ann t
+        go (Group ann inner) = Group ann (transform ni oi inner)
+        go spacing = spacing
 
 -- | Line break or nothing (soft)
 softline' :: Doc
