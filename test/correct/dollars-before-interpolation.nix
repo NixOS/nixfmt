@@ -1,6 +1,8 @@
-let bar = "bar";
+let
+  bar = "bar";
 
-in [
+in
+[
   "$$\${bar}"
   "$\$${bar}"
   ''

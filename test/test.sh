@@ -23,13 +23,22 @@ fi
 # Do a test run to make sure it compiles fine
 nixfmt --version
 
-# Verify "correct"
+# Verify "correct", files that don't change when formatted
 for file in test/correct/*.nix; do
-  if ! nixfmt --verify < "$file" > /dev/null; then
-    echo "[ERROR] $file failed nixfmt verification"
+  echo "Checking $file …"
+  if ! out=$(nixfmt --verify < "$file"); then
+    echo "[ERROR] failed nixfmt verification"
     exit 1
+  fi
+
+  if diff --color=always --unified "$file" <(echo "$out"); then
+    echo "[OK]"
+  elif [[ $* == *--update-diff* ]]; then
+    echo "$out" > "$file"
+    echo "[UPDATED] $file"
   else
-    echo "[OK] $file"
+    echo "[ERROR] Formatting not stable (run with --update-diff to update the diff)"
+    exit 1
   fi
 done
 
