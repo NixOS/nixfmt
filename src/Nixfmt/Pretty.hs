@@ -419,7 +419,7 @@ prettyWith True (With with expr0 semicolon (Term expr1)) =
       <> pretty with
       <> hardspace
       <> nest (group expr0)
-      <> pretty semicolon
+      -- <> pretty semicolon
       -- Force-expand attrsets
       <> hardspace
       <> group' Priority (prettyTermWide expr1)
