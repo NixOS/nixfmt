@@ -35,6 +35,7 @@ in
         treefmtConfig = ''
           [formatter.nixfmt-rfc-style]
           command = "nixfmt"
+          options = [ "--verify" ]
           includes = [ "*.nix" ]
         '';
         passAsFile = [ "treefmtConfig" ];
