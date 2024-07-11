@@ -36,6 +36,11 @@
     test
   */
 
+  /*
+    test
+    test
+  */
+
   # FOO
 
   /**
