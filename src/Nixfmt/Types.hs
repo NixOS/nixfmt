@@ -345,7 +345,12 @@ instance LanguageElement Expression where
           )
     (Assert _ cond _ body) -> [cond, body]
     (If _ expr0 _ expr1 _ expr2) -> [expr0, expr1, expr2]
-    (Abstraction param _ body) -> [Abstraction param (ann TColon) (Term (Token (ann (Identifier "_")))), body]
+    -- If the body is just a token, it doesn't have an expression, only walk through the parameter
+    -- This is also the base case for the result below
+    (Abstraction param _ (Term (Token _))) -> walkSubprograms param
+    -- Otherwise, to separate the parameter from the body while keeping it a valid expression,
+    -- replace the body with just a token. Return the body (a valid expression on its own) separately
+    (Abstraction param colon body) -> [Abstraction param colon (Term (Token (ann (Identifier "_")))), body]
     (Application g a) -> [g, a]
     (Operation left _ right) -> [left, right]
     (MemberCheck name _ sels) -> name : (sels >>= walkSubprograms)
