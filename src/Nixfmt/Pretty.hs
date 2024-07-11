@@ -269,11 +269,11 @@ moveParamsComments
   -- # comment
   -- , name2
   ( (ParamAttr name maybeDefault (Just (Ann trivia comma Nothing)))
-      : (ParamAttr (Ann trivia' name' Nothing) maybeDefault' maybeComma')
+      : (ParamAttr (Ann trivia' name' trailing') maybeDefault' maybeComma')
       : xs
     ) =
     ParamAttr name maybeDefault (Just (Ann [] comma Nothing))
-      : moveParamsComments (ParamAttr (Ann (trivia ++ trivia') name' Nothing) maybeDefault' maybeComma' : xs)
+      : moveParamsComments (ParamAttr (Ann (trivia ++ trivia') name' trailing') maybeDefault' maybeComma' : xs)
 -- This may seem like a nonsensical case, but keep in mind that blank lines also count as comments (trivia)
 moveParamsComments
   -- , name
