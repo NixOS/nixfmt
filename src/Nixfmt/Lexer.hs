@@ -84,7 +84,16 @@ blockComment = try $ preLexeme $ do
   isDoc <- try ((True <$ char '*') <* notFollowedBy (char '/')) <|> pure False
 
   chars <- manyTill anySingle $ chunk "*/"
-  return $ PTBlockComment isDoc $ dropWhile Text.null $ fixIndent pos' $ removeStars pos' $ splitLines $ pack chars
+  return
+    . PTBlockComment isDoc
+    . dropWhile Text.null
+    . fixIndent pos'
+    . dropWhileEnd Text.null
+    . map Text.stripEnd
+    . removeStars pos'
+    . splitLines
+    . pack
+    $ chars
   where
     -- Normalize line ends and stuff
     splitLines :: Text -> [Text]
