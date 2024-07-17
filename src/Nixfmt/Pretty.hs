@@ -150,23 +150,6 @@ instance Pretty Binder where
 -- while we already pretty eagerly expand sets with more than one element,
 -- in some situations even that is not sufficient. The wide parameter will
 -- be even more eager at expanding, except for empty sets and inherit statements.
-prettySet :: Bool -> (Maybe Leaf, Leaf, Items Binder, Leaf) -> Doc
--- Empty attribute set
-prettySet _ (krec, Ann [] paropen Nothing, Items [], parclose@(Ann [] _ _)) =
-  pretty (fmap (,hardspace) krec) <> pretty paropen <> hardspace <> pretty parclose
--- Singleton sets are allowed to fit onto one line,
--- but apart from that always expand.
-prettySet wide (krec, Ann pre paropen post, binders, parclose) =
-  pretty (fmap (,hardspace) krec)
-    <> pretty (Ann pre paropen Nothing)
-    <> surroundWith sep (nest $ pretty post <> prettyItems binders)
-    <> pretty parclose
-  where
-    sep = if wide && not (null (unItems binders)) then hardline else line
-
-prettyTermWide :: Term -> Doc
-prettyTermWide (Set krec paropen items parclose) = prettySet True (krec, paropen, items, parclose)
-prettyTermWide t = prettyTerm t
 
 -- | Pretty print a term without wrapping it in a group.
 prettyTerm :: Term -> Doc
@@ -198,7 +181,19 @@ prettyTerm (List (Ann pre paropen post) items parclose) =
   pretty (Ann pre paropen Nothing)
     <> surroundWith line (nest $ pretty post <> prettyItems items)
     <> pretty parclose
-prettyTerm (Set krec paropen items parclose) = prettySet True (krec, paropen, items, parclose)
+-- Empty attribute set
+prettyTerm (Set krec (Ann [] paropen Nothing) (Items []) parclose@(Ann [] _ _)) =
+  pretty (fmap (,hardspace) krec) <> pretty paropen <> hardspace <> pretty parclose
+-- Singleton sets are allowed to fit onto one line,
+-- but apart from that always expand.
+prettyTerm (Set krec (Ann pre paropen post) binders parclose) =
+  pretty (fmap (,hardspace) krec)
+    <> pretty (Ann pre paropen Nothing)
+    <> surroundWith sep (nest $ pretty post <> prettyItems binders)
+    <> pretty parclose
+  where
+    sep = if not (null (unItems binders)) then hardline else line
+
 -- Parentheses
 prettyTerm (Parenthesized paropen expr (Ann closePre parclose closePost)) =
   group $
@@ -209,7 +204,7 @@ prettyTerm (Parenthesized paropen expr (Ann closePre parclose closePost)) =
     inner =
       case expr of
         -- Start on the same line for these
-        _ | isAbsorbableExpr expr -> group $ absorbExpr False expr
+        _ | isAbsorbableExpr expr -> group $ absorbExpr expr
         -- Parenthesized application
         (Application f a) -> prettyApp True mempty True f a
         -- Same thing for selections
@@ -371,7 +366,7 @@ prettyApp indentFunction pre hasPost f a =
                     <> pretty name
                     <> pretty colon
                     <> hardspace
-                    <> prettyTermWide body
+                    <> prettyTerm body
                     <> pretty close
       -- Special case: Absorb parenthesized function application with absorbable body
       absorbLast
@@ -388,7 +383,7 @@ prettyApp indentFunction pre hasPost f a =
                   pretty open
                     <> pretty fn
                     <> hardspace
-                    <> prettyTermWide body
+                    <> prettyTerm body
                     <> pretty close
       absorbLast (Term (Parenthesized open expr close)) =
         absorbParen open expr close
@@ -422,7 +417,7 @@ prettyWith True (With with expr0 semicolon (Term expr1)) =
       <> pretty semicolon
       -- Force-expand attrsets
       <> hardspace
-      <> group' Priority (prettyTermWide expr1)
+      <> group' Priority (prettyTerm expr1)
 -- Normal case
 prettyWith _ (With with expr0 semicolon expr1) =
   group
@@ -480,18 +475,17 @@ absorbParen (Ann pre' open post') expr (Ann pre'' close post'') =
 -- Note that unlike for absorbable terms which can be force-absorbed, some expressions
 -- may turn out to not be absorbable. In that case, they should start with a line' so that
 -- they properly start on the next line if necessary.
-absorbExpr :: Bool -> Expression -> Doc
-absorbExpr True (Term t) | isAbsorbableTerm t = prettyTermWide t
-absorbExpr False (Term t) | isAbsorbableTerm t = prettyTerm t
+absorbExpr :: Expression -> Doc
+absorbExpr (Term t) | isAbsorbableTerm t = prettyTerm t
 -- With expression with absorbable body: Treat as absorbable term
-absorbExpr _ expr@(With _ _ _ (Term t)) | isAbsorbableTerm t = prettyWith True expr
-absorbExpr _ expr = pretty expr
+absorbExpr expr@(With _ _ _ (Term t)) | isAbsorbableTerm t = prettyWith True expr
+absorbExpr expr = pretty expr
 
 -- Render the RHS value of an assignment or function parameter default value
 absorbRHS :: Expression -> Doc
 absorbRHS expr = case expr of
   -- Absorbable expression. Always start on the same line
-  _ | isAbsorbableExpr expr -> hardspace <> group (absorbExpr True expr)
+  _ | isAbsorbableExpr expr -> hardspace <> group (absorbExpr expr)
   -- Parenthesized expression. Same thing as the special case for parenthesized last argument in function calls.
   (Term (Parenthesized open expr' close)) -> hardspace <> absorbParen open expr' close
   -- Not all strings are absorbable, but in this case we always want to keep them attached.
@@ -511,11 +505,11 @@ absorbRHS expr = case expr of
   -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
   (Operation (Term t) (Ann [] op Nothing) b)
     | isAbsorbable t && isUpdateOrConcat op ->
-        group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
+        group' RegularG $ line <> group' Priority (prettyTerm t) <> line <> pretty op <> hardspace <> pretty b
   -- Case 2a: LHS fits onto first line, RHS is an absorbable term
   (Operation l (Ann [] op Nothing) (Term t))
     | isAbsorbable t && isUpdateOrConcat op ->
-        group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
+        group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTerm t))
   -- Case 2b: LHS fits onto first line, RHS is a function application
   (Operation l (Ann [] op Nothing) (Application f a))
     | isUpdateOrConcat op ->
@@ -609,7 +603,7 @@ instance Pretty Expression where
       -- If there are multiple ID parameters to that function, treat them all at once
       absorbAbs depth (Abstraction (IDParameter param0) colon0 body0) =
         hardspace <> pretty param0 <> pretty colon0 <> absorbAbs (depth + 1) body0
-      absorbAbs _ expr | isAbsorbableExpr expr = hardspace <> group' Priority (absorbExpr False expr)
+      absorbAbs _ expr | isAbsorbableExpr expr = hardspace <> group' Priority (absorbExpr expr)
       -- Force the content onto a new line when it is not absorbable and there are more than two arguments
       absorbAbs depth x =
         (if depth <= 2 then line else hardline) <> pretty x
@@ -617,7 +611,7 @@ instance Pretty Expression where
   -- Attrset parameter
   pretty (Abstraction param colon (Term t))
     | isAbsorbable t =
-        pretty param <> pretty colon <> line <> group (prettyTermWide t)
+        pretty param <> pretty colon <> line <> group (prettyTerm t)
   pretty (Abstraction param colon body) =
     pretty param <> pretty colon <> line <> pretty body
   pretty (Application f a) =
@@ -725,7 +719,7 @@ instance Pretty [StringPart] where
       -- Code copied over from parentheses. Could be factored out into a common function one day
       inner = case expr of
         -- Start on the same line for these
-        _ | isAbsorbableExpr expr -> group $ absorbExpr False expr
+        _ | isAbsorbableExpr expr -> group $ absorbExpr expr
         -- Parenthesized application
         (Application f a) -> prettyApp True mempty True f a
         -- Same thing for selections
