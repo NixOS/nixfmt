@@ -51,7 +51,10 @@ let
       post_max_size = cfg.maxUploadSize;
       memory_limit = cfg.maxUploadSize;
     }
-    // cfg.phpOptions // optionalAttrs cfg.caching.apcu { "apc.enable_cli" = "1"; };
+    // cfg.phpOptions
+    // optionalAttrs cfg.caching.apcu {
+      "apc.enable_cli" = "1";
+    };
 
   occ = pkgs.writeScriptBin "nextcloud-occ" ''
     #! ${pkgs.runtimeShell}
@@ -1051,7 +1054,9 @@ in
               ln -sfT \
                 ${
                   pkgs.linkFarm "nix-apps" (
-                    mapAttrsToList (name: path: { inherit name path; }) cfg.extraApps
+                    mapAttrsToList (name: path: {
+                      inherit name path;
+                    }) cfg.extraApps
                   )
                 } \
                 ${cfg.home}/nix-apps

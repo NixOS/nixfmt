@@ -56,7 +56,12 @@ let
       # separate lines, because Nix would only show the last line of the comment.
 
       # An infinite recursion here can be caused by having the attribute names of expression `e` in `.overrideAttrs(finalAttrs: previousAttrs: e)` depend on `finalAttrs`. Only the attribute values of `e` can depend on `finalAttrs`.
-      args = rattrs (args // { inherit finalPackage overrideAttrs; });
+      args = rattrs (
+        args
+        // {
+          inherit finalPackage overrideAttrs;
+        }
+      );
       #              ^^^^
 
       overrideAttrs =
@@ -500,7 +505,9 @@ let
                   "${attrs.pname}${staticMarker}${hostSuffix}-${attrs.version}"
               );
           })
-          // optionalAttrs __structuredAttrs { env = checkedEnv; }
+          // optionalAttrs __structuredAttrs {
+            env = checkedEnv;
+          }
           // {
             builder = attrs.realBuilder or stdenv.shell;
             args =
@@ -628,9 +635,14 @@ let
             enableParallelChecking = attrs.enableParallelChecking or true;
             enableParallelInstalling = attrs.enableParallelInstalling or true;
           }
-          // optionalAttrs (
-            hardeningDisable != [ ] || hardeningEnable != [ ] || stdenv.hostPlatform.isMusl
-          ) { NIX_HARDENING_ENABLE = enabledHardeningOptions; }
+          //
+            optionalAttrs
+              (
+                hardeningDisable != [ ] || hardeningEnable != [ ] || stdenv.hostPlatform.isMusl
+              )
+              {
+                NIX_HARDENING_ENABLE = enabledHardeningOptions;
+              }
           //
             optionalAttrs (stdenv.hostPlatform.isx86_64 && stdenv.hostPlatform ? gcc.arch)
               {
@@ -712,7 +724,9 @@ let
             references
             ;
         };
-        validity = checkMeta.assertValidity { inherit meta attrs; };
+        validity = checkMeta.assertValidity {
+          inherit meta attrs;
+        };
 
         checkedEnv =
           let

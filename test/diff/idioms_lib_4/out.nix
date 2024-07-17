@@ -19,7 +19,9 @@ with lib.lists;
 with lib.types;
 with lib.attrsets;
 with lib.strings;
-with (import ./inspect.nix { inherit lib; }).predicates;
+with (import ./inspect.nix {
+  inherit lib;
+}).predicates;
 
 let
   inherit (lib.options) mergeOneOption;
@@ -29,7 +31,12 @@ let
     mapAttrs (
       name: value:
       assert type.check value;
-      setType type.name ({ inherit name; } // value)
+      setType type.name (
+        {
+          inherit name;
+        }
+        // value
+      )
     );
 
 in

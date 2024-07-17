@@ -1,1 +1,8 @@
-{ inherit ({ "in" = 1; }) "in"; }
+{
+  inherit
+    ({
+      "in" = 1;
+    })
+    "in"
+    ;
+}

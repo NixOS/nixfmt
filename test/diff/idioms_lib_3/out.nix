@@ -153,7 +153,9 @@ rec {
         ''
           [${mkSectionName sectName}]
         ''
-        + toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } sectValues;
+        + toKeyValue {
+          inherit mkKeyValue listsAsDuplicateKeys;
+        } sectValues;
     in
     # map input to ini sections
     mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
@@ -208,9 +210,14 @@ rec {
       if globalSection == { } then
         ""
       else
-        (toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } globalSection) + "\n"
+        (toKeyValue {
+          inherit mkKeyValue listsAsDuplicateKeys;
+        } globalSection)
+        + "\n"
     )
-    + (toINI { inherit mkSectionName mkKeyValue listsAsDuplicateKeys; } sections);
+    + (toINI {
+      inherit mkSectionName mkKeyValue listsAsDuplicateKeys;
+    } sections);
 
   # Generate a git-config file from an attrset.
   #
@@ -263,13 +270,19 @@ rec {
             if isAttrs value && !lib.isDerivation value then
               lib.mapAttrsToList (name: value: recurse ([ name ] ++ path) value) value
             else if length path > 1 then
-              { ${concatStringsSep "." (lib.reverseList (tail path))}.${head path} = value; }
+              {
+                ${concatStringsSep "." (lib.reverseList (tail path))}.${head path} = value;
+              }
             else
-              { ${head path} = value; };
+              {
+                ${head path} = value;
+              };
         in
         attrs: lib.foldl lib.recursiveUpdate { } (lib.flatten (recurse [ ] attrs));
 
-      toINI_ = toINI { inherit mkKeyValue mkSectionName; };
+      toINI_ = toINI {
+        inherit mkKeyValue mkSectionName;
+      };
     in
     toINI_ (gitFlattenAttrs attrs);
 

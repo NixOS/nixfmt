@@ -40,7 +40,9 @@
       k
       ;
   }
-  { inherit (c) f h; }
+  {
+    inherit (c) f h;
+  }
   {
     inherit (c)
       f

@@ -1,5 +1,14 @@
 [
-  (if true then { version = "1.2.3"; } else { version = "3.2.1"; })
+  (
+    if true then
+      {
+        version = "1.2.3";
+      }
+    else
+      {
+        version = "3.2.1";
+      }
+  )
   (
     if true then
       ''

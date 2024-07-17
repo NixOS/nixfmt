@@ -16,8 +16,12 @@
   )
   (with b; cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc)
   (with b; cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc)
-  { a = with b; 1; }
-  { a = with b; 1 + 1; }
+  {
+    a = with b; 1;
+  }
+  {
+    a = with b; 1 + 1;
+  }
   {
     a = with b; {
       c = 1;
@@ -62,7 +66,14 @@
     3
   ])
   (with a; with b; with c; [ 1 ])
-  (with a; with b; with c; { a = 1; })
+  (
+    with a;
+    with b;
+    with c;
+    {
+      a = 1;
+    }
+  )
   (
     with a; # comment
     with b;
@@ -89,7 +100,9 @@
       b = 2;
     }
   )
-  { a = with b; with b; with b; 1; }
+  {
+    a = with b; with b; with b; 1;
+  }
   {
     binPath =
       with pkgs;

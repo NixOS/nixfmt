@@ -198,7 +198,7 @@ prettyTerm (List (Ann pre paropen post) items parclose) =
   pretty (Ann pre paropen Nothing)
     <> surroundWith line (nest $ pretty post <> prettyItems items)
     <> pretty parclose
-prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
+prettyTerm (Set krec paropen items parclose) = prettySet True (krec, paropen, items, parclose)
 -- Parentheses
 prettyTerm (Parenthesized paropen expr (Ann closePre parclose closePost)) =
   group $

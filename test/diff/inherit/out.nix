@@ -18,8 +18,12 @@
       j
       ;
   }
-  { inherit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; }
-  { inherit b d; }
+  {
+    inherit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+  }
+  {
+    inherit b d;
+  }
   {
     inherit
       b

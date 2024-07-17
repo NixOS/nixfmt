@@ -382,7 +382,9 @@ let
         null
       else
         "key 'meta.${k}' has invalid value; expected ${metaTypes.${k}.description}, got\n    ${
-          lib.generators.toPretty { indent = "    "; } v
+          lib.generators.toPretty {
+            indent = "    ";
+          } v
         }"
     else
       "key 'meta.${k}' is unrecognized; expected one of: \n  [${
@@ -509,7 +511,9 @@ let
           }
         # -----
         else
-          { valid = "yes"; }
+          {
+            valid = "yes";
+          }
       );
 
   # The meta attribute is passed in the resulting attribute set,
@@ -595,12 +599,22 @@ let
       # or, alternatively, just output a warning message.
       handled =
         {
-          no = handleEvalIssue { inherit meta attrs; } {
-            inherit (validity) reason errormsg;
-          };
-          warn = handleEvalWarning { inherit meta attrs; } {
-            inherit (validity) reason errormsg;
-          };
+          no =
+            handleEvalIssue
+              {
+                inherit meta attrs;
+              }
+              {
+                inherit (validity) reason errormsg;
+              };
+          warn =
+            handleEvalWarning
+              {
+                inherit meta attrs;
+              }
+              {
+                inherit (validity) reason errormsg;
+              };
           yes = true;
         }
         .${validity.valid};
