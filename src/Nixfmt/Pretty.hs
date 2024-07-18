@@ -153,7 +153,7 @@ instance Pretty Binder where
 -- be even more eager at expanding, except for empty sets and inherit statements.
 prettySet :: Bool -> (Maybe Leaf, Leaf, Items Binder, Leaf) -> Doc
 -- Empty attribute set
-prettySet _ (krec, Ann [] paropen Nothing, Items [], parclose@(Ann [] _ _)) =
+prettySet _ (krec, LoneAnn paropen, Items [], parclose@(Ann [] _ _)) =
   pretty (fmap (,hardspace) krec) <> pretty paropen <> hardspace <> pretty parclose
 -- Singleton sets are allowed to fit onto one line,
 -- but apart from that always expand.
@@ -245,10 +245,10 @@ instance Pretty ParamAttr where
 -- This assumes that all items already have a trailing comma from earlier pre-processing
 moveParamAttrComment :: ParamAttr -> ParamAttr
 -- Simple parameter
-moveParamAttrComment (ParamAttr (Ann trivia name (Just comment')) Nothing (Just (Ann [] comma Nothing))) =
+moveParamAttrComment (ParamAttr (Ann trivia name (Just comment')) Nothing (Just (LoneAnn comma))) =
   ParamAttr (Ann trivia name Nothing) Nothing (Just (Ann [] comma (Just comment')))
 -- Parameter with default value
-moveParamAttrComment (ParamAttr name (Just (qmark, def)) (Just (Ann [] comma Nothing))) =
+moveParamAttrComment (ParamAttr name (Just (qmark, def)) (Just (LoneAnn comma))) =
   ParamAttr name (Just (qmark, def')) (Just (Ann [] comma comment'))
   where
     -- Extract comment at the end of the line
@@ -309,7 +309,7 @@ instance Pretty Parameter where
       handleTrailingComma :: [ParamAttr] -> [Doc]
       handleTrailingComma [] = []
       -- That's the case we're interested in
-      handleTrailingComma [ParamAttr name maybeDefault (Just (Ann [] TComma Nothing))] =
+      handleTrailingComma [ParamAttr name maybeDefault (Just (LoneAnn TComma))] =
         [pretty (ParamAttr name maybeDefault Nothing) <> trailing ","]
       handleTrailingComma (x : xs) = pretty x : handleTrailingComma xs
 
@@ -452,7 +452,7 @@ isAbsorbable (Path _) = True
 -- Non-empty sets and lists
 isAbsorbable (Set _ _ (Items (_ : _)) _) = True
 isAbsorbable (List _ (Items (_ : _)) _) = True
-isAbsorbable (Parenthesized (Ann [] _ Nothing) (Term t) _) = isAbsorbable t
+isAbsorbable (Parenthesized (LoneAnn _) (Term t) _) = isAbsorbable t
 isAbsorbable _ = False
 
 isAbsorbableTerm :: Term -> Bool
@@ -510,15 +510,15 @@ absorbRHS expr = case expr of
   (With{}) -> group' RegularG $ line <> pretty expr
   -- Special case `//` and `++` operations to be more compact in some cases
   -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
-  (Operation (Term t) (Ann [] op Nothing) b)
+  (Operation (Term t) (LoneAnn op) b)
     | isAbsorbable t && isUpdateOrConcat op ->
         group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
   -- Case 2a: LHS fits onto first line, RHS is an absorbable term
-  (Operation l (Ann [] op Nothing) (Term t))
+  (Operation l (LoneAnn op) (Term t))
     | isAbsorbable t && isUpdateOrConcat op ->
         group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
   -- Case 2b: LHS fits onto first line, RHS is a function application
-  (Operation l (Ann [] op Nothing) (Application f a))
+  (Operation l (LoneAnn op) (Application f a))
     | isUpdateOrConcat op ->
         line <> group l <> line <> prettyApp False (pretty op <> hardspace) False f a
   -- Everything else:
@@ -676,13 +676,13 @@ isSimpleSelector (Selector _ (IDSelector _)) = True
 isSimpleSelector _ = False
 
 isSimple :: Expression -> Bool
-isSimple (Term (SimpleString (Ann [] _ Nothing))) = True
-isSimple (Term (IndentedString (Ann [] _ Nothing))) = True
-isSimple (Term (Path (Ann [] _ Nothing))) = True
-isSimple (Term (Token (Ann [] (Identifier _) Nothing))) = True
+isSimple (Term (SimpleString (LoneAnn _))) = True
+isSimple (Term (IndentedString (LoneAnn _))) = True
+isSimple (Term (Path (LoneAnn _))) = True
+isSimple (Term (Token (LoneAnn (Identifier _)))) = True
 isSimple (Term (Selection t selectors def)) =
   isSimple (Term t) && all isSimpleSelector selectors && isNothing def
-isSimple (Term (Parenthesized (Ann [] _ Nothing) e (Ann [] _ Nothing))) = isSimple e
+isSimple (Term (Parenthesized (LoneAnn _) e (LoneAnn _))) = isSimple e
 -- Function applications of simple terms are simple up to two arguments
 isSimple (Application (Application (Application _ _) _) _) = False
 isSimple (Application f a) = isSimple f && isSimple a

@@ -2,12 +2,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 
 module Nixfmt.Types (
   ParseErrorBundle,
   Trivia,
-  Ann (..),
+  Ann (.., LoneAnn),
   ann,
   Binder (..),
   Expression (..),
@@ -73,8 +74,12 @@ data Ann a
   = Ann Trivia a (Maybe TrailingComment)
   deriving (Show)
 
+-- | An annotated value without any trivia or trailing comment
+pattern LoneAnn :: a -> Ann a
+pattern LoneAnn a <- Ann [] a Nothing
+
 hasTrivia :: Ann a -> Bool
-hasTrivia (Ann [] _ Nothing) = False
+hasTrivia (LoneAnn _) = False
 hasTrivia _ = True
 
 -- | Create a new annotated value without any annotations
