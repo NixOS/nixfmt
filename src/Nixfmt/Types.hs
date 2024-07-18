@@ -4,7 +4,38 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Nixfmt.Types where
+module Nixfmt.Types (
+  ParseErrorBundle,
+  Trivia,
+  Ann (..),
+  Binder (..),
+  Expression (..),
+  File,
+  Fixity (..),
+  Item (..),
+  Items (..),
+  Leaf,
+  Operator (..),
+  ParamAttr (..),
+  Parameter (..),
+  Parser,
+  Path,
+  Selector (..),
+  SimpleSelector (..),
+  StringPart (..),
+  Term (..),
+  Token (..),
+  Whole (..),
+  TrailingComment (..),
+  Trivium (..),
+  hasTrivia,
+  mapFirstToken,
+  mapFirstToken',
+  mapLastToken',
+  operators,
+  tokenText,
+  walkSubprograms,
+) where
 
 import Control.Monad.State (StateT)
 import Data.Bifunctor (first)
@@ -183,11 +214,6 @@ class LanguageElement a where
   -- Same as mapFirstToken, but the mapping function also yields a value that may be
   -- returned. This is useful for getting/extracting values
   mapFirstToken' :: (forall b. Ann b -> (Ann b, c)) -> a -> (a, c)
-
-  -- Map the last token of that expression, no matter how deep it sits
-  -- in the AST. This is useful for modifying comments
-  mapLastToken :: (forall b. Ann b -> Ann b) -> a -> a
-  mapLastToken f a = fst (mapLastToken' (\x -> (f x, ())) a)
 
   -- Same as mapLastToken, but the mapping function also yields a value that may be
   -- returned. This is useful for getting/extracting values
