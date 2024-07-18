@@ -70,8 +70,11 @@ type Trivia = [Trivium]
 
 newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
 
-data Ann a
-  = Ann Trivia a (Maybe TrailingComment)
+data Ann a = Ann
+  { preTrivia :: Trivia,
+    value :: a,
+    trailComment :: Maybe TrailingComment
+  }
   deriving (Show)
 
 -- | An annotated value without any trivia or trailing comment
@@ -89,7 +92,7 @@ ann a = Ann [] a Nothing
 -- | Equality of annotated syntax is defined as equality of their corresponding
 -- semantics, thus ignoring the annotations.
 instance (Eq a) => Eq (Ann a) where
-  Ann _ x _ == Ann _ y _ = x == y
+  Ann{value = x} == Ann{value = y} = x == y
 
 -- Trivia is ignored for Eq, so also don't show
 -- instance Show a => Show (Ann a) where
@@ -245,7 +248,7 @@ instance LanguageElement SimpleSelector where
 
   walkSubprograms = \case
     (IDSelector name) -> [Term (Token name)]
-    (InterpolSelector (Ann _ str _)) -> pure $ Term $ SimpleString $ ann [[str]]
+    (InterpolSelector Ann{value = str}) -> pure $ Term $ SimpleString $ ann [[str]]
     (StringSelector str) -> [Term (SimpleString str)]
 
 instance LanguageElement Selector where

@@ -189,7 +189,12 @@ lexeme p = do
   SourcePos{sourceColumn = col} <- getSourcePos
   let (trailing, nextLeading) = convertTrivia parsedTrivia col
   pushTrivia nextLeading
-  return $ Ann lastLeading token trailing
+  return $
+    Ann
+      { preTrivia = lastLeading,
+        value = token,
+        trailComment = trailing
+      }
 
 -- | Tokens normally have only leading trivia and one trailing comment on the same
 -- line. A whole x also parses and stores final trivia after the x. A whole also
