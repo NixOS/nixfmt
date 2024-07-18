@@ -54,6 +54,7 @@ import Nixfmt.Types (
   TrailingComment (..),
   Trivium (..),
   Whole (..),
+  ann,
   hasTrivia,
   mapFirstToken,
   mapFirstToken',
@@ -255,7 +256,7 @@ moveParamAttrComment (ParamAttr name (Just (qmark, def)) (Just (Ann [] comma Not
       mapLastToken'
         ( \case
             (Ann trivia t (Just comment'')) -> (Ann trivia t Nothing, Just comment'')
-            ann -> (ann, Nothing)
+            a -> (a, Nothing)
         )
         def
 moveParamAttrComment x = x
@@ -286,7 +287,7 @@ moveParamsComments
       ParamEllipsis (Ann (trivia ++ trivia') name' trailing')
     ]
 -- Inject a trailing comma on the last element if nessecary
-moveParamsComments [ParamAttr name def Nothing] = [ParamAttr name def (Just (Ann [] TComma Nothing))]
+moveParamsComments [ParamAttr name def Nothing] = [ParamAttr name def (Just (ann TComma))]
 moveParamsComments (x : xs) = x : moveParamsComments xs
 moveParamsComments [] = []
 

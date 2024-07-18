@@ -8,6 +8,7 @@ module Nixfmt.Types (
   ParseErrorBundle,
   Trivia,
   Ann (..),
+  ann,
   Binder (..),
   Expression (..),
   File,
@@ -76,6 +77,7 @@ hasTrivia :: Ann a -> Bool
 hasTrivia (Ann [] _ Nothing) = False
 hasTrivia _ = True
 
+-- | Create a new annotated value without any annotations
 ann :: a -> Ann a
 ann a = Ann [] a Nothing
 
@@ -238,7 +240,7 @@ instance LanguageElement SimpleSelector where
 
   walkSubprograms = \case
     (IDSelector name) -> [Term (Token name)]
-    (InterpolSelector (Ann _ str _)) -> pure $ Term $ SimpleString $ Ann [] [[str]] Nothing
+    (InterpolSelector (Ann _ str _)) -> pure $ Term $ SimpleString $ ann [[str]]
     (StringSelector str) -> [Term (SimpleString str)]
 
 instance LanguageElement Selector where
