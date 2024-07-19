@@ -205,13 +205,19 @@ prettyTerm (Selection term selectors rest) =
 
 -- Empty list
 prettyTerm (List paropen@Ann{trailComment = Nothing} (Items []) parclose@Ann{preTrivia = []}) =
-  pretty paropen <> hardspace <> pretty parclose
+  pretty paropen <> sep <> pretty parclose
+  where
+    -- If the brackets are on different lines, keep them like that
+    sep = if sourceLine paropen /= sourceLine parclose then hardline else hardspace
 -- General list
 -- Always expand if len > 1
 prettyTerm (List paropen@Ann{trailComment = post} items parclose) =
   pretty (paropen{trailComment = Nothing})
-    <> surroundWith line (nest $ pretty post <> prettyItems items)
+    <> surroundWith sur (nest $ pretty post <> prettyItems items)
     <> pretty parclose
+  where
+    -- If the brackets are on different lines, keep them like that
+    sur = if sourceLine paropen /= sourceLine parclose then hardline else line
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose@Ann{preTrivia = closePre}) =
