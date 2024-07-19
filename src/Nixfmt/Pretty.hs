@@ -159,7 +159,10 @@ instance Pretty Binder where
 prettySet :: Bool -> (Maybe Leaf, Leaf, Items Binder, Leaf) -> Doc
 -- Empty attribute set
 prettySet _ (krec, paropen@(LoneAnn _), Items [], parclose@Ann{preTrivia = []}) =
-  pretty (fmap (,hardspace) krec) <> pretty paropen <> hardspace <> pretty parclose
+  pretty (fmap (,hardspace) krec) <> pretty paropen <> sep <> pretty parclose
+  where
+    -- If the braces are on different lines, keep them like that
+    sep = if sourceLine paropen /= sourceLine parclose then hardline else hardspace
 -- Singleton sets are allowed to fit onto one line,
 -- but apart from that always expand.
 prettySet wide (krec, paropen@Ann{trailComment = post}, binders, parclose) =
@@ -168,7 +171,12 @@ prettySet wide (krec, paropen@Ann{trailComment = post}, binders, parclose) =
     <> surroundWith sep (nest $ pretty post <> prettyItems binders)
     <> pretty parclose
   where
-    sep = if wide && not (null (unItems binders)) then hardline else line
+    sep =
+      if wide && not (null (unItems binders))
+        -- If the braces are on different lines, keep them like that
+        || sourceLine paropen /= sourceLine parclose
+        then hardline
+        else line
 
 prettyTermWide :: Term -> Doc
 prettyTermWide (Set krec paropen items parclose) = prettySet True (krec, paropen, items, parclose)

@@ -113,17 +113,25 @@
     name3 = function arg { asdf = 1; } { qwer = 12345; } argument;
   }
   {
-    name1 = function arg { asdf = 1; };
+    name1 = function arg {
+      asdf = 1;
+    };
 
     name2 = function arg {
       asdf = 1;
       # multiline
     } argument;
 
-    name3 = function arg {
-      asdf = 1;
-      # multiline
-    } { qwer = 12345; } argument;
+    name3 =
+      function arg
+        {
+          asdf = 1;
+          # multiline
+        }
+        {
+          qwer = 12345;
+        }
+        argument;
   }
   {
     name4 = function arg { asdf = 1; } {
