@@ -19,7 +19,9 @@
       ;
   }
   {
-    inherit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+    inherit
+      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      ;
   }
   { inherit b d; }
   {
@@ -77,6 +79,16 @@
 
       g
       h
+      ;
+  }
+
+  {
+    inherit;
+    inherit
+      a
+      ;
+    inherit
+      a
       ;
   }
 ]
