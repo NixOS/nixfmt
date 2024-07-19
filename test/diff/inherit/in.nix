@@ -29,4 +29,13 @@
       h
       ;
   }
+
+  {
+    inherit
+      ;
+    inherit
+      a;
+    inherit a
+      ;
+  }
 ]

@@ -75,4 +75,17 @@
   { inherit /*a*/ (/*b*/ c /*d*/) /*e*/ f       h /*i*/; }
   { inherit /*a*/ (/*b*/ c /*d*/) /*e*/ f /*g*/ h      ; }
   { inherit /*a*/ (/*b*/ c /*d*/) /*e*/ f /*g*/ h /*i*/; }
+  {
+    inherit ({}) ;
+    inherit ({})
+      ;
+    inherit
+      ({});
+
+    inherit ({}) a;
+    inherit ({}) a
+      ;
+    inherit ({})
+      a;
+  }
 ]

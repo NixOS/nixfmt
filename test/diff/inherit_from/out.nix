@@ -571,4 +571,17 @@
       h # i
       ;
   }
+  {
+    inherit ({ });
+    inherit ({ });
+    inherit ({ });
+
+    inherit ({ }) a;
+    inherit ({ })
+      a
+      ;
+    inherit ({ })
+      a
+      ;
+  }
 ]
