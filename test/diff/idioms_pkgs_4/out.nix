@@ -197,9 +197,13 @@ in
   # First build a stdenv based only on tools outside the store.
   (prevStage: {
     inherit config overlays;
-    stdenv = makeStdenv { inherit (prevStage) cc fetchurl; } // {
-      inherit (prevStage) fetchurl;
-    };
+    stdenv =
+      makeStdenv {
+        inherit (prevStage) cc fetchurl;
+      }
+      // {
+        inherit (prevStage) fetchurl;
+      };
   })
 
   # Using that, build a stdenv that adds the ‘xz’ command (which most systems
