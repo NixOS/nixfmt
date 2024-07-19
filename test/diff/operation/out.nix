@@ -230,7 +230,9 @@
       zip
       zlib
     ]
-    ++ [ (if (lib.versionAtLeast version "103") then nss_latest else nss_esr) ]
+    ++ [
+      (if (lib.versionAtLeast version "103") then nss_latest else nss_esr)
+    ]
   )
 
   # Indentation with parenthesized multiline function call
