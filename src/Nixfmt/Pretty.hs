@@ -315,7 +315,10 @@ instance Pretty Parameter where
   pretty (IDParameter i) = pretty i
   -- {}:
   pretty (SetParameter bopen [] bclose) =
-    group $ pretty (moveTrailingCommentUp bopen) <> hardspace <> pretty bclose
+    group $ pretty (moveTrailingCommentUp bopen) <> sep <> pretty bclose
+    where
+      -- If the braces are on different lines, keep them like that
+      sep = if sourceLine bopen /= sourceLine bclose then hardline else hardspace
   -- { stuff }:
   pretty (SetParameter bopen attrs bclose) =
     group $
@@ -332,14 +335,18 @@ instance Pretty Parameter where
         [pretty (ParamAttr name maybeDefault Nothing) <> trailing ","]
       handleTrailingComma (x : xs) = pretty x : handleTrailingComma xs
 
-      sep = case attrs of
-        [ParamEllipsis _] -> line
-        -- Attributes must be without default
-        [ParamAttr _ Nothing _] -> line
-        [ParamAttr _ Nothing _, ParamEllipsis _] -> line
-        [ParamAttr _ Nothing _, ParamAttr _ Nothing _] -> line
-        [ParamAttr _ Nothing _, ParamAttr _ Nothing _, ParamEllipsis _] -> line
-        _ -> hardline
+      sep =
+        -- If the braces are on different lines, keep them like that
+        if sourceLine bopen /= sourceLine bclose
+          then hardline
+          else case attrs of
+            [ParamEllipsis _] -> line
+            -- Attributes must be without default
+            [ParamAttr _ Nothing _] -> line
+            [ParamAttr _ Nothing _, ParamEllipsis _] -> line
+            [ParamAttr _ Nothing _, ParamAttr _ Nothing _] -> line
+            [ParamAttr _ Nothing _, ParamAttr _ Nothing _, ParamEllipsis _] -> line
+            _ -> hardline
   pretty (ContextParameter param1 at param2) =
     pretty param1 <> pretty at <> pretty param2
 
