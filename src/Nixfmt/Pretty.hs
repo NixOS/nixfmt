@@ -292,7 +292,7 @@ moveParamsComments
       ParamEllipsis (ellipsis{preTrivia = trivia ++ trivia'})
     ]
 -- Inject a trailing comma on the last element if nessecary
-moveParamsComments [ParamAttr name def Nothing] = [ParamAttr name def (Just (ann TComma))]
+moveParamsComments [ParamAttr name@Ann{sourceLine} def Nothing] = [ParamAttr name def (Just (ann sourceLine TComma))]
 moveParamsComments (x : xs) = x : moveParamsComments xs
 moveParamsComments [] = []
 

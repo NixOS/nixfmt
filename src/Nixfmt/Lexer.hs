@@ -183,6 +183,7 @@ pushTrivia t = modify (<> t)
 lexeme :: Parser a -> Parser (Ann a)
 lexeme p = do
   lastLeading <- takeTrivia
+  SourcePos{Text.Megaparsec.sourceLine = line} <- getSourcePos
   token <- preLexeme p
   parsedTrivia <- trivia
   -- This is the position of the next lexeme after the currently parsed one
@@ -193,6 +194,7 @@ lexeme p = do
     Ann
       { preTrivia = lastLeading,
         value = token,
+        Nixfmt.Types.sourceLine = line,
         trailComment = trailing
       }
 

@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
@@ -47,6 +48,7 @@ import Data.List.NonEmpty as NonEmpty
 import Data.Maybe (maybeToList)
 import Data.Text (Text, pack)
 import Data.Void (Void)
+import Text.Megaparsec (Pos)
 import qualified Text.Megaparsec as MP (ParseErrorBundle, Parsec)
 import Prelude hiding (String)
 
@@ -72,6 +74,8 @@ newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
 
 data Ann a = Ann
   { preTrivia :: Trivia,
+    -- | The line of this value in the source code
+    sourceLine :: Pos,
     value :: a,
     trailComment :: Maybe TrailingComment
   }
@@ -79,15 +83,21 @@ data Ann a = Ann
 
 -- | An annotated value without any trivia or trailing comment
 pattern LoneAnn :: a -> Ann a
-pattern LoneAnn a <- Ann [] a Nothing
+pattern LoneAnn a <- Ann [] _ a Nothing
 
 hasTrivia :: Ann a -> Bool
 hasTrivia (LoneAnn _) = False
 hasTrivia _ = True
 
 -- | Create a new annotated value without any annotations
-ann :: a -> Ann a
-ann a = Ann [] a Nothing
+ann :: Pos -> a -> Ann a
+ann l v =
+  Ann
+    { preTrivia = [],
+      sourceLine = l,
+      value = v,
+      trailComment = Nothing
+    }
 
 -- | Equality of annotated syntax is defined as equality of their corresponding
 -- semantics, thus ignoring the annotations.
@@ -248,7 +258,7 @@ instance LanguageElement SimpleSelector where
 
   walkSubprograms = \case
     (IDSelector name) -> [Term (Token name)]
-    (InterpolSelector Ann{value = str}) -> pure $ Term $ SimpleString $ ann [[str]]
+    (InterpolSelector Ann{sourceLine, value = str}) -> pure $ Term $ SimpleString $ ann sourceLine [[str]]
     (StringSelector str) -> [Term (SimpleString str)]
 
 instance LanguageElement Selector where
@@ -315,31 +325,33 @@ instance LanguageElement Term where
     (List _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
       (Item item) -> [Term item]
       (Comments _) -> []
-    (List _ items _) ->
+    (List open items close) ->
       unItems items >>= \case
         Item item ->
-          [Term (List (ann TBrackOpen) (Items [Item item]) (ann TBrackClose))]
+          [Term (List (stripTrivia open) (Items [Item item]) (stripTrivia close))]
         Comments c ->
-          [Term (List (ann TBrackOpen) (Items [Comments c]) (ann TBrackClose))]
+          [Term (List (stripTrivia open) (Items [Comments c]) (stripTrivia close))]
     (Set _ _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
       (Item (Inherit _ from sels _)) ->
         (Term <$> maybeToList from) ++ concatMap walkSubprograms sels
       (Item (Assignment sels _ expr _)) ->
         expr : concatMap walkSubprograms sels
       (Comments _) -> []
-    (Set _ _ items _) ->
+    (Set _ open items close) ->
       unItems items >>= \case
         -- Map each binding to a singleton set
         (Item item) ->
-          [Term (Set Nothing (ann TBraceOpen) (Items [Item item]) (ann TBraceClose))]
-        (Comments c) -> [emptySet c]
+          [Term (Set Nothing (stripTrivia open) (Items [Item item]) (stripTrivia close))]
+        (Comments c) ->
+          [Term (Set Nothing (stripTrivia open) (Items [Comments c]) (stripTrivia close))]
     (Selection term sels Nothing) -> Term term : (sels >>= walkSubprograms)
     (Selection term sels (Just (_, def))) -> Term term : (sels >>= walkSubprograms) ++ [Term def]
     (Parenthesized _ expr _) -> [expr]
     -- The others are already minimal
     _ -> []
     where
-      emptySet c = Term (Set Nothing (ann TBraceOpen) (Items [Comments c]) (ann TBraceClose))
+      -- TODO: Don't do this stripping at all, Doesn't seem very critical
+      stripTrivia a = a{preTrivia = [], trailComment = Nothing}
 
 instance LanguageElement Expression where
   mapFirstToken' f = \case
@@ -372,11 +384,11 @@ instance LanguageElement Expression where
   walkSubprograms = \case
     (Term term) -> walkSubprograms term
     (With _ expr0 _ expr1) -> [expr0, expr1]
-    (Let _ items _ body) ->
+    (Let Ann{sourceLine = startLine} items Ann{sourceLine = endLine} body) ->
       body
         : ( unItems items >>= \case
               -- Map each binding to a singleton set
-              (Item item) -> [Term (Set Nothing (ann TBraceOpen) (Items [Item item]) (ann TBraceClose))]
+              (Item item) -> [Term (Set Nothing (ann startLine TBraceOpen) (Items [Item item]) (ann endLine TBraceClose))]
               (Comments _) -> []
           )
     (Assert _ cond _ body) -> [cond, body]
@@ -386,7 +398,7 @@ instance LanguageElement Expression where
     (Abstraction param _ (Term (Token _))) -> walkSubprograms param
     -- Otherwise, to separate the parameter from the body while keeping it a valid expression,
     -- replace the body with just a token. Return the body (a valid expression on its own) separately
-    (Abstraction param colon body) -> [Abstraction param colon (Term (Token (ann (Identifier "_")))), body]
+    (Abstraction param colon@Ann{sourceLine} body) -> [Abstraction param colon (Term (Token (ann sourceLine (Identifier "_")))), body]
     (Application g a) -> [g, a]
     (Operation left _ right) -> [left, right]
     (MemberCheck name _ sels) -> name : (sels >>= walkSubprograms)
