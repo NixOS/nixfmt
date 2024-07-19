@@ -1,7 +1,7 @@
 [
   {
     # empty inherit o.O
-    inherit;
+    inherit ;
     inherit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
   }
   {
@@ -83,7 +83,8 @@
   }
 
   {
-    inherit;
+    inherit
+      ;
     inherit
       a
       ;
