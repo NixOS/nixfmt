@@ -12,7 +12,9 @@
 #
 # Tests can be found in ./tests/misc.nix
 # Documentation in the manual, #sec-generators
-{ lib }:
+{
+  lib,
+}:
 with (lib).trivial;
 let
   libStr = lib.strings;
@@ -29,7 +31,8 @@ rec {
   # The builtin `toString` function has some strange defaults,
   # suitable for bash scripts but not much else.
   mkValueStringDefault =
-    { }:
+    {
+    }:
     v:
     with builtins;
     let
@@ -203,7 +206,10 @@ rec {
       # allow lists as values for duplicate keys
       listsAsDuplicateKeys ? false,
     }:
-    { globalSection, sections }:
+    {
+      globalSection,
+      sections,
+    }:
     (
       if globalSection == { } then
         ""
@@ -279,7 +285,10 @@ rec {
 
   # Generates JSON from an arbitrary (non-function) value.
   # For more information see the documentation of the builtin.
-  toJSON = { }: builtins.toJSON;
+  toJSON =
+    {
+    }:
+    builtins.toJSON;
 
   # YAML has been a strict superset of JSON since 1.2, so we
   # use toJSON. Before it only had a few differences referring
@@ -465,7 +474,8 @@ rec {
 
   # PLIST handling
   toPlist =
-    { }:
+    {
+    }:
     v:
     let
       isFloat = builtins.isFloat or (x: false);
@@ -546,7 +556,8 @@ rec {
   # Note that integers are translated to Integer and never
   # the Natural type.
   toDhall =
-    { }@args:
+    {
+    }@args:
     v:
     with builtins;
     let
