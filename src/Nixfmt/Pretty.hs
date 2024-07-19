@@ -127,10 +127,8 @@ instance Pretty Binder where
   pretty (Inherit inherit Nothing ids semicolon) =
     group $
       pretty inherit
-        <> ( if null ids
-              then pretty semicolon
-              else sep <> nest (sepBy sep ids <> nosep <> pretty semicolon)
-           )
+        <> sep
+        <> nest (sepBy sep ids <> nosep <> pretty semicolon)
     where
       -- Only allow a single line if it's already on a single line and has few enough elements
       (sep, nosep) = if sourceLine inherit == sourceLine semicolon && length ids < 4 then (line, line') else (hardline, hardline)
@@ -140,13 +138,10 @@ instance Pretty Binder where
       pretty inherit
         <> nest
           ( group' RegularG (line <> pretty source)
-              <> if null ids
-                then pretty semicolon
-                else
-                  sep
-                    <> sepBy sep ids
-                    <> nosep
-                    <> pretty semicolon
+              <> sep
+              <> sepBy sep ids
+              <> nosep
+              <> pretty semicolon
           )
     where
       -- Only allow a single line if it's already on a single line and has few enough elements
