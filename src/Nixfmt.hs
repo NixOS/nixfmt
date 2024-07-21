@@ -13,7 +13,7 @@ import Data.Either (fromRight)
 import Data.Text (Text, unpack)
 import Data.Text.Lazy (toStrict)
 import qualified Nixfmt.Parser as Parser
-import Nixfmt.Predoc (layout)
+import Nixfmt.Predoc (LayoutMode, layout)
 import Nixfmt.Pretty ()
 import Nixfmt.Types (Expression, ParseErrorBundle, Whole (..), walkSubprograms)
 import qualified Text.Megaparsec as Megaparsec (parse)
@@ -27,9 +27,9 @@ type Width = Int
 -- | @format w filename source@ returns either a parsing error specifying a
 -- failure in @filename@ or a formatted version of @source@ with a maximum width
 -- of @w@ columns where possible.
-format :: Width -> FilePath -> Text -> Either String Text
-format width filename =
-  bimap errorBundlePretty (layout width)
+format :: LayoutMode -> Width -> FilePath -> Text -> Either String Text
+format mode width filename =
+  bimap errorBundlePretty (layout mode width)
     . Megaparsec.parse Parser.file filename
 
 -- | Pretty print the internal AST for debugging
@@ -44,21 +44,21 @@ printAst path unformatted = do
 --
 -- If any issues are found, the operation will fail and print an error message. It will contain a diff showcasing
 -- the issue on an automatically minimized example based on the input.
-formatVerify :: Width -> FilePath -> Text -> Either String Text
-formatVerify width path unformatted = do
+formatVerify :: LayoutMode -> Width -> FilePath -> Text -> Either String Text
+formatVerify mode width path unformatted = do
   unformattedParsed@(Whole unformattedParsed' _) <- parse unformatted
-  let formattedOnce = layout width unformattedParsed
+  let formattedOnce = layout mode width unformattedParsed
   formattedOnceParsed <- first (\x -> pleaseReport "Fails to parse after formatting.\n" <> x <> "\n\nAfter Formatting:\n" <> unpack formattedOnce) (parse formattedOnce)
-  let formattedTwice = layout width formattedOnceParsed
+  let formattedTwice = layout mode width formattedOnceParsed
   if formattedOnceParsed /= unformattedParsed
     then
       Left $
-        let minimized = minimize unformattedParsed' (\e -> parse (layout width e) == Right (Whole e []))
+        let minimized = minimize unformattedParsed' (\e -> parse (layout mode width e) == Right (Whole e []))
         in pleaseReport "Parses differently after formatting."
             <> "\n\nBefore formatting:\n"
             <> show minimized
             <> "\n\nAfter formatting:\n"
-            <> show (fromRight (error "TODO") $ parse (layout width minimized))
+            <> show (fromRight (error "TODO") $ parse (layout mode width minimized))
     else
       if formattedOnce /= formattedTwice
         then
@@ -66,12 +66,12 @@ formatVerify width path unformatted = do
             let minimized =
                   minimize
                     unformattedParsed'
-                    (\e -> layout width e == layout width (fromRight (error "TODO") $ parse $ layout width e))
+                    (\e -> layout mode width e == layout mode width (fromRight (error "TODO") $ parse $ layout mode width e))
             in pleaseReport "Nixfmt is not idempotent."
                 <> "\n\nAfter one formatting:\n"
-                <> unpack (layout width minimized)
+                <> unpack (layout mode width minimized)
                 <> "\n\nAfter two:\n"
-                <> unpack (layout width (fromRight (error "TODO") $ parse $ layout width minimized))
+                <> unpack (layout mode width (fromRight (error "TODO") $ parse $ layout mode width minimized))
         else Right formattedOnce
   where
     parse = first errorBundlePretty . Megaparsec.parse Parser.file path

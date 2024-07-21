@@ -14,6 +14,7 @@ import Nixfmt.Predoc (
   Doc,
   GroupAnn (..),
   Pretty,
+  absoluteHardline,
   comment,
   emptyline,
   group,
@@ -72,11 +73,11 @@ moveTrailingCommentUp a = a
 
 instance Pretty TrailingComment where
   pretty (TrailingComment c) =
-    hardspace <> trailingComment ("# " <> c) <> hardline
+    hardspace <> trailingComment ("# " <> c) <> absoluteHardline
 
 instance Pretty Trivium where
   pretty EmptyLine = emptyline
-  pretty (LineComment c) = comment ("#" <> c) <> hardline
+  pretty (LineComment c) = comment ("#" <> c) <> absoluteHardline
   pretty (BlockComment isDoc c) =
     comment (if isDoc then "/**" else "/*")
       <> hardline

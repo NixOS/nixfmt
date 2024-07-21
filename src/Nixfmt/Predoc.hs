@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -19,6 +20,7 @@ module Nixfmt.Predoc (
   line,
   hardspace,
   hardline,
+  absoluteHardline,
   emptyline,
   newline,
   DocE,
@@ -29,6 +31,7 @@ module Nixfmt.Predoc (
   fixup,
   unexpandSpacing',
   layout,
+  LayoutMode (..),
   textWidth,
 )
 where
@@ -36,13 +39,14 @@ where
 import Control.Applicative (asum, empty, (<|>))
 import Control.Monad.Trans.State.Strict (State, StateT (..), evalState, get, mapStateT, modify, put, runState, state)
 import Data.Bifunctor (first, second)
+import Data.Data (Data)
 import Data.Function ((&))
 import Data.Functor (($>), (<&>))
 import Data.Functor.Identity (runIdentity)
 import Data.List (intersperse)
 import Data.List.NonEmpty (NonEmpty (..), singleton, (<|))
 import qualified Data.List.NonEmpty as NonEmpty
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text as Text (Text, concat, length, replicate, strip)
 import GHC.Stack (HasCallStack)
 
@@ -60,8 +64,10 @@ data Spacing
     Softspace
   | -- | Line break or space
     Space
-  | -- | Always a line break
+  | -- | Always a line break, though the syntax doesn't break if it's not
     Hardline
+  | -- | Absolutely always a line break, the syntax would break if it's not
+    AbsoluteHardline
   | -- | Two line breaks
     Emptyline
   | -- | n line breaks
@@ -215,6 +221,10 @@ hardspace = [Spacing Hardspace]
 hardline :: Doc
 hardline = [Spacing Hardline]
 
+-- | Absolutely always a line break
+absoluteHardline :: Doc
+absoluteHardline = [Spacing AbsoluteHardline]
+
 -- | Two line breaks
 emptyline :: Doc
 emptyline = [Spacing Emptyline]
@@ -244,6 +254,7 @@ isSoftSpacing _ = False
 isHardSpacing :: DocE -> Bool
 isHardSpacing (Spacing Hardspace) = True
 isHardSpacing (Spacing Hardline) = True
+isHardSpacing (Spacing AbsoluteHardline) = True
 isHardSpacing (Spacing Emptyline) = True
 isHardSpacing (Spacing (Newlines _)) = True
 isHardSpacing _ = False
@@ -342,8 +353,43 @@ mergeSpacings Hardspace (Newlines x) = Newlines x
 mergeSpacings _ (Newlines x) = Newlines (x + 1)
 mergeSpacings _ y = y
 
-layout :: (Pretty a) => Int -> a -> Text
-layout w = (<> "\n") . Text.strip . layoutGreedy w . fixup . pretty
+data LayoutMode = Regular | Shrinkwrap | Balloon deriving (Show, Data)
+
+layout :: (Pretty a) => LayoutMode -> Int -> a -> Text
+layout Regular w = (<> "\n") . Text.strip . layoutGreedy w . fixup . pretty
+layout Shrinkwrap w = (<> "\n") . Text.strip . layoutGreedy w . fixup . mapSpaces shrinkwrap . pretty
+layout Balloon w = (<> "\n") . Text.strip . layoutGreedy w . fixup . mapSpaces balloon . pretty
+
+mapSpaces :: (Spacing -> Maybe Spacing) -> Doc -> Doc
+mapSpaces spaceMap = mapMaybe singleDocE
+  where
+    singleDocE :: DocE -> Maybe DocE
+    singleDocE (Spacing s) = Spacing <$> spaceMap s
+    singleDocE (Group a d) = Just (Group a (mapSpaces spaceMap d))
+    singleDocE t@Text{} = Just t
+
+shrinkwrap :: Spacing -> Maybe Spacing
+shrinkwrap Softbreak = Nothing
+shrinkwrap Break = Nothing
+shrinkwrap Hardspace = Just Hardspace
+shrinkwrap Softspace = Just Hardspace
+shrinkwrap Space = Just Hardspace
+shrinkwrap Hardline = Just Hardspace
+shrinkwrap AbsoluteHardline = Just Hardline
+shrinkwrap Emptyline = Just Hardspace
+shrinkwrap (Newlines _) = Just Hardspace
+
+balloon :: Spacing -> Maybe Spacing
+balloon Softbreak = Just Hardline
+balloon Break = Just Hardline
+balloon Hardspace = Just Hardline
+balloon Softspace = Just Hardline
+balloon Space = Just Hardline
+balloon Hardline = Just Hardline
+balloon AbsoluteHardline = Just Hardline
+balloon Emptyline = Just Emptyline
+balloon (Newlines 0) = Just (Newlines 1)
+balloon (Newlines n) = Just (Newlines n)
 
 -- 1. Move and merge Spacings.
 -- 2. Convert Softlines to Grouped Lines and Hardspaces to Texts.
@@ -407,6 +453,7 @@ fits ni c (x : xs) = case x of
   Spacing Space -> (" " <>) <$> fits (ni - 1) (c - 1) xs
   Spacing Hardspace -> (" " <>) <$> fits (ni - 1) (c - 1) xs
   Spacing Hardline -> Nothing
+  Spacing AbsoluteHardline -> Nothing
   Spacing Emptyline -> Nothing
   Spacing (Newlines _) -> Nothing
   Group _ ys -> fits ni c $ ys ++ xs
@@ -549,6 +596,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
                   Space -> putNL 1
                   Hardspace -> putText' [" "]
                   Hardline -> putNL 1
+                  AbsoluteHardline -> putNL 1
                   Emptyline -> putNL 2
                   (Newlines n) -> putNL n
                   Softbreak
