@@ -17,7 +17,7 @@ import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Void (Void)
-import Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole)
+import Nixfmt.Lexer (lexeme, takeTrivia, whole)
 import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Types (
   Ann (..),
@@ -38,7 +38,6 @@ import Nixfmt.Types (
   StringPart (..),
   Term (..),
   Token (..),
-  Trivium (..),
   Whole (..),
   operators,
   tokenText,
@@ -470,7 +469,7 @@ operator t =
                     TMinus -> ">"
                     TMul -> "/"
                     TDiv -> "/*"
-                    TLess -> "="
+                    TLess -> "=|"
                     TGreater -> "="
                     TNot -> "="
                     _ -> ""
