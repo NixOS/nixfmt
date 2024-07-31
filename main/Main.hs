@@ -12,6 +12,7 @@ import qualified Data.Text.IO as TextIO (getContents, hPutStr, putStr)
 import Data.Version (showVersion)
 import GHC.IO.Encoding (utf8)
 import qualified Nixfmt
+import Nixfmt.Predoc (layout)
 import Paths_nixfmt (version)
 import System.Console.CmdArgs (
   Data,
@@ -41,6 +42,7 @@ data Nixfmt = Nixfmt
     width :: Width,
     check :: Bool,
     quiet :: Bool,
+    strict :: Bool,
     verify :: Bool,
     ast :: Bool
   }
@@ -58,6 +60,7 @@ options =
             &= help (addDefaultHint defaultWidth "Maximum width in characters"),
         check = False &= help "Check whether files are formatted without modifying them",
         quiet = False &= help "Do not report errors",
+        strict = False &= help "Enable a stricter formatting mode that isn't influenced as much by how the input is formatted",
         verify =
           False
             &= help
@@ -134,8 +137,8 @@ type Formatter = FilePath -> Text -> Either String Text
 
 toFormatter :: Nixfmt -> Formatter
 toFormatter Nixfmt{ast = True} = Nixfmt.printAst
-toFormatter Nixfmt{width, verify = True} = Nixfmt.formatVerify width
-toFormatter Nixfmt{width, verify = False} = Nixfmt.format width
+toFormatter Nixfmt{width, verify = True, strict} = Nixfmt.formatVerify (layout width strict)
+toFormatter Nixfmt{width, verify = False, strict} = Nixfmt.format (layout width strict)
 
 type Operation = Formatter -> Target -> IO Result
 
