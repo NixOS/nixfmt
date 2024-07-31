@@ -31,10 +31,13 @@ module Nixfmt.Types (
   Whole (..),
   TrailingComment (..),
   Trivium (..),
+  removeLineInfo,
   hasTrivia,
+  LanguageElement,
   mapFirstToken,
   mapFirstToken',
   mapLastToken',
+  mapAllTokens,
   operators,
   tokenText,
   walkSubprograms,
@@ -49,7 +52,7 @@ import Data.Maybe (maybeToList)
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import Text.Megaparsec (Pos)
-import qualified Text.Megaparsec as MP (ParseErrorBundle, Parsec)
+import qualified Text.Megaparsec as MP (ParseErrorBundle, Parsec, pos1)
 import Prelude hiding (String)
 
 -- | A @megaparsec@ @ParsecT@ specified for use with @nixfmt@.
@@ -80,6 +83,15 @@ data Ann a = Ann
     trailComment :: Maybe TrailingComment
   }
   deriving (Show)
+
+removeLineInfo :: Ann a -> Ann a
+removeLineInfo (Ann{preTrivia, value, trailComment}) =
+  Ann
+    { preTrivia,
+      sourceLine = MP.pos1,
+      value,
+      trailComment
+    }
 
 -- | An annotated value without any trivia or trailing comment
 pattern LoneAnn :: a -> Ann a
@@ -116,6 +128,13 @@ data Item a
   deriving (Foldable, Show)
 
 newtype Items a = Items {unItems :: [Item a]}
+
+mapItems :: (a -> a) -> Items a -> Items a
+mapItems f = Items . Prelude.map f' . unItems
+  where
+    f' = \case
+      (Item a) -> Item $ f a
+      (Comments t) -> Comments t
 
 instance (Eq a) => Eq (Items a) where
   (==) = (==) `on` concatMap Data.Foldable.toList . unItems
@@ -239,6 +258,8 @@ class LanguageElement a where
   -- returned. This is useful for getting/extracting values
   mapLastToken' :: (forall b. Ann b -> (Ann b, c)) -> a -> (a, c)
 
+  mapAllTokens :: (forall b. Ann b -> Ann b) -> a -> a
+
   -- Walk all syntactically valid sub-expressions in a breadth-first search way. This allows
   -- minimizing failing test cases
   walkSubprograms :: a -> [Expression]
@@ -247,6 +268,7 @@ instance LanguageElement (Ann a) where
   mapFirstToken' f = f
   mapLastToken' f = f
   walkSubprograms = error "unreachable"
+  mapAllTokens f = f
 
 instance LanguageElement SimpleSelector where
   mapFirstToken' f = \case
@@ -261,6 +283,11 @@ instance LanguageElement SimpleSelector where
     (InterpolSelector Ann{sourceLine, value = str}) -> pure $ Term $ SimpleString $ ann sourceLine [[str]]
     (StringSelector str) -> [Term (SimpleString str)]
 
+  mapAllTokens f = \case
+    (IDSelector name) -> IDSelector $ f name
+    (InterpolSelector name) -> InterpolSelector $ f name
+    (StringSelector name) -> StringSelector $ f name
+
 instance LanguageElement Selector where
   mapFirstToken' f (Selector Nothing ident) = first (Selector Nothing) $ mapFirstToken' f ident
   mapFirstToken' f (Selector (Just dot) ident) = first (\dot' -> Selector (Just dot') ident) $ mapFirstToken' f dot
@@ -268,6 +295,17 @@ instance LanguageElement Selector where
   mapLastToken' f (Selector dot ident) = first (Selector dot) $ mapLastToken' f ident
 
   walkSubprograms (Selector _ ident) = walkSubprograms ident
+
+  mapAllTokens f (Selector dot ident) = Selector (f <$> dot) (mapAllTokens f ident)
+
+instance LanguageElement Binder where
+  mapFirstToken' _ _ = error "unused"
+  mapLastToken' _ _ = error "unused"
+  walkSubprograms _ = error "unused"
+
+  mapAllTokens f = \case
+    (Inherit inherit from sels semicolon) -> Inherit (f inherit) (mapAllTokens f <$> from) (Prelude.map (mapAllTokens f) sels) (f semicolon)
+    (Assignment sels eq rhs semicolon) -> Assignment (Prelude.map (mapAllTokens f) sels) (f eq) (mapAllTokens f rhs) (f semicolon)
 
 instance LanguageElement ParamAttr where
   mapFirstToken' _ _ = error "unreachable"
@@ -277,6 +315,11 @@ instance LanguageElement ParamAttr where
     (ParamAttr name Nothing _) -> [Term (Token name)]
     (ParamAttr name (Just (_, def)) _) -> [Term (Token name), def]
     (ParamEllipsis _) -> []
+
+  mapAllTokens f = \case
+    (ParamAttr name Nothing comma) -> ParamAttr (mapAllTokens f name) Nothing (f <$> comma)
+    (ParamAttr name (Just (qmark, def)) comma) -> ParamAttr (mapAllTokens f name) (Just (f qmark, mapAllTokens f def)) (f <$> comma)
+    (ParamEllipsis dots) -> ParamEllipsis $ f dots
 
 instance LanguageElement Parameter where
   mapFirstToken' f = \case
@@ -293,6 +336,11 @@ instance LanguageElement Parameter where
     (IDParameter ident) -> [Term $ Token ident]
     (SetParameter _ bindings _) -> bindings >>= walkSubprograms
     (ContextParameter left _ right) -> walkSubprograms left ++ walkSubprograms right
+
+  mapAllTokens f = \case
+    (IDParameter name) -> IDParameter (f name)
+    (SetParameter open items close) -> SetParameter (f open) (Prelude.map (mapAllTokens f) items) (f close)
+    (ContextParameter first' at second) -> ContextParameter (mapAllTokens f first') (f at) (mapAllTokens f second)
 
 instance LanguageElement Term where
   mapFirstToken' f = \case
@@ -353,6 +401,17 @@ instance LanguageElement Term where
       -- TODO: Don't do this stripping at all, Doesn't seem very critical
       stripTrivia a = a{preTrivia = [], trailComment = Nothing}
 
+  mapAllTokens f = \case
+    (Token leaf) -> Token (f leaf)
+    (SimpleString string) -> SimpleString (f string)
+    (IndentedString string) -> IndentedString (f string)
+    (Path path) -> Path (f path)
+    (List open items close) -> List (f open) (mapItems (mapAllTokens f) items) (f close)
+    (Set rec open items close) -> Set (f <$> rec) (f open) (mapItems (mapAllTokens f) items) (f close)
+    (Selection term sels (Just (orToken, def))) -> Selection (mapAllTokens f term) (Prelude.map (mapAllTokens f) sels) $ Just (f orToken, mapAllTokens f def)
+    (Selection term sels Nothing) -> Selection (mapAllTokens f term) (Prelude.map (mapAllTokens f) sels) Nothing
+    (Parenthesized open expr close) -> Parenthesized (f open) (mapAllTokens f expr) (f close)
+
 instance LanguageElement Expression where
   mapFirstToken' f = \case
     (Term term) -> first Term (mapFirstToken' f term)
@@ -405,6 +464,19 @@ instance LanguageElement Expression where
     (Negation _ expr) -> [expr]
     (Inversion _ expr) -> [expr]
 
+  mapAllTokens f = \case
+    (Term term) -> Term (mapAllTokens f term)
+    (With with expr0 semicolon expr1) -> With (f with) (mapAllTokens f expr0) (f semicolon) (mapAllTokens f expr1)
+    (Let let_ items in_ body) -> Let (f let_) (mapItems (mapAllTokens f) items) (f in_) (mapAllTokens f body)
+    (Assert assert cond semicolon body) -> Assert (f assert) (mapAllTokens f cond) (f semicolon) (mapAllTokens f body)
+    (If if_ expr0 then_ expr1 else_ expr2) -> If (f if_) (mapAllTokens f expr0) (f then_) (mapAllTokens f expr1) (f else_) (mapAllTokens f expr2)
+    (Abstraction param colon body) -> Abstraction (mapAllTokens f param) (f colon) (mapAllTokens f body)
+    (Application g a) -> Application (mapAllTokens f g) (mapAllTokens f a)
+    (Operation left op right) -> Operation (mapAllTokens f left) (f op) (mapAllTokens f right)
+    (MemberCheck name dot sels) -> MemberCheck (mapAllTokens f name) (f dot) (Prelude.map (mapAllTokens f) sels)
+    (Negation not_ expr) -> Negation (f not_) (mapAllTokens f expr)
+    (Inversion tilde expr) -> Inversion (f tilde) (mapAllTokens f expr)
+
 instance LanguageElement (Whole Expression) where
   mapFirstToken' f (Whole a trivia) =
     first (`Whole` trivia) (mapFirstToken' f a)
@@ -414,6 +486,8 @@ instance LanguageElement (Whole Expression) where
 
   walkSubprograms (Whole a _) = [a]
 
+  mapAllTokens f (Whole a trivia) = Whole (mapAllTokens f a) trivia
+
 instance (LanguageElement a) => LanguageElement (NonEmpty a) where
   mapFirstToken' f (x :| _) = first pure $ mapFirstToken' f x
 
@@ -421,6 +495,8 @@ instance (LanguageElement a) => LanguageElement (NonEmpty a) where
   mapLastToken' f (x :| xs) = first ((x :|) . NonEmpty.toList) $ mapLastToken' f (NonEmpty.fromList xs)
 
   walkSubprograms = error "unreachable"
+
+  mapAllTokens f = NonEmpty.map (mapAllTokens f)
 
 data Token
   = Integer Int

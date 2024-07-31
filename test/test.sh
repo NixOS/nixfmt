@@ -26,7 +26,7 @@ nixfmt --version
 # Verify "correct", files that don't change when formatted
 for file in test/correct/*.nix; do
   echo "Checking $file …"
-  if ! out=$(nixfmt --verify < "$file"); then
+  if ! out=$(nixfmt --pure --verify < "$file"); then
     echo "[ERROR] failed nixfmt verification"
     exit 1
   fi
@@ -54,10 +54,23 @@ done
 
 # Verify "diff"
 for file in test/diff/**/in.nix; do
-  outfile="$(dirname "$file")/out.nix"
-
   echo "Checking $file …"
   out="$(nixfmt --verify < "$file")"
+  outfile="$(dirname "$file")/out.nix"
+
+  if diff --color=always --unified "$outfile" <(echo "$out"); then
+    echo "[OK]"
+  elif [[ $* == *--update-diff* ]]; then
+    echo "$out" > "$outfile"
+    echo "[UPDATED] $outfile"
+  else
+    echo "[ERROR] (run with --update-diff to update the diff)"
+    exit 1
+  fi
+
+  echo "Checking $file with --pure …"
+  out="$(nixfmt --pure --verify < "$file")"
+  outfile="$(dirname "$file")/out-pure.nix"
 
   if diff --color=always --unified "$outfile" <(echo "$out"); then
     echo "[OK]"
