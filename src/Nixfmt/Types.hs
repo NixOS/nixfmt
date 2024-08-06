@@ -424,6 +424,8 @@ data Token
   | TLessEqual
   | TNot
   | TUnequal
+  | TPipeForward
+  | TPipeBackward
   | SOF
   deriving (Eq, Show)
 
@@ -466,7 +468,9 @@ operators =
     ],
     [Op InfixL TAnd],
     [Op InfixL TOr],
-    [Op InfixL TImplies]
+    [Op InfixL TImplies],
+    [Op InfixL TPipeForward],
+    [Op InfixR TPipeBackward]
   ]
 
 tokenText :: Token -> Text
@@ -519,4 +523,6 @@ tokenText TLess = "<"
 tokenText TLessEqual = "<="
 tokenText TNot = "!"
 tokenText TUnequal = "!="
+tokenText TPipeForward = "|>"
+tokenText TPipeBackward = "<|"
 tokenText SOF = ""

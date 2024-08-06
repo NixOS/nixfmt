@@ -273,4 +273,17 @@
         z = 30;
       }
   )
+
+  # Experimental pipe operators
+  (
+    a // b
+    |> f "very long argument should justify splitting this over multiple lines"
+    |> g { }
+  )
+
+  (
+    g { }
+    <| f "very long argument should justify splitting this over multiple lines"
+    <| a // b
+  )
 ]
