@@ -31,7 +31,9 @@ executable nixfmt
   hs-source-dirs:      main
   build-depends:
       base             >= 4.12.0 && < 4.19
+    , bytestring
     , cmdargs          >= 0.10.20 && < 0.11
+    , file-embed
     , nixfmt
     , unix             >= 2.7.2 && < 2.9
     , text             >= 1.2.3 && < 2.2
