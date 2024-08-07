@@ -1,11 +1,14 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
 import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
+import Data.ByteString.Char8 (unpack)
 import Data.Either (lefts)
+import Data.FileEmbed
 import Data.List (isSuffixOf)
 import Data.Text (Text)
 import qualified Data.Text.IO as TextIO (getContents, hPutStr, putStr)
@@ -46,6 +49,11 @@ data Nixfmt = Nixfmt
   }
   deriving (Show, Data, Typeable)
 
+versionFromFile :: String
+versionFromFile = case $(embedFileIfExists ".version") of
+  Just ver -> unpack ver
+  _ -> showVersion version
+
 options :: Nixfmt
 options =
   let defaultWidth = 100
@@ -67,7 +75,7 @@ options =
             &= help
               "Pretty print the internal AST, only for debugging"
       }
-      &= summary ("nixfmt v" ++ showVersion version)
+      &= summary ("nixfmt " ++ versionFromFile)
       &= help "Format Nix source code"
 
 data Target = Target

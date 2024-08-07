@@ -1,5 +1,8 @@
 # Maintainer documentation
 
+Writing to .version in the root of the project causes this version to be returned by `nixfmt --version`
+rather than the version from the cabalfile.
+
 ## Making a new release
 
 - Check the commit log if anything is missing from the change log.
