@@ -50,9 +50,7 @@ data Nixfmt = Nixfmt
   deriving (Show, Data, Typeable)
 
 versionFromFile :: String
-versionFromFile = case $(embedFileIfExists ".version") of
-  Just ver -> unpack ver
-  _ -> showVersion version
+versionFromFile = maybe (showVersion version) unpack $(embedFileIfExists ".version")
 
 options :: Nixfmt
 options =
