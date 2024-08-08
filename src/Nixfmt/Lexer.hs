@@ -183,13 +183,20 @@ pushTrivia t = modify (<> t)
 lexeme :: Parser a -> Parser (Ann a)
 lexeme p = do
   lastLeading <- takeTrivia
+  SourcePos{Text.Megaparsec.sourceLine = line} <- getSourcePos
   token <- preLexeme p
   parsedTrivia <- trivia
   -- This is the position of the next lexeme after the currently parsed one
   SourcePos{sourceColumn = col} <- getSourcePos
   let (trailing, nextLeading) = convertTrivia parsedTrivia col
   pushTrivia nextLeading
-  return $ Ann lastLeading token trailing
+  return $
+    Ann
+      { preTrivia = lastLeading,
+        value = token,
+        Nixfmt.Types.sourceLine = line,
+        trailComment = trailing
+      }
 
 -- | Tokens normally have only leading trivia and one trailing comment on the same
 -- line. A whole x also parses and stores final trivia after the x. A whole also

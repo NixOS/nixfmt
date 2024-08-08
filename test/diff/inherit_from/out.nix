@@ -1,7 +1,7 @@
 [
   {
     # empty inherit o.O
-    inherit (geany.meta);
+    inherit (geany.meta) ;
     inherit (builtins)
       pathExists
       readFile
@@ -569,6 +569,21 @@
       ) # e
       f # g
       h # i
+      ;
+  }
+  {
+    inherit ({ }) ;
+    inherit ({ })
+      ;
+    inherit ({ })
+      ;
+
+    inherit ({ }) a;
+    inherit ({ })
+      a
+      ;
+    inherit ({ })
+      a
       ;
   }
 ]

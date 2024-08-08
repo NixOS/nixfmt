@@ -2,6 +2,19 @@ let
   inherit lib;
 in
 [
+  ({ }: null)
+  (
+    {
+    }:
+    null
+  )
+  (
+    {
+
+    }:
+    null
+  )
+
   (
     { lib }:
     let
@@ -81,7 +94,10 @@ in
 
   (
     a:
-    { b, ... }:
+    {
+      b,
+      ...
+    }:
     c: {
       # Stuff
     }
@@ -89,7 +105,11 @@ in
 
   (
     a:
-    { b, c, ... }:
+    {
+      b,
+      c,
+      ...
+    }:
     d: {
       # Stuff
     }

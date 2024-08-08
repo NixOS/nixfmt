@@ -89,7 +89,9 @@
       b = 2;
     }
   )
-  { a = with b; with b; with b; 1; }
+  {
+    a = with b; with b; with b; 1;
+  }
   {
     binPath =
       with pkgs;

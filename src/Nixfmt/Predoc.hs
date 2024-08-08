@@ -45,6 +45,11 @@ import qualified Data.List.NonEmpty as NonEmpty
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (Text, concat, length, replicate, strip)
 import GHC.Stack (HasCallStack)
+import Nixfmt.Types (
+  LanguageElement,
+  mapAllTokens,
+  removeLineInfo,
+ )
 
 -- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
 -- This means that e.g. a Space followed by an Emptyline results in just an
@@ -342,8 +347,15 @@ mergeSpacings Hardspace (Newlines x) = Newlines x
 mergeSpacings _ (Newlines x) = Newlines (x + 1)
 mergeSpacings _ y = y
 
-layout :: (Pretty a) => Int -> a -> Text
-layout w = (<> "\n") . Text.strip . layoutGreedy w . fixup . pretty
+layout :: (Pretty a, LanguageElement a) => Int -> Bool -> a -> Text
+layout width strict =
+  (<> "\n")
+    . Text.strip
+    . layoutGreedy width
+    . fixup
+    . pretty
+    -- In strict mode, set the line number of all tokens to zero
+    . (if strict then mapAllTokens removeLineInfo else id)
 
 -- 1. Move and merge Spacings.
 -- 2. Convert Softlines to Grouped Lines and Hardspaces to Texts.
