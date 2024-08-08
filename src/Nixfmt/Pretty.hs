@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Nixfmt.Pretty where
 
@@ -40,17 +41,24 @@ import Nixfmt.Predoc (
  )
 import Nixfmt.Types (
   Ann (..),
-  Binder (..),
-  Expression (..),
+  BinderF (..),
+  Binder,
+  ExpressionF (..),
+  Expression,
   Item (..),
   Items (..),
   Leaf,
-  ParamAttr (..),
-  Parameter (..),
-  Selector (..),
-  SimpleSelector (..),
-  StringPart (..),
-  Term (..),
+  ParamAttrF (..),
+  ParamAttr,
+  ParameterF (..),
+  Parameter,
+  SelectorF (..),
+  Selector,
+  SimpleSelectorF (..),
+  StringPartF (..),
+  StringPart,
+  TermF (..),
+  Term,
   Token (..),
   TrailingComment (..),
   Trivium (..),
@@ -112,7 +120,7 @@ instance (Pretty a) => Pretty (Ann a) where
   pretty Ann{preTrivia, value, trailComment} =
     pretty preTrivia <> pretty value <> pretty trailComment
 
-instance Pretty SimpleSelector where
+instance Pretty (SimpleSelectorF Leaf) where
   pretty (IDSelector i) = pretty i
   pretty (InterpolSelector interpol) = pretty interpol
   pretty (StringSelector Ann{preTrivia, value, trailComment}) =
@@ -691,7 +699,7 @@ instance Pretty Expression where
   pretty (Inversion bang expr) =
     pretty bang <> pretty expr
 
-instance (Pretty a) => Pretty (Whole a) where
+instance (Pretty (e a)) => Pretty (Whole e a) where
   pretty (Whole x finalTrivia) =
     group $ pretty x <> pretty finalTrivia
 
@@ -718,7 +726,7 @@ isSimple _ = False
 -- STRINGS
 
 instance Pretty StringPart where
-  pretty (TextPart t) = text t
+  pretty (TextPart t) = pretty t
   -- Absorb terms
   -- This is exceedingly rare (why would one do this anyways?); one instance in the entire Nixpkgs
   pretty (Interpolation (Whole (Term t) []))
@@ -769,9 +777,9 @@ instance Pretty [StringPart] where
   -- interpolations, make sure to indent based on the indentation of the line
   -- in the string.
   pretty (TextPart t : parts) =
-    text t <> offset indentation (hcat parts)
+    pretty t <> offset indentation (hcat parts)
     where
-      indentation = textWidth $ Text.takeWhile isSpace t
+      indentation = textWidth $ Text.takeWhile isSpace (tokenText $ value t)
   pretty parts = hcat parts
 
 prettySimpleString :: [[StringPart]] -> Doc

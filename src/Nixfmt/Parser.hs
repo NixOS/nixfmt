@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Nixfmt.Parser where
 
@@ -21,22 +22,30 @@ import Nixfmt.Lexer (lexeme, takeTrivia, whole)
 import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Types (
   Ann (..),
-  Binder (..),
-  Expression (..),
+  BinderF (..),
+  Binder,
+  ExpressionF (..),
+  Expression,
   File,
   Fixity (..),
   Item (..),
   Items (..),
   Leaf,
   Operator (..),
-  ParamAttr (..),
-  Parameter (..),
+  ParamAttrF (..),
+  ParamAttr,
+  ParameterF (..),
+  Parameter,
   Parser,
   Path,
-  Selector (..),
-  SimpleSelector (..),
-  StringPart (..),
-  Term (..),
+  SelectorF(..),
+  Selector,
+  SimpleSelectorF(..),
+  SimpleSelector,
+  StringPartF(..),
+  StringPart,
+  TermF (..),
+  Term,
   Token (..),
   Whole (..),
   operators,
@@ -69,11 +78,13 @@ import Text.Megaparsec (
   satisfy,
   some,
   try,
-  (<|>),
+  (<|>), parse, errorBundlePretty,
  )
 import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L (decimal)
 import Prelude hiding (String)
+import Data.Bifunctor (Bifunctor(bimap))
+import Text.Pretty.Simple (pPrint)
 
 -- HELPER FUNCTIONS
 
@@ -141,23 +152,22 @@ envPath =
       <* char '>'
 
 pathText :: Parser StringPart
-pathText = TextPart <$> someP pathChar
+pathText = TextPart <$> lexeme (String <$> someP pathChar)
 
 pathTraversal :: Parser [StringPart]
-pathTraversal = liftM2 (:) (TextPart <$> slash) (some (pathText <|> interpolation))
+pathTraversal = liftM2 (:) (TextPart <$> lexeme slash) (some (pathText <|> interpolation))
 
 path :: Parser Path
 path =
   try $
-    lexeme $
       fmap normalizeLine $
         (maybeToList <$> optional pathText) <> (concat <$> some pathTraversal)
 
-uri :: Parser [[StringPart]]
+uri :: Parser [StringPart]
 uri =
-  fmap (pure . pure . TextPart) $
-    try $
-      someP schemeChar <> chunk ":" <> someP uriChar
+  fmap (pure . TextPart) $ lexeme $
+    try $ String <$>
+      (someP schemeChar <> chunk ":" <> someP uriChar)
 
 -- STRINGS
 
@@ -175,18 +185,31 @@ interpolationRestricted = do
     Interpolation (Whole (Term (SimpleString _)) _) -> pure interpol
     _ -> empty
 
-simpleStringPart :: Parser StringPart
-simpleStringPart =
-  TextPart
-    <$> someText
-      ( chunk "\\n"
-          <|> chunk "\\r"
-          <|> chunk "\\t"
-          <|> ((<>) <$> chunk "\\" <*> (Text.singleton <$> anySingle))
-          <|> chunk "$$"
-          <|> try (chunk "$" <* notFollowedBy (char '{'))
-          <|> someP (\t -> t /= '"' && t /= '\\' && t /= '$')
-      )
+simpleStringPart :: Parser Text -> Parser (Bool, StringPart)
+simpleStringPart opening = do
+  l@Ann { value = (inter, value') } <- lexeme individual
+  return (inter, TextPart l { value = value' })
+  where
+    individual = do
+      open <- opening
+      chars <- manyText
+          ( chunk "\\n"
+              <|> chunk "\\r"
+              <|> chunk "\\t"
+              <|> (chunk "\\" <> (Text.singleton <$> anySingle))
+              <|> chunk "$$"
+              <|> try (chunk "$" <* notFollowedBy (char '{'))
+              <|> try (someP (\t -> t /= '"' && t /= '\\' && t /= '$'))
+          )
+      (inter, close) <- ((False,) <$> chunk "\"") <|> ((True,) <$> chunk "${")
+      return (inter, String (open <> chars <> close))
+  --TextPart <$> lexeme (String
+  --  <$> (
+  --  chunk "\""
+  --  <>
+  --  <>
+  --  (chunk "\"" <|> (chunk "${" <> interpolation <> chunk "}" <> started))
+  --  ))
 
 indentedStringPart :: Parser StringPart
 indentedStringPart =
@@ -275,17 +298,17 @@ stripParts _ xs = xs
 
 -- | Split a list of StringParts on the newlines in their TextParts.
 -- Invariant: result is never empty.
-splitLines :: [StringPart] -> [[StringPart]]
-splitLines [] = [[]]
-splitLines (TextPart t : xs) =
-  let ts = map (pure . TextPart) $ Text.split (== '\n') t
-  in case splitLines xs of
-      (xs' : xss) -> init ts ++ ((last ts ++ xs') : xss)
-      _ -> error "unreachable"
-splitLines (x : xs) =
-  case splitLines xs of
-    (xs' : xss) -> (x : xs') : xss
-    _ -> error "unreachable"
+--splitLines :: [StringPart] -> [[StringPart]]
+--splitLines [] = [[]]
+--splitLines (TextPart t : xs) =
+--  let ts = map (pure . TextPart) $ Text.split (== '\n') t
+--  in case splitLines xs of
+--      (xs' : xss) -> init ts ++ ((last ts ++ xs') : xss)
+--      _ -> error "unreachable"
+--splitLines (x : xs) =
+--  case splitLines xs of
+--    (xs' : xss) -> (x : xs') : xss
+--    _ -> error "unreachable"
 
 stripIndentation :: [[StringPart]] -> [[StringPart]]
 stripIndentation parts = case commonIndentation $ mapMaybe lineHead parts of
@@ -298,14 +321,29 @@ normalizeLine (TextPart "" : xs) = normalizeLine xs
 normalizeLine (TextPart x : TextPart y : xs) = normalizeLine (TextPart (x <> y) : xs)
 normalizeLine (x : xs) = x : normalizeLine xs
 
-fixSimpleString :: [StringPart] -> [[StringPart]]
-fixSimpleString = map normalizeLine . splitLines
+--fixSimpleString :: [StringPart] -> [[StringPart]]
+--fixSimpleString = map normalizeLine . splitLines
 
-simpleString :: Parser [[StringPart]]
-simpleString =
-  rawSymbol TDoubleQuote
-    *> fmap fixSimpleString (many (simpleStringPart <|> interpolation))
-    <* rawSymbol TDoubleQuote
+
+test s = either (putStrLn . errorBundlePretty) pPrint $ parse (whole simpleString) "f" s
+
+simpleString :: Parser [StringPart]
+simpleString = do
+  go (chunk "\"")
+  where
+    go :: Parser Text -> Parser [StringPart]
+    go open = do
+      (inter, s) <- simpleStringPart open
+      if inter then
+        do
+          i <- Interpolation <$> lift (whole expression)
+          rest <- go (chunk "}")
+          return $ s : i : rest
+      else
+        return [ s ]
+  --rawSymbol TDoubleQuote
+  --  *> fmap fixSimpleString (many (simpleStringPart <|> interpolation))
+  --  <* rawSymbol TDoubleQuote
 
 fixIndentedString :: [[StringPart]] -> [[StringPart]]
 fixIndentedString =
@@ -334,7 +372,7 @@ simpleSelector :: Parser StringPart -> Parser SimpleSelector
 simpleSelector parseInterpolation =
   (IDSelector <$> identifier)
     <|> (InterpolSelector <$> lexeme parseInterpolation)
-    <|> (StringSelector <$> lexeme simpleString)
+    <|> (StringSelector <$> simpleString)
 
 selector :: Maybe (Parser Leaf) -> Parser Selector
 selector parseDot =
@@ -355,9 +393,9 @@ selectorPath' = many $ try $ selector $ Just $ symbol TDot
 -- Everything but selection
 simpleTerm :: Parser Term
 simpleTerm =
-  (SimpleString <$> lexeme (simpleString <|> uri))
-    <|> (IndentedString <$> lexeme indentedString)
-    <|> (Path <$> path)
+  (SimpleString <$> (simpleString {-<|> uri-}))
+    <|> (IndentedString <$> indentedString)
+    -- <|> (Path <$> path)
     <|> (Token <$> (envPath <|> float <|> integer <|> identifier))
     <|> parens
     <|> set

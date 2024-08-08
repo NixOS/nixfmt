@@ -201,7 +201,7 @@ lexeme p = do
 -- | Tokens normally have only leading trivia and one trailing comment on the same
 -- line. A whole x also parses and stores final trivia after the x. A whole also
 -- does not interact with the trivia state of its surroundings.
-whole :: Parser a -> Parsec Void Text (Whole a)
+whole :: Parser (e a) -> Parsec Void Text (Whole e a)
 whole pa = flip evalStateT [] do
   preLexeme $ pure ()
   pushTrivia . convertLeading =<< trivia

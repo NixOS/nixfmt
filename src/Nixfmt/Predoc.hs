@@ -47,8 +47,7 @@ import Data.Text as Text (Text, concat, length, replicate, strip)
 import GHC.Stack (HasCallStack)
 import Nixfmt.Types (
   LanguageElement,
-  mapAllTokens,
-  removeLineInfo,
+  removeLineInfo, Leaf,
  )
 
 -- | Sequential Spacings are reduced to a single Spacing by taking the maximum.
@@ -347,7 +346,7 @@ mergeSpacings Hardspace (Newlines x) = Newlines x
 mergeSpacings _ (Newlines x) = Newlines (x + 1)
 mergeSpacings _ y = y
 
-layout :: (Pretty a, LanguageElement a) => Int -> Bool -> a -> Text
+layout :: (Pretty (e Leaf), Functor e) => Int -> Bool -> e Leaf -> Text
 layout width pure_ =
   (<> "\n")
     . Text.strip
@@ -355,7 +354,7 @@ layout width pure_ =
     . fixup
     . pretty
     -- In pure mode, set the line number of all tokens to zero
-    . (if pure_ then mapAllTokens removeLineInfo else id)
+    . (if pure_ then fmap removeLineInfo else id)
 
 -- 1. Move and merge Spacings.
 -- 2. Convert Softlines to Grouped Lines and Hardspaces to Texts.

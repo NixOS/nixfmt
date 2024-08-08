@@ -17,7 +17,7 @@ import Data.Text.Lazy (toStrict)
 import qualified Nixfmt.Parser as Parser
 import Nixfmt.Predoc (Pretty)
 import Nixfmt.Pretty ()
-import Nixfmt.Types (Expression, LanguageElement, ParseErrorBundle, Whole (..), walkSubprograms)
+import Nixfmt.Types (Expression, ParseErrorBundle, Whole (..), walkSubprograms, Leaf)
 import qualified Text.Megaparsec as Megaparsec (parse)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Text.Pretty.Simple (pShow)
@@ -25,7 +25,7 @@ import Text.Pretty.Simple (pShow)
 -- import Debug.Trace (traceShow, traceShowId)
 
 type Width = Int
-type Layouter = forall a. (Pretty a, LanguageElement a) => a -> Text
+type Layouter = forall e. (Pretty (e Leaf), Functor e) => e Leaf -> Text
 
 -- | @format w filename source@ returns either a parsing error specifying a
 -- failure in @filename@ or a formatted version of @source@ with a maximum width
