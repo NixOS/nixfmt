@@ -375,15 +375,34 @@ instance Pretty Parameter where
 --    then start on a new line instead".
 prettyApp :: Bool -> Doc -> Bool -> Expression -> Expression -> Doc
 prettyApp indentFunction pre hasPost f a =
-  let -- This is very hacky, but selections shouldn't be in a priority group,
+  let -- Walk the function call chain
+      absorbApp :: Expression -> Doc
+      -- This is very hacky, but selections shouldn't be in a priority group,
       -- because if they get expanded before anything else,
       -- only the `.`-and-after part gets to a new line, which looks very odd
-      absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG a')
-      absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority a')
+      absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG $ absorbInner a')
+      absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority $ absorbInner a')
+      -- First argument
       absorbApp expr
         | indentFunction && null comment' = nest $ group' RegularG $ line' <> pretty expr
         | otherwise = pretty expr
 
+      -- Render the inner arguments of a function call
+      absorbInner :: Expression -> Doc
+      -- If lists have only simple items, try to render them single-line instead of expanding
+      -- This is just a copy of the list rendering code, but with `sepBy line` instead of `sepBy hardline`
+      absorbInner (Term (List paropen@Ann{trailComment = post'} items parclose))
+        | length (unItems items) <= 4 && all (isSimple . Term) items =
+            pretty (paropen{trailComment = Nothing})
+              <> surroundWith sur (nest $ pretty post' <> sepBy line (unItems items))
+              <> pretty parclose
+        where
+          -- If the brackets are on different lines, keep them like that
+          sur = if sourceLine paropen /= sourceLine parclose then hardline else line
+      absorbInner expr = pretty expr
+
+      -- Render the last argument of a function call
+      absorbLast :: Expression -> Doc
       absorbLast (Term t)
         | isAbsorbable t =
             group' Priority $ nest $ prettyTerm t

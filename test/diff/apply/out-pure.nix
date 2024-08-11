@@ -71,7 +71,7 @@
   }
   [
     (mapAttrsToStringsSep [
-      force
+      force # meow
       long
     ] "\n" mkSection attrsOfAttrs)
   ]
@@ -160,16 +160,10 @@
       ''"''
       "\${"
     ];
-    escapeMultiline =
-      libStr.replaceStrings
-        [
-          "\${"
-          "''"
-        ]
-        [
-          "''\${"
-          "'''"
-        ];
+    escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [
+      "''\${"
+      "'''"
+    ];
     test =
       foo
         [
