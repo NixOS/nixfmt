@@ -5,7 +5,7 @@
 
 module Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole) where
 
-import Control.Monad.State (MonadState, evalStateT, get, modify, put)
+import Control.Monad.State.Strict (MonadState, evalStateT, get, modify, put)
 import Data.Char (isSpace)
 import Data.List (dropWhileEnd)
 import Data.Maybe (fromMaybe)

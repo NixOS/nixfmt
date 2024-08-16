@@ -44,7 +44,7 @@ module Nixfmt.Types (
   walkSubprograms,
 ) where
 
-import Control.Monad.State (StateT)
+import Control.Monad.State.Strict (StateT)
 import Data.Bifunctor (first)
 import Data.Foldable (toList)
 import Data.Function (on)
