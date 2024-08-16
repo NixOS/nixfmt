@@ -49,18 +49,22 @@ uriChar = charClass "~!@$%&*-=_+:',./?"
 -- | Match one or more characters that match a predicate.
 someP :: (MonadParsec e s m) => (Token s -> Bool) -> m (Tokens s)
 someP = takeWhile1P Nothing
+{-# INLINEABLE someP #-}
 
 -- | Match zero or more characters that match a predicate.
 manyP :: (MonadParsec e s m) => (Token s -> Bool) -> m (Tokens s)
 manyP = takeWhileP Nothing
+{-# INLINEABLE manyP #-}
 
 -- | Match one or more texts and return the concatenation.
 someText :: (MonadParsec e s m) => m Text -> m Text
 someText p = Text.concat <$> some p
+{-# INLINEABLE someText #-}
 
 -- | Match zero or more texts and return the concatenation.
 manyText :: (MonadParsec e s m) => m Text -> m Text
 manyText p = Text.concat <$> many p
+{-# INLINEABLE manyText #-}
 
 -- | The longest common prefix of the arguments.
 commonPrefix :: Text -> Text -> Text

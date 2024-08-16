@@ -3,6 +3,7 @@
 
 module Nixfmt.Parser where
 
+import Control.Applicative (liftA2)
 import Control.Monad (guard, liftM2)
 import Control.Monad.Combinators (sepBy)
 import qualified Control.Monad.Combinators.Expr as MPExpr (
@@ -128,10 +129,7 @@ slash :: Parser Text
 slash = chunk "/" <* notFollowedBy (char '/')
 
 instance (Semigroup a) => Semigroup (Parser a) where
-  fx <> fy = do
-    x <- fx
-    y <- fy
-    pure $ x <> y
+  (<>) = liftA2 (<>)
 
 envPath :: Parser (Ann Token)
 envPath =

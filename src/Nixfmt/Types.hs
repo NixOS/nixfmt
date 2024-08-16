@@ -109,11 +109,7 @@ ann l v =
 -- | Equality of annotated syntax is defined as equality of their corresponding
 -- semantics, thus ignoring the annotations.
 instance (Eq a) => Eq (Ann a) where
-  Ann{value = x} == Ann{value = y} = x == y
-
--- Trivia is ignored for Eq, so also don't show
--- instance Show a => Show (Ann a) where
---    show (Ann _ a _) = show a
+  (==) = (==) `on` value
 
 data Item a
   = -- | An item

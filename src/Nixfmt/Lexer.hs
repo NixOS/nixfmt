@@ -179,6 +179,7 @@ takeTrivia = get <* put []
 
 pushTrivia :: (MonadState Trivia m) => Trivia -> m ()
 pushTrivia t = modify (<> t)
+{-# INLINEABLE pushTrivia #-}
 
 lexeme :: Parser a -> Parser (Ann a)
 lexeme p = do
