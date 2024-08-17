@@ -1,14 +1,12 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
-
 module Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole) where
 
-import Control.Monad.State.Strict (MonadState, evalStateT, get, modify, put)
+import Control.DeepSeq (NFData, force)
+import Control.Monad.State.Strict (StateT, evalStateT, get, modify, put)
 import Data.Char (isSpace)
-import Data.List (dropWhileEnd)
+import Data.List (dropWhileEnd, singleton)
 import Data.Maybe (fromMaybe)
+import Data.Sequence (Seq)
+import qualified Data.Sequence as Seq
 import Data.Text as Text (
   Text,
   isPrefixOf,
@@ -26,6 +24,7 @@ import Data.Text as Text (
   unwords,
  )
 import Data.Void (Void)
+import GHC.Generics (Generic)
 import Nixfmt.Types (
   Ann (..),
   Parser,
@@ -54,12 +53,13 @@ import Text.Megaparsec (
 import Text.Megaparsec.Char (char, eol)
 
 data ParseTrivium
-  = PTNewlines Int
+  = PTNewlines {-# UNPACK #-} !Int
   | -- Track the column where the comment starts
-    PTLineComment Text Pos
+    PTLineComment {-# UNPACK #-} !Text !Pos
   | -- Track whether it is a doc comment
-    PTBlockComment Bool [Text]
-  deriving (Show)
+    PTBlockComment !Bool ![Text]
+  deriving stock (Show, Generic)
+  deriving anyclass (NFData)
 
 preLexeme :: Parser a -> Parser a
 preLexeme p = p <* manyP (\x -> isSpace x && x /= '\n' && x /= '\r')
@@ -128,8 +128,8 @@ blockComment = try $ preLexeme $ do
     commonIndentationLength = foldr (min . Text.length . Text.takeWhile (== ' '))
 
 -- This should be called with zero or one elements, as per `span isTrailing`
-convertTrailing :: [ParseTrivium] -> Maybe TrailingComment
-convertTrailing = toMaybe . join . map toText
+convertTrailing :: Seq ParseTrivium -> Maybe TrailingComment
+convertTrailing = toMaybe . join . foldMap (singleton . toText)
   where
     toText (PTLineComment c _) = strip c
     toText (PTBlockComment False [c]) = strip c
@@ -138,9 +138,9 @@ convertTrailing = toMaybe . join . map toText
     toMaybe "" = Nothing
     toMaybe c = Just $ TrailingComment c
 
-convertLeading :: [ParseTrivium] -> Trivia
+convertLeading :: Seq ParseTrivium -> Trivia
 convertLeading =
-  concatMap
+  foldMap
     ( \case
         PTNewlines 1 -> []
         PTNewlines _ -> [EmptyLine]
@@ -156,32 +156,34 @@ isTrailing (PTBlockComment False []) = True
 isTrailing (PTBlockComment False [_]) = True
 isTrailing _ = False
 
-convertTrivia :: [ParseTrivium] -> Pos -> (Maybe TrailingComment, Trivia)
+convertTrivia :: Seq ParseTrivium -> Pos -> (Maybe TrailingComment, Trivia)
 convertTrivia pts nextCol =
-  let (trailing, leading) = span isTrailing pts
+  let (trailing, leading) = Seq.spanl isTrailing pts
   in case (trailing, leading) of
       -- Special case: if the trailing comment visually forms a block with the start of the following line,
       -- then treat it like part of those comments instead of a distinct trailing comment.
       -- This happens especially often after `{` or `[` tokens, where the comment of the first item
       -- starts on the same line ase the opening token.
-      ([PTLineComment _ pos], (PTNewlines 1) : (PTLineComment _ pos') : _) | pos == pos' -> (Nothing, convertLeading pts)
+      ([PTLineComment _ pos], (PTNewlines 1) Seq.:<| (PTLineComment _ pos') Seq.:<| _) | pos == pos' -> (Nothing, convertLeading pts)
       ([PTLineComment _ pos], [PTNewlines 1]) | pos == nextCol -> (Nothing, convertLeading pts)
       _ -> (convertTrailing trailing, convertLeading leading)
 
-trivia :: Parser [ParseTrivium]
-trivia = many $ hidden $ lineComment <|> blockComment <|> newlines
+trivia :: Parser (Seq ParseTrivium)
+trivia =
+  Seq.fromList <$> do
+    many $ hidden $ lineComment <|> blockComment <|> newlines
 
 -- The following primitives to interact with the state monad that stores trivia
 -- are designed to prevent trivia from being dropped or duplicated by accident.
 
-takeTrivia :: (MonadState Trivia m) => m Trivia
-takeTrivia = get <* put []
+takeTrivia :: (Monad m) => StateT Trivia m Trivia
+takeTrivia = get <* put Seq.empty
 
-pushTrivia :: (MonadState Trivia m) => Trivia -> m ()
+pushTrivia :: (Monad m) => Trivia -> StateT Trivia m ()
 pushTrivia t = modify (<> t)
 {-# INLINEABLE pushTrivia #-}
 
-lexeme :: Parser a -> Parser (Ann a)
+lexeme :: (NFData a) => Parser a -> Parser (Ann a)
 lexeme p = do
   lastLeading <- takeTrivia
   SourcePos{Text.Megaparsec.sourceLine = line} <- getSourcePos
@@ -193,17 +195,18 @@ lexeme p = do
   pushTrivia nextLeading
   return $
     Ann
-      { preTrivia = lastLeading,
-        value = token,
-        Nixfmt.Types.sourceLine = line,
-        trailComment = trailing
+      { preTrivia = force lastLeading,
+        value = force token,
+        Nixfmt.Types.sourceLine = force line,
+        trailComment = force trailing
       }
 
 -- | Tokens normally have only leading trivia and one trailing comment on the same
 -- line. A whole x also parses and stores final trivia after the x. A whole also
 -- does not interact with the trivia state of its surroundings.
-whole :: Parser a -> Parsec Void Text (Whole a)
-whole pa = flip evalStateT [] do
+whole :: (NFData a) => Parser a -> Parsec Void Text (Whole a)
+whole pa = flip evalStateT Seq.empty do
   preLexeme $ pure ()
-  pushTrivia . convertLeading =<< trivia
-  Whole <$> pa <*> takeTrivia
+  trivia
+    >>= pushTrivia . convertLeading
+  Whole <$> (force <$> pa) <*> (force <$> takeTrivia)

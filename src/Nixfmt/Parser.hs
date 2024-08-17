@@ -1,9 +1,12 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Nixfmt.Parser where
 
 import Control.Applicative (liftA2)
+import Control.DeepSeq (NFData, force)
 import Control.Monad (guard, liftM2)
 import Control.Monad.Combinators (sepBy)
 import qualified Control.Monad.Combinators.Expr as MPExpr (
@@ -78,7 +81,7 @@ import Prelude hiding (String)
 
 -- HELPER FUNCTIONS
 
-ann :: (a -> b) -> Parser a -> Parser (Ann b)
+ann :: (NFData b) => (a -> b) -> Parser a -> Parser (Ann b)
 ann f p = try $ lexeme $ f <$> p
 
 -- | parses a token without parsing trivia after it
@@ -370,8 +373,8 @@ term = label "term" $ do
     [] -> t
     _ -> Selection t sel def
 
-items :: Parser a -> Parser (Items a)
-items p = Items <$> many (item p) <> (toList <$> optional itemComment)
+items :: (NFData a) => Parser a -> Parser (Items a)
+items p = Items . force <$> many (item p) <> (toList <$> optional itemComment)
 
 item :: Parser a -> Parser (Item a)
 item p = itemComment <|> Item <$> p
@@ -430,23 +433,23 @@ inherit =
     <*> symbol TSemicolon
 
 assignment :: Parser Binder
-assignment =
-  Assignment
-    <$> selectorPath
-    <*> symbol TAssign
-    <*> expression
-    <*> symbol TSemicolon
+assignment = do
+  lhs <- selectorPath
+  assign <- symbol TAssign
+  expr <- expression
+  semicolon <- symbol TSemicolon
+  pure $! Assignment (force lhs) assign (force expr) semicolon
 
 binders :: Parser (Items Binder)
 binders = items (assignment <|> inherit)
 
 set :: Parser Term
-set =
-  Set
-    <$> optional (reserved KRec <|> reserved KLet)
-    <*> symbol TBraceOpen
-    <*> binders
-    <*> symbol TBraceClose
+set = do
+  mleaf <- optional (reserved KRec <|> reserved KLet)
+  lbrace <- symbol TBraceOpen
+  els <- binders
+  rbrace <- symbol TBraceClose
+  pure $! Set mleaf lbrace (force els) rbrace
 
 list :: Parser Term
 list = List <$> symbol TBrackOpen <*> items term <*> symbol TBrackClose
@@ -492,7 +495,7 @@ opCombiner (Op InfixR tok) = MPExpr.InfixR $ flip Operation <$> operator tok
 operation :: Parser Expression
 operation =
   MPExpr.makeExprParser
-    (Term <$> term <* notFollowedBy (oneOf (":@" :: [Char])))
+    (Term <$> term <* notFollowedBy (oneOf @[] ":@"))
     (map (map opCombiner) operators)
 
 -- EXPRESSIONS

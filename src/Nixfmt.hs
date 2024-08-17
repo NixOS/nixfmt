@@ -1,5 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
-
 module Nixfmt (
   errorBundlePretty,
   ParseErrorBundle,
@@ -28,8 +26,11 @@ type Layouter = forall a. (Pretty a, LanguageElement a) => a -> Text
 -- of @w@ columns where possible.
 format :: Layouter -> FilePath -> Text -> Either String Text
 format layout filename =
-  bimap errorBundlePretty layout
+  bimap errorBundlePretty f
     . Megaparsec.parse Parser.file filename
+  where
+    -- f !x = layout $ maybe () (error . show) (unsafeNoThunks x) `seq` x
+    f !x = layout x
 
 -- | Pretty print the internal AST for debugging
 printAst :: FilePath -> Text -> Either String a

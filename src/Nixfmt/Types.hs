@@ -1,11 +1,4 @@
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE StrictData #-}
 
 module Nixfmt.Types (
   ParseErrorBundle,
@@ -44,14 +37,17 @@ module Nixfmt.Types (
   walkSubprograms,
 ) where
 
+import Control.DeepSeq (NFData)
 import Control.Monad.State.Strict (StateT)
 import Data.Bifunctor (first)
 import Data.Foldable (toList)
 import Data.Function (on)
 import Data.List.NonEmpty as NonEmpty
 import Data.Maybe (maybeToList)
+import Data.Sequence (Seq)
 import Data.Text (Text, pack)
 import Data.Void (Void)
+import GHC.Generics (Generic)
 import Text.Megaparsec (Pos)
 import qualified Text.Megaparsec as MP (ParseErrorBundle, Parsec, pos1)
 import Prelude hiding (String)
@@ -71,10 +67,14 @@ data Trivium
     -- The bool indicates a doc comment (/**)
     BlockComment Bool [Text]
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
-type Trivia = [Trivium]
+type Trivia = Seq Trivium
 
-newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
+newtype TrailingComment = TrailingComment Text
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (NFData)
 
 data Ann a = Ann
   { preTrivia :: Trivia,
@@ -83,7 +83,8 @@ data Ann a = Ann
     value :: a,
     trailComment :: Maybe TrailingComment
   }
-  deriving (Show)
+  deriving stock (Show, Generic)
+  deriving anyclass (NFData)
 
 removeLineInfo :: Ann a -> Ann a
 removeLineInfo a = a{sourceLine = MP.pos1}
@@ -117,8 +118,13 @@ data Item a
   | -- | Trivia interleaved in items
     Comments Trivia
   deriving (Foldable, Show, Functor)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
-newtype Items a = Items {unItems :: [Item a]} deriving (Functor)
+newtype Items a = Items {unItems :: [Item a]}
+  deriving (Functor)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 instance (Eq a) => Eq (Items a) where
   (==) = (==) `on` concatMap Data.Foldable.toList . unItems
@@ -133,6 +139,8 @@ data StringPart
   = TextPart Text
   | Interpolation (Whole Expression)
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 type Path = Ann [StringPart]
 
@@ -144,18 +152,24 @@ type String = Ann [[StringPart]]
 data SimpleSelector
   = IDSelector Leaf
   | InterpolSelector (Ann StringPart)
-  | StringSelector String
+  | StringSelector !String
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data Selector
   = -- `.selector`
     Selector (Maybe Leaf) SimpleSelector
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data Binder
   = Inherit Leaf (Maybe Term) [SimpleSelector] Leaf
   | Assignment [Selector] Leaf Expression Leaf
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data Term
   = Token Leaf
@@ -169,19 +183,24 @@ data Term
   | Selection Term [Selector] (Maybe (Leaf, Term))
   | Parenthesized Leaf Expression Leaf
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data ParamAttr
   = -- name, Maybe question mark and default, maybe comma
     ParamAttr Leaf (Maybe (Leaf, Expression)) (Maybe Leaf)
   | ParamEllipsis Leaf
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data Parameter
   = IDParameter Leaf
   | SetParameter Leaf [ParamAttr] Leaf
   | ContextParameter Parameter Leaf Parameter
   deriving (Show)
-
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 instance Eq Parameter where
   (IDParameter l) == (IDParameter r) = l == r
   (SetParameter l1 l2 l3) == (SetParameter r1 r2 r3) =
@@ -210,11 +229,15 @@ data Expression
   | Negation Leaf Expression
   | Inversion Leaf Expression
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 -- | A Whole a is an a including final trivia. It's assumed the a stores the
 -- initial trivia.
 data Whole a
   = Whole a Trivia
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 -- | Equality of annotated syntax is defined as equality of their corresponding
 -- semantics, thus ignoring the annotations.
@@ -536,6 +559,8 @@ data Token
   | TPipeBackward
   | SOF
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data Fixity
   = Prefix
@@ -544,11 +569,15 @@ data Fixity
   | InfixR
   | Postfix
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 data Operator
   = Op Fixity Token
   | Apply
   deriving (Eq, Show)
+  deriving stock (Generic)
+  deriving anyclass (NFData)
 
 -- | A list of lists of operators where lists that come first contain operators
 -- that bind more strongly.

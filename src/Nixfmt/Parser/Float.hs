@@ -1,15 +1,11 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-
 module Nixfmt.Parser.Float (floatParse) where
 
-import "base" Control.Monad (void)
-import qualified "base" Data.Char as Char
-import "base" Data.Foldable (foldl')
-import "base" Data.Proxy (Proxy (..))
-import "megaparsec" Text.Megaparsec (
+import Control.Monad (void)
+import qualified Data.Char as Char
+import Data.Foldable (foldl')
+import Data.Proxy (Proxy (..))
+import Data.Scientific (scientific, toRealFloat)
+import Text.Megaparsec (
   MonadParsec,
   Token,
   chunkToTokens,
@@ -20,9 +16,8 @@ import "megaparsec" Text.Megaparsec (
   (<?>),
   (<|>),
  )
-import "megaparsec" Text.Megaparsec.Char (char, char', digitChar)
-import "megaparsec" Text.Megaparsec.Char.Lexer (decimal, signed)
-import "scientific" Data.Scientific (scientific, toRealFloat)
+import Text.Megaparsec.Char (char, char', digitChar)
+import Text.Megaparsec.Char.Lexer (decimal, signed)
 
 -- copied (and modified) from Text.Megaparsec.Char.Lexer
 data SP = SP !Integer {-# UNPACK #-} !Int
