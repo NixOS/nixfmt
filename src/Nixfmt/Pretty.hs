@@ -541,7 +541,11 @@ absorbExpr _ expr = pretty expr
 -- Render the RHS value of an assignment or function parameter default value
 absorbRHS :: Expression -> Doc
 absorbRHS expr = case expr of
-  -- Absorbable expression. Always start on the same line
+  -- Exception to the case below: Don't force-expand attrsets if they only contain a single inherit statement
+  (Term (Set _ _ binders _))
+    | case unItems binders of [Item (Inherit{})] -> True; _ -> False ->
+        hardspace <> group (absorbExpr False expr)
+  -- Absorbable expression. Always start on the same line, and force-expand attrsets
   _ | isAbsorbableExpr expr -> hardspace <> group (absorbExpr True expr)
   -- Parenthesized expression. Same thing as the special case for parenthesized last argument in function calls.
   (Term (Parenthesized open expr' close)) -> hardspace <> absorbParen open expr' close
