@@ -33,11 +33,7 @@
   {
     a =
       with b; # comment
-      [
-        1
-        2
-        3
-      ];
+      [ 1 2 3 ];
   }
   {
     a =
@@ -51,16 +47,8 @@
   }
   ([ 1 ])
   (with a; [ 1 ])
-  ([
-    1
-    2
-    3
-  ])
-  (with a; [
-    1
-    2
-    3
-  ])
+  ([ 1 2 3 ])
+  (with a; [ 1 2 3 ])
   (with a; with b; with c; [ 1 ])
   (with a; with b; with c; { a = 1; })
   (
@@ -90,46 +78,24 @@
     }
   )
   { a = with b; with b; with b; 1; }
-  {
-    binPath =
-      with pkgs;
-      makeBinPath ([
-        rsync
-        util-linux
-      ]);
-  }
+  { binPath = with pkgs; makeBinPath ([ rsync util-linux ]); }
   (with a; { })
-  (with a; [
-    1
-    2
-    3
-  ])
+  (with a; [ 1 2 3 ])
   (with a; if null then true else false)
   (
     with a;
     let
     in
-    [
-      1
-      2
-      3
-    ]
+    [ 1 2 3 ]
   )
   (
     {
-      gst_plugins ? with gst_all_1; [
-        gst-plugins-good
-        gst-plugins-ugly
-      ],
+      gst_plugins ? with gst_all_1; [ gst-plugins-good gst-plugins-ugly ],
       more ?
         with stuff;
         let
         in
-        [
-          1
-          2
-          3
-        ],
+        [ 1 2 3 ],
       things ? with a; if null then true else false,
       things ?
         with a;
@@ -142,11 +108,7 @@
       with stuff;
       let
       in
-      [
-        1
-        2
-        3
-      ];
+      [ 1 2 3 ];
     things = with a; if null then true else false;
     things =
       with a;

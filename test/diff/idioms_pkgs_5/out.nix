@@ -164,16 +164,10 @@ let
       # Including it then would cause needless mass rebuilds.
       #
       # TODO(@Ericson2314): Make [ "build" "host" ] always the default / resolve #87909
-      configurePlatforms ?
-        optionals
-          (
-            stdenv.hostPlatform != stdenv.buildPlatform
-            || config.configurePlatformsByDefault
-          )
-          [
-            "build"
-            "host"
-          ],
+      configurePlatforms ? optionals (
+        stdenv.hostPlatform != stdenv.buildPlatform
+        || config.configurePlatformsByDefault
+      ) [ "build" "host" ],
 
       # TODO(@Ericson2314): Make unconditional / resolve #33599
       # Check phase
@@ -503,11 +497,7 @@ let
           // optionalAttrs __structuredAttrs { env = checkedEnv; }
           // {
             builder = attrs.realBuilder or stdenv.shell;
-            args =
-              attrs.args or [
-                "-e"
-                (attrs.builder or ./default-builder.sh)
-              ];
+            args = attrs.args or [ "-e" (attrs.builder or ./default-builder.sh) ];
             inherit stdenv;
 
             # The `system` attribute of a derivation has special meaning to Nix.
@@ -652,10 +642,7 @@ let
                   [ stdenv.extraSandboxProfile ]
                   ++ computedSandboxProfile
                   ++ computedPropagatedSandboxProfile
-                  ++ [
-                    propagatedSandboxProfile
-                    sandboxProfile
-                  ];
+                  ++ [ propagatedSandboxProfile sandboxProfile ];
                 final = concatStringsSep "\n" (filter (x: x != "") (unique profiles));
               in
               final;

@@ -70,10 +70,7 @@
       mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
   }
   [
-    (mapAttrsToStringsSep [
-      force
-      long
-    ] "\n" mkSection attrsOfAttrs)
+    (mapAttrsToStringsSep [ force long ] "\n" mkSection attrsOfAttrs)
   ]
   (a b)
   ((a b) (a b)

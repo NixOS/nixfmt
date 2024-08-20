@@ -53,10 +53,7 @@
     1
   ]
 
-  [
-    b
-    d
-  ]
+  [ b d ]
   [
     b
     d # e
@@ -111,20 +108,8 @@
 
   ]
 
-  [
-    [
-      multi
-      line
-    ]
-  ]
+  [ [ multi line ] ]
   [ [ [ singleton ] ] ]
   [ [ [ { } ] ] ]
-  [
-    [
-      [
-        { }
-        multiline
-      ]
-    ]
-  ]
+  [ [ [ { } multiline ] ] ]
 ]

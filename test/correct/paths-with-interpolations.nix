@@ -3,12 +3,4 @@ let
   bar = "bar";
 
 in
-[
-  /${foo}
-  ./${foo}
-  /foo/${bar}
-  /foo${bar}
-  /${foo}/bar
-  /${foo}bar
-  /foo${bar}baz
-]
+[ /${foo} ./${foo} /foo/${bar} /foo${bar} /${foo}/bar /${foo}bar /foo${bar}baz ]

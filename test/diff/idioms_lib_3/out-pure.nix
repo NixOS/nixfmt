@@ -130,13 +130,7 @@ rec {
   toINI =
     {
       # apply transformations (e.g. escapes) to section names
-      mkSectionName ? (
-        name:
-        libStr.escape [
-          "["
-          "]"
-        ] name
-      ),
+      mkSectionName ? (name: libStr.escape [ "[" "]" ] name),
       # format a setting line from key and value
       mkKeyValue ? mkKeyValueDefault { } "=",
       # allow lists as values for duplicate keys
@@ -191,13 +185,7 @@ rec {
   toINIWithGlobalSection =
     {
       # apply transformations (e.g. escapes) to section names
-      mkSectionName ? (
-        name:
-        libStr.escape [
-          "["
-          "]"
-        ] name
-      ),
+      mkSectionName ? (name: libStr.escape [ "[" "]" ] name),
       # format a setting line from key and value
       mkKeyValue ? mkKeyValueDefault { } "=",
       # allow lists as values for duplicate keys
@@ -292,12 +280,7 @@ rec {
     }:
     assert builtins.isInt depthLimit;
     let
-      specialAttrs = [
-        "__functor"
-        "__functionArgs"
-        "__toString"
-        "__pretty"
-      ];
+      specialAttrs = [ "__functor" "__functionArgs" "__toString" "__pretty" ];
       stepIntoAttr =
         evalNext: name: if builtins.elem name specialAttrs then id else evalNext;
       transform =
@@ -373,21 +356,8 @@ rec {
         else if isString v then
           let
             lines = filter (v: !isList v) (builtins.split "\n" v);
-            escapeSingleline = libStr.escape [
-              "\\"
-              ''"''
-              "\${"
-            ];
-            escapeMultiline =
-              libStr.replaceStrings
-                [
-                  "\${"
-                  "''"
-                ]
-                [
-                  "''\${"
-                  "'''"
-                ];
+            escapeSingleline = libStr.escape [ "\\" ''"'' "\${" ];
+            escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [ "''\${" "'''" ];
             singlelineResult =
               ''"'' + concatStringsSep "\\n" (map escapeSingleline lines) + ''"'';
             multilineResult =

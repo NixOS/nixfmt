@@ -69,12 +69,7 @@
     b = # Function call with comment
       mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
   }
-  [
-    (mapAttrsToStringsSep [
-      force
-      long
-    ] "\n" mkSection attrsOfAttrs)
-  ]
+  [ (mapAttrsToStringsSep [ force long ] "\n" mkSection attrsOfAttrs) ]
   (a b)
   ((a b) (a b)
     (
@@ -155,21 +150,8 @@
       utils.lib.eachDefaultSystem (system: { });
   }
   {
-    escapeSingleline = libStr.escape [
-      "\\"
-      ''"''
-      "\${"
-    ];
-    escapeMultiline =
-      libStr.replaceStrings
-        [
-          "\${"
-          "''"
-        ]
-        [
-          "''\${"
-          "'''"
-        ];
+    escapeSingleline = libStr.escape [ "\\" ''"'' "\${" ];
+    escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [ "''\${" "'''" ];
     test =
       foo
         [

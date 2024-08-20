@@ -41,13 +41,7 @@
       ]
     then
       foo
-    else if
-      [
-        more
-        multi
-        line
-      ]
-    then
+    else if [ more multi line ] then
       bar
     else
       baz
