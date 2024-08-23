@@ -1,0 +1,7 @@
+- id: &id nixfmt
+  name: *id
+  entry: *id
+  language: haskell
+  types:
+    - nix
+  description: The official (but not yet stable) formatter for Nix code
