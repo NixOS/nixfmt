@@ -6,6 +6,9 @@
 module Main where
 
 import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
+import Control.Monad (unless)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
 import Data.ByteString.Char8 (unpack)
 import Data.Either (lefts)
 import Data.FileEmbed
@@ -87,19 +90,31 @@ data Target = Target
   }
 
 -- | Recursively collect nix files in a directory
-collectNixFiles :: FilePath -> IO [FilePath]
+collectNixFiles :: FilePath -> StateT Bool IO [FilePath]
 collectNixFiles path = do
-  dir <- doesDirectoryExist path
+  dir <- lift $ doesDirectoryExist path
   if
     | dir -> do
-        files <- listDirectory path
+        warnDeprecated
+        files <- lift $ listDirectory path
         concat <$> mapM collectNixFiles ((path </>) <$> files)
     | ".nix" `isSuffixOf` path -> pure [path]
-    | otherwise -> pure []
+    | otherwise -> do
+        warnDeprecated
+        pure []
+  where
+    warnDeprecated = do
+      warningPrinted <- get
+      -- We don't want to print the warning more than once
+      unless warningPrinted $ do
+        lift $ hPutStrLn stderr $ "\ESC[33mPassing directories or non-Nix files (such as \"" <> path <> "\") is deprecated and will be unsupported soon, please use https://treefmt.com/ instead, e.g. via https://github.com/numtide/treefmt-nix\ESC[0m"
+        put True
 
 -- | Recursively collect nix files in a list of directories
 collectAllNixFiles :: [FilePath] -> IO [FilePath]
-collectAllNixFiles paths = concat <$> mapM collectNixFiles paths
+collectAllNixFiles paths =
+  -- The state represents whether a deprecation warning was already printed for a directory being passed
+  flip evalStateT False $ concat <$> mapM collectNixFiles paths
 
 formatTarget :: Formatter -> Target -> IO Result
 formatTarget format Target{tDoRead, tPath, tDoWrite} = do
