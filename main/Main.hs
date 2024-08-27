@@ -5,7 +5,6 @@
 
 module Main where
 
-import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
 import Control.Monad (unless)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
@@ -174,37 +173,16 @@ toWriteError Nixfmt{quiet = True} = const $ return ()
 toJobs :: Nixfmt -> IO [IO Result]
 toJobs opts = map (toOperation opts $ toFormatter opts) <$> toTargets opts
 
--- TODO: Efficient parallel implementation. This is just a sequential stub.
--- This was originally implemented using parallel-io, but it gave a factor two
--- overhead.
-doParallel :: [IO a] -> IO [a]
-doParallel = sequence
-
-errorWriter :: (String -> IO ()) -> Chan (Maybe String) -> Chan () -> IO ()
-errorWriter doWrite chan done = do
-  item <- readChan chan
-  case item of
-    Nothing -> return ()
-    Just msg -> doWrite msg >> errorWriter doWrite chan done
-  writeChan done ()
-
-writeErrorBundle :: Chan (Maybe String) -> Result -> IO Result
-writeErrorBundle chan result = do
+writeErrorBundle :: (String -> IO ()) -> Result -> IO Result
+writeErrorBundle doWrite result = do
   case result of
     Right () -> return ()
-    Left err -> writeChan chan $ Just err
+    Left err -> doWrite err
   return result
 
 -- | Run a list of jobs and write errors to stderr without interleaving them.
 runJobs :: (String -> IO ()) -> [IO Result] -> IO [Result]
-runJobs writeError jobs = do
-  errChan <- newChan
-  doneChan <- newChan
-  _ <- forkIO $ errorWriter writeError errChan doneChan
-  results <- doParallel $ map (>>= writeErrorBundle errChan) jobs
-  writeChan errChan Nothing
-  _ <- readChan doneChan
-  return results
+runJobs writeError = mapM (>>= writeErrorBundle writeError)
 
 main :: IO ()
 main = withUtf8StdHandles $ do
