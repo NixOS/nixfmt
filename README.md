@@ -14,42 +14,92 @@ The established standard Nix formatting differs considerably from the original o
 
 For more details, see the [RFC implementation tracking issue](https://github.com/NixOS/nixfmt/issues/153).
 
-## Installation
+## Installation And Usage Instructions
 
-- `nixfmt` is in nixpkgs master as of 2019-09-04: 
+### nixpkgs/NixOS
 
-      nix-env -iA nixpkgs.nixfmt
+`nixfmt` was used as the basis for the official Nix formatter with a standardized formatting.
+The new formatting differs considerably from the original one.
+A recent nixfmt version is available as `pkgs.nixfmt-rfc-style` in Nixpkgs.
+The formatting of this version differs considerably from the original nixfmt that was used as the basis for the standardised official formatter, which is also still available as `pkgs.nixfmt-classic` for now, though unmaintained.
 
-- To get the most recent version, install from master:
+So installing this `nixfmt` is as simple as adding to the system packages:
 
-      nix-env -f https://github.com/NixOS/nixfmt/archive/master.tar.gz -i
+```nix
+{ pkgs, ... }:
 
-- Nix with flakes
+{
+  environment.systemPackages = [ pkgs.nixfmt-rfc-style ];
+}
+```
 
-      nix profile install github:NixOS/nixfmt
+### From the repository
 
-## Development
+It's also possible to install `nixfmt` directly from the repository using `nix-env`.
+Also, updates are not done automatically (as it would with the system packages).
 
-### With Nix
+```console
+$ nix-env -f https://github.com/NixOS/nixfmt/archive/master.tar.gz -i
+```
 
-Haskell dependencies will be built by Nix.
+### nix fmt
 
-* Enter `nix-shell`
-* Build with `cabal new-build`
+[nix fmt](https://nix.dev/manual/nix/latest/command-ref/new-cli/nix3-fmt) (which is a flakes-only feature) can be configured by adding the following to `flake.nix` (assuming a `nixpkgs` input exists):
+```nix
+{
+  outputs =
+    { nixpkgs, self }:
+    {
+      formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-rfc-style;
+    };
+}
+```
 
-### Without Nix
+### treefmt
 
-Haskell dependencies will be built by Cabal.
+[treefmt](https://github.com/numtide/treefmt) can be used to format repositories consisting of different languages with one command.
+A possible configuration for `nixfmt` in `treefmt.toml` looks like this:
+```toml
+[formatter.nixfmt-rfc-style]
+command = "nixfmt"
+includes = ["*.nix"]
+```
 
-* Build with `cabal new-build`
+This only works when `nixfmt-rfc-style` is installed (see above for installation instructions).
 
+`treefmt` can be integrated into text editors and CI to ensure consistent formatting for all filetypes.
 
-## Usage
+### treefmt-nix
 
-* `nixfmt < input.nix` – reads Nix code from `stdin`, formats it, and outputs to `stdout`
-* `nixfmt file.nix` – format the file in place
+[treefmt-nix](https://github.com/numtide/treefmt-nix) automatically configures the correct packages and formatters using a Nix configuration and has native support for `nixfmt`:
 
-### With the `pre-commit` tool
+```nix
+# ...
+treefmt-nix.mkWrapper nixpkgs {
+  # ... other options ...
+  programs.nixfmt-rfc-style.enable = true;
+}
+```
+
+More information about configuration can be found in [the README](https://github.com/numtide/treefmt-nix?tab=readme-ov-file#integration-into-nix).
+
+### git-hooks.nix
+
+[git-hooks.nix](https://github.com/cachix/git-hooks.nix) can automatically configure git hooks like `pre-commit` using nix configuration and has native support for `nixfmt`:
+
+```nix
+{
+  pre-commit-check = nix-pre-commit-hooks.run {
+    # ... other options ...
+    hooks = {
+      # ... other hooks ...
+      nixfmt-rfc-style.enable = true;
+    };
+  };
+}
+```
+
+### `pre-commit` tool
 
 If you have Nix files in a Git repo and you want to make sure that they’re formatted with `nixfmt`, then you can use the `pre-commit` tool from [pre-commit.com](https://pre-commit.com):
 
@@ -77,7 +127,7 @@ If you have Nix files in a Git repo and you want to make sure that they’re for
 
 5. Add an entry for the `nixfmt` hook to your `.pre-commit-config.yaml` file:
 
-    ```
+    ```yaml
     repos:
         - repo: https://github.com/NixOS/nixfmt
           rev: <version>
@@ -92,6 +142,73 @@ If you have Nix files in a Git repo and you want to make sure that they’re for
 > [!WARNING]
 > `nixfmt`’s integration with the `pre-commit` tool is relatively new. At the moment, none of the stable releases of `nixfmt` can be used with the `pre-commit` tool. You’ll have to use an unstable version for the time being.
 
+### neovim + nixd
+
+```lua
+local nvim_lsp = require("lspconfig")
+nvim_lsp.nixd.setup({
+   settings = {
+      nixd = {
+         formatting = {
+            command = { "nixfmt" },
+         },
+      },
+   },
+})
+```
+
+This only works when `nixfmt-rfc-style` is installed (see above for installation instructions).
+
+### neovim + nil
+
+```lua
+local nvim_lsp = require("lspconfig")
+nvim_lsp.nil_ls.setup({
+   settings = {
+      ['nil'] = {
+         formatting = {
+            command = { "nixfmt" },
+         },
+      },
+   },
+})
+```
+
+This only works when `nixfmt-rfc-style` is installed (see above for installation instructions).
+
+### neovim + none-ls
+
+```lua
+local null_ls = require("null-ls")
+null_ls.setup({
+    sources = {
+        null_ls.builtins.formatting.nixfmt,
+    },
+})
+```
+
+This only works when `nixfmt-rfc-style` is installed (see above for installation instructions).
+
+## Development
+
+### With Nix
+
+Haskell dependencies will be built by Nix.
+
+* Enter `nix-shell`
+* Build with `cabal new-build`
+
+### Without Nix
+
+Haskell dependencies will be built by Cabal.
+
+* Build with `cabal new-build`
+
+
+## Usage
+
+* `nixfmt < input.nix` – reads Nix code from `stdin`, formats it, and outputs to `stdout`
+* `nixfmt file.nix` – format the file in place
 
 ## About Serokell
 
