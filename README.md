@@ -38,8 +38,8 @@ So installing this `nixfmt` is as simple as adding to the system packages:
 It's also possible to install `nixfmt` directly from the repository using `nix-env`.
 Also, updates are not done automatically (as it would with the system packages).
 
-```
-nix-env -f https://github.com/NixOS/nixfmt/archive/master.tar.gz -i
+```console
+$ nix-env -f https://github.com/NixOS/nixfmt/archive/master.tar.gz -i
 ```
 
 ### nix fmt
@@ -98,6 +98,49 @@ More information about configuration can be found in [the README](https://github
   };
 }
 ```
+
+### `pre-commit` tool
+
+If you have Nix files in a Git repo and you want to make sure that they’re formatted with `nixfmt`, then you can use the `pre-commit` tool from [pre-commit.com](https://pre-commit.com):
+
+1. Make sure that you have the `pre-commit` command:
+
+    ```console
+    $ pre-commit --version
+    pre-commit 3.7.1
+    ```
+
+2. Make sure that you’re in your Git repo:
+
+    ```console
+    $ cd <path-to-git-repo>
+    ```
+
+3. Make sure that the `pre-commit` tool is installed as a Git pre-commit hook:
+
+    ```console
+    $ pre-commit install
+    pre-commit installed at .git/hooks/pre-commit
+    ```
+
+4. If you don’t already have one, then create a `.pre-commit-config.yaml` file.
+
+5. Add an entry for the `nixfmt` hook to your `.pre-commit-config.yaml` file:
+
+    ```yaml
+    repos:
+        - repo: https://github.com/NixOS/nixfmt
+          rev: <version>
+          hooks:
+                - id: nixfmt
+    ```
+
+    If you want to use a stable version of `nixfmt`, then replace `<version>` with a tag from this repo. If you want to use an unstable version of `nixfmt`, then replace `<version>` with a commit hash from this repo.
+
+6. Try to commit a badly formatted Nix file in order to make sure that everything works.
+
+> [!WARNING]
+> `nixfmt`’s integration with the `pre-commit` tool is relatively new. At the moment, none of the stable releases of `nixfmt` can be used with the `pre-commit` tool. You’ll have to use an unstable version for the time being.
 
 ### neovim + nixd
 
@@ -166,50 +209,6 @@ Haskell dependencies will be built by Cabal.
 
 * `nixfmt < input.nix` – reads Nix code from `stdin`, formats it, and outputs to `stdout`
 * `nixfmt file.nix` – format the file in place
-
-### With the `pre-commit` tool
-
-If you have Nix files in a Git repo and you want to make sure that they’re formatted with `nixfmt`, then you can use the `pre-commit` tool from [pre-commit.com](https://pre-commit.com):
-
-1. Make sure that you have the `pre-commit` command:
-
-    ```console
-    $ pre-commit --version
-    pre-commit 3.7.1
-    ```
-
-2. Make sure that you’re in your Git repo:
-
-    ```console
-    $ cd <path-to-git-repo>
-    ```
-
-3. Make sure that the `pre-commit` tool is installed as a Git pre-commit hook:
-
-    ```console
-    $ pre-commit install
-    pre-commit installed at .git/hooks/pre-commit
-    ```
-
-4. If you don’t already have one, then create a `.pre-commit-config.yaml` file.
-
-5. Add an entry for the `nixfmt` hook to your `.pre-commit-config.yaml` file:
-
-    ```
-    repos:
-        - repo: https://github.com/NixOS/nixfmt
-          rev: <version>
-          hooks:
-                - id: nixfmt
-    ```
-
-    If you want to use a stable version of `nixfmt`, then replace `<version>` with a tag from this repo. If you want to use an unstable version of `nixfmt`, then replace `<version>` with a commit hash from this repo.
-
-6. Try to commit a badly formatted Nix file in order to make sure that everything works.
-
-> [!WARNING]
-> `nixfmt`’s integration with the `pre-commit` tool is relatively new. At the moment, none of the stable releases of `nixfmt` can be used with the `pre-commit` tool. You’ll have to use an unstable version for the time being.
-
 
 ## About Serokell
 
