@@ -71,7 +71,7 @@ lineComment :: Parser ParseTrivium
 lineComment = preLexeme $ do
   SourcePos{sourceColumn = col} <- getSourcePos
   _ <- chunk "#"
-  text <- manyP (\x -> x /= '\n' && x /= '\r')
+  text <- stripEnd <$> manyP (\x -> x /= '\n' && x /= '\r')
   return (PTLineComment text col)
 
 blockComment :: Parser ParseTrivium
