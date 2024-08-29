@@ -92,7 +92,7 @@ bodyForCommitIndex() {
     echo -e "base: $subject\n\nFormat using the base commit from nixfmt PR $nixfmtPrNumber: $url"
   else
     url=$nixfmtUrl/pull/$nixfmtPrNumber/commits/$commit
-    echo -e "$index: $subject\n\nFormat using commit number $index from nixfmt PR $nixfmtPrNumber: $url"
+    echo -e "$index: $subject\n\nFormat using commit number $index from nixfmt PR $nixfmtPrNumber: $url (merged into the base branch)"
   fi
 }
 
@@ -249,6 +249,8 @@ update() {
 
   step "Checking out nixfmt at $nixfmtCommit"
   git -C nixfmt checkout -q "$nixfmtCommit"
+  step "Merging with the base commit $nixfmtBaseCommit"
+  git -C nixfmt merge --no-stat --no-edit "$nixfmtBaseCommit"
 }
 
 # Format Nixpkgs with a specific nixfmt version and push the result.
