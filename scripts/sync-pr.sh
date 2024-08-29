@@ -50,6 +50,8 @@ isLinear() {
 
 step "Fetching nixfmt pull request and creating a branch for the head commit"
 git init nixfmt -b unused
+git -C nixfmt config user.name "GitHub Actions"
+git -C nixfmt config user.email "actions@noreply.github.com"
 git -C nixfmt fetch "$nixfmtUrl" "refs/pull/$nixfmtPrNumber/merge"
 nixfmtBaseCommit=$(git -C nixfmt rev-parse FETCH_HEAD^1)
 nixfmtHeadCommit=$(git -C nixfmt rev-parse FETCH_HEAD^2)
