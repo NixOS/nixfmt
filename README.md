@@ -20,7 +20,8 @@ For more details, see the [RFC implementation tracking issue](https://github.com
 
 `nixfmt` was used as the basis for the official Nix formatter with a standardized formatting.
 The new formatting differs considerably from the original one.
-This is why two packages are in nixpkgs: `nixfmt-classic` with the non-standardized formatting and `nixfmt-rfc-style`.
+A recent nixfmt version is available as `pkgs.nixfmt-rfc-style` in Nixpkgs.
+The formatting of this version differs considerably from the original nixfmt that was used as the basis for the standardised official formatter, which is also still available as `pkgs.nixfmt-classic` for now, though unmaintained.
 
 So installing this `nixfmt` is as simple as adding to the system packages:
 
@@ -35,8 +36,7 @@ So installing this `nixfmt` is as simple as adding to the system packages:
 ### From the repository
 
 It's also possible to install `nixfmt` directly from the repository using `nix-env`.
-This allows the newest changes to be used, which may not be equal to the `nixfmt` version used to format nixpkgs, so this should be done with care!
-Also, updates are not done automatically (as with the system packages).
+Also, updates are not done automatically (as it would with the system packages).
 
 ```
 nix-env -f https://github.com/NixOS/nixfmt/archive/master.tar.gz -i
@@ -45,18 +45,20 @@ nix-env -f https://github.com/NixOS/nixfmt/archive/master.tar.gz -i
 ### nix fmt
 
 [nix fmt](https://nix.dev/manual/nix/latest/command-ref/new-cli/nix3-fmt) (which is a flakes-only feature) can be configured by adding the following to `flake.nix` (assuming a `nixpkgs` input exists):
-```
+```nix
 {
-  outputs = { nixpkgs, self }: {
-    formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-rfc-style;
-  };
+  outputs =
+    { nixpkgs, self }:
+    {
+      formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-rfc-style;
+    };
 }
 ```
 
 ### treefmt
 
 [treefmt](https://github.com/numtide/treefmt) can be used to format repositories consisting of different languages with one command.
-A possible configuration for `nixfmt` in `.treefmt.toml` looks like this:
+A possible configuration for `nixfmt` in `treefmt.toml` looks like this:
 ```toml
 [formatter.nixfmt-rfc-style]
 command = "nixfmt"
@@ -79,7 +81,23 @@ treefmt-nix.mkWrapper nixpkgs {
 }
 ```
 
-More information about configuration can be found in [the official README](https://github.com/numtide/treefmt-nix?tab=readme-ov-file#integration-into-nix).
+More information about configuration can be found in [the README](https://github.com/numtide/treefmt-nix?tab=readme-ov-file#integration-into-nix).
+
+### git-hooks.nix
+
+[git-hooks.nix](https://github.com/cachix/git-hooks.nix) can automatically configure git hooks like `pre-commit` using nix configuration and has native support for `nixfmt`:
+
+```nix
+{
+  pre-commit-check = nix-pre-commit-hooks.run {
+    # ... other options ...
+    hooks = {
+      # ... other hooks ...
+      nixfmt-rfc-style.enable = true;
+    };
+  };
+}
+```
 
 ### neovim + nixd
 
