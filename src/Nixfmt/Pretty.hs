@@ -375,7 +375,11 @@ instance Pretty Parameter where
 --    then start on a new line instead".
 prettyApp :: Bool -> Doc -> Bool -> Expression -> Expression -> Doc
 prettyApp indentFunction pre hasPost f a =
-  let absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority a')
+  let -- This is very hacky, but selections shouldn't be in a priority group,
+      -- because if they get expanded before anything else,
+      -- only the `.`-and-after part gets to a new line, which looks very odd
+      absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG a')
+      absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority a')
       absorbApp expr
         | indentFunction && null comment' = nest $ group' RegularG $ line' <> pretty expr
         | otherwise = pretty expr
