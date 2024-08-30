@@ -1,14 +1,10 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
-
 module Nixfmt.Pretty where
 
 import Data.Char (isSpace)
-import Data.Maybe (fromJust, fromMaybe, isJust, isNothing, maybeToList)
+import Data.Foldable (fold, toList)
+import Data.Maybe (fromJust, fromMaybe, isJust, isNothing)
+import Data.Sequence (Seq)
+import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as Text (null, takeWhile)
 import Nixfmt.Predoc (
@@ -71,7 +67,7 @@ toLineComment (TrailingComment c) = LineComment $ " " <> c
 moveTrailingCommentUp :: Ann a -> Ann a
 moveTrailingCommentUp a@Ann{preTrivia, trailComment = Just post} =
   a
-    { preTrivia = preTrivia ++ [toLineComment post],
+    { preTrivia = preTrivia <> [toLineComment post],
       trailComment = Nothing
     }
 moveTrailingCommentUp a = a
@@ -107,6 +103,10 @@ prettyItems (Items items) = sepBy hardline items
 instance Pretty [Trivium] where
   pretty [] = mempty
   pretty trivia = hardline <> hcat trivia
+
+instance Pretty (Seq Trivium) where
+  pretty [] = mempty
+  pretty trivia = hardline <> hcat (toList trivia)
 
 instance (Pretty a) => Pretty (Ann a) where
   pretty Ann{preTrivia, value, trailComment} =
@@ -294,7 +294,7 @@ moveParamsComments
       : xs
     ) =
     ParamAttr name maybeDefault (Just (comma{preTrivia = []}))
-      : moveParamsComments (ParamAttr (name'{preTrivia = trivia ++ trivia'}) maybeDefault' maybeComma' : xs)
+      : moveParamsComments (ParamAttr (name'{preTrivia = trivia <> trivia'}) maybeDefault' maybeComma' : xs)
 -- This may seem like a nonsensical case, but keep in mind that blank lines also count as comments (trivia)
 moveParamsComments
   -- , name
@@ -304,7 +304,7 @@ moveParamsComments
     ParamEllipsis ellipsis@Ann{preTrivia = trivia'}
     ] =
     [ ParamAttr name maybeDefault (Just (comma{preTrivia = []})),
-      ParamEllipsis (ellipsis{preTrivia = trivia ++ trivia'})
+      ParamEllipsis (ellipsis{preTrivia = trivia <> trivia'})
     ]
 -- Inject a trailing comma on the last element if nessecary
 moveParamsComments [ParamAttr name@Ann{sourceLine} def Nothing] = [ParamAttr name def (Just (ann sourceLine TComma))]
@@ -392,7 +392,7 @@ prettyApp indentFunction pre hasPost f a =
                 close
               )
           )
-          | isAbsorbableTerm body && not (any hasTrivia [open, name, colon]) =
+          | isAbsorbableTerm body && not (any @[] hasTrivia [open, name, colon]) =
               group' Priority $
                 nest $
                   pretty open
@@ -410,7 +410,7 @@ prettyApp indentFunction pre hasPost f a =
                 close
               )
           )
-          | isAbsorbableTerm body && not (any hasTrivia [open, ident, close]) =
+          | isAbsorbableTerm body && not (any @[] hasTrivia [open, ident, close]) =
               group' Priority $
                 nest $
                   pretty open
@@ -497,7 +497,7 @@ absorbParen open@Ann{trailComment = post'} expr close@Ann{preTrivia = pre''} =
               nest $
                 pretty
                   ( mapFirstToken
-                      (\a@Ann{preTrivia} -> a{preTrivia = maybeToList (toLineComment <$> post') ++ preTrivia})
+                      (\a@Ann{preTrivia} -> a{preTrivia = maybe Seq.empty (Seq.singleton . toLineComment) post' <> preTrivia})
                       expr
                   )
                   -- Move any leading comments on the closing parenthesis up into the nest
@@ -581,8 +581,8 @@ instance Pretty Expression where
               (Comments inner)
                 | null rest ->
                     -- Only move all non-empty-line trivia below the `in`
-                    let (comments, el) = break (== EmptyLine) (reverse inner)
-                    in (reverse comments : start, Comments (reverse el) : rest)
+                    let (comments, el) = Seq.breakl (== EmptyLine) (Seq.reverse inner)
+                    in (Seq.reverse comments : start, Comments (Seq.reverse el) : rest)
               _ -> (start, item : rest)
           )
           ([], [])
@@ -595,7 +595,7 @@ instance Pretty Expression where
           pretty in_
             <> hardline
             -- Take our trailing and inject it between `in` and body
-            <> pretty (concat binderComments ++ preTrivia ++ convertTrailing trailComment)
+            <> pretty (fold binderComments <> preTrivia <> convertTrailing trailComment)
             <> pretty expr
   pretty (Assert assert cond semicolon expr) =
     group $
@@ -635,11 +635,11 @@ instance Pretty Expression where
     where
       absorbAbs :: Int -> Expression -> Doc
       -- If there are multiple ID parameters to that function, treat them all at once
-      absorbAbs depth (Abstraction (IDParameter param0) colon0 body0) =
+      absorbAbs !depth (Abstraction (IDParameter param0) colon0 body0) =
         hardspace <> pretty param0 <> pretty colon0 <> absorbAbs (depth + 1) body0
-      absorbAbs _ expr | isAbsorbableExpr expr = hardspace <> group' Priority (absorbExpr False expr)
+      absorbAbs !_ expr | isAbsorbableExpr expr = hardspace <> group' Priority (absorbExpr False expr)
       -- Force the content onto a new line when it is not absorbable and there are more than two arguments
-      absorbAbs depth x =
+      absorbAbs !depth x =
         (if depth <= 2 then line else hardline) <> pretty x
 
   -- Attrset parameter
@@ -679,7 +679,7 @@ instance Pretty Expression where
         prettyOperation (Just op', expr) =
           line <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
     in group' RegularG $
-        (concatMap prettyOperation . flatten Nothing) operation
+        (foldMap prettyOperation . flatten Nothing) operation
   pretty (MemberCheck expr qmark sel) =
     pretty expr
       <> softline

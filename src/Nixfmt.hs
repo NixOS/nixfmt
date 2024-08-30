@@ -1,9 +1,6 @@
-{-# LANGUAGE RankNTypes #-}
-
 module Nixfmt (
   errorBundlePretty,
   ParseErrorBundle,
-  Width,
   format,
   formatVerify,
   printAst,
@@ -22,9 +19,6 @@ import qualified Text.Megaparsec as Megaparsec (parse)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Text.Pretty.Simple (pShow)
 
--- import Debug.Trace (traceShow, traceShowId)
-
-type Width = Int
 type Layouter = forall a. (Pretty a, LanguageElement a) => a -> Text
 
 -- | @format w filename source@ returns either a parsing error specifying a
@@ -32,11 +26,14 @@ type Layouter = forall a. (Pretty a, LanguageElement a) => a -> Text
 -- of @w@ columns where possible.
 format :: Layouter -> FilePath -> Text -> Either String Text
 format layout filename =
-  bimap errorBundlePretty layout
+  bimap errorBundlePretty f
     . Megaparsec.parse Parser.file filename
+  where
+    -- f !x = layout $ maybe () (error . show) (unsafeNoThunks x) `seq` x
+    f !x = layout x
 
 -- | Pretty print the internal AST for debugging
-printAst :: FilePath -> Text -> Either String Text
+printAst :: FilePath -> Text -> Either String a
 printAst path unformatted = do
   Whole unformattedParsed' _ <- first errorBundlePretty . Megaparsec.parse Parser.file path $ unformatted
   Left (unpack $ toStrict $ pShow unformattedParsed')
