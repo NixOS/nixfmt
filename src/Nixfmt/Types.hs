@@ -488,7 +488,7 @@ instance (LanguageElement a) => LanguageElement (NonEmpty a) where
 
 data Token
   = Integer Int
-  | Float Double
+  | Float Text
   | Identifier Text
   | EnvPath Text
   | KAssert
@@ -588,7 +588,7 @@ operators =
 tokenText :: Token -> Text
 tokenText (Identifier i) = i
 tokenText (Integer i) = pack (show i)
-tokenText (Float f) = pack (show f)
+tokenText (Float f) = f
 tokenText (EnvPath p) = "<" <> p <> ">"
 tokenText KAssert = "assert"
 tokenText KElse = "else"
