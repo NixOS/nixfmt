@@ -19,7 +19,8 @@ import Text.Megaparsec.Char (char, digitChar)
 
 floatParse :: (MonadParsec e s m, Token s ~ Char, Semigroup (m [Char])) => m Text
 floatParse =
-  -- This mirrors https://github.com/NixOS/nix/blob/b89eca9aecc69d4dfc0f0afd9353c126eb7b5858/src/libexpr/lexer.l#L96
+  -- This mirrors https://github.com/NixOS/nix/blob/b89eca9aecc69d4dfc0f0afd9353c126eb7b5858/src/libexpr/lexer.l#L96:
+  -- (([1-9][0-9]*\.[0-9]*)|(0?\.[0-9]+))([Ee][+-]?[0-9]+)?
   pack
     <$> ( ( try oneThroughNineStart
               <|> zeroDotStart
