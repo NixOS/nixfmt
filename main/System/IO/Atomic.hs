@@ -15,7 +15,7 @@ import Control.Monad (when)
 import System.Directory (doesFileExist, removeFile, renameFile)
 import System.FilePath (takeDirectory, takeFileName)
 import System.IO (Handle, hClose, openTempFileWithDefaultPermissions)
-import System.Posix.Files (fileMode, getFileStatus, setFileMode)
+import System.Posix.Files (fileGroup, fileMode, fileOwner, getFileStatus, setFileMode, setOwnerAndGroup)
 
 -- | Like @withFile@ but replaces the contents atomically.
 --
@@ -50,7 +50,14 @@ withOutputFile path act = transact begin commit rollback $ \(tpath, th) -> do
     copyAttributes (tpath, _th) = do
       exists <- doesFileExist path
       when exists $ do
-        getFileStatus path >>= setFileMode tpath . fileMode
+        status <- getFileStatus path
+        setFileMode tpath (fileMode status)
+        -- Set the temporary files owner to the same as the original file.
+        -- This only succeeds if either:
+        -- - The owner matches already, no change necessary
+        -- - The current user has the CAP_CHOWN permission
+        -- See also https://stackoverflow.com/a/49079630 for more context
+        setOwnerAndGroup tpath (fileOwner status) (fileGroup status)
 
     commit :: (FilePath, Handle) -> IO ()
     commit (tpath, th) = hClose th *> renameFile tpath path
