@@ -284,9 +284,7 @@ in
     })
 
     (mkIf (!config.boot.isContainer) {
-      system.build = {
-        inherit kernel;
-      };
+      system.build = { inherit kernel; };
 
       system.modulesTree = [ kernel ] ++ config.boot.extraModulePackages;
 

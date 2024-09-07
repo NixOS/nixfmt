@@ -122,7 +122,7 @@ data Item a
     Comments Trivia
   deriving (Foldable, Show, Functor)
 
-newtype Items a = Items {unItems :: [Item a]} deriving (Functor)
+newtype Items a = Items {unItems :: [Item a]} deriving (Functor, Foldable)
 
 instance (Eq a) => Eq (Items a) where
   (==) = (==) `on` concatMap Data.Foldable.toList . unItems
