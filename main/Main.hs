@@ -47,6 +47,7 @@ data Nixfmt = Nixfmt
     width :: Width,
     check :: Bool,
     quiet :: Bool,
+    stdin :: Bool,
     strict :: Bool,
     verify :: Bool,
     ast :: Bool
@@ -68,6 +69,7 @@ options =
             &= help (addDefaultHint defaultWidth "Maximum width in characters"),
         check = False &= help "Check whether files are formatted without modifying them",
         quiet = False &= help "Do not report errors",
+        stdin = False &= help "Format the content passed to stdin",
         strict = False &= help "Enable a stricter formatting mode that isn't influenced as much by how the input is formatted",
         verify =
           False
@@ -148,10 +150,10 @@ checkFileTarget :: FilePath -> Target
 checkFileTarget path = Target (readFileUtf8 path) path (const $ const $ pure ())
 
 toTargets :: Nixfmt -> IO [Target]
-toTargets Nixfmt{files = []} = pure [stdioTarget]
-toTargets Nixfmt{files = ["-"]} = pure [stdioTarget]
-toTargets Nixfmt{check = False, files = paths} = map fileTarget <$> collectAllNixFiles paths
-toTargets Nixfmt{check = True, files = paths} = map checkFileTarget <$> collectAllNixFiles paths
+toTargets Nixfmt{stdin = True, files = []} = pure [stdioTarget]
+toTargets Nixfmt{stdin = True, files = ["-"]} = pure [stdioTarget]
+toTargets Nixfmt{stdin = False, check = False, files = paths} = map fileTarget <$> collectAllNixFiles paths
+toTargets Nixfmt{stdin = False, check = True, files = paths} = map checkFileTarget <$> collectAllNixFiles paths
 
 type Formatter = FilePath -> Text -> Either String Text
 
