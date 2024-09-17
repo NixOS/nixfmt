@@ -389,11 +389,13 @@ prettyApp indentFunction pre hasPost f a =
         | indentFunction && null comment' = nest $ group' RegularG $ line' <> pretty expr
         | otherwise = pretty expr
 
+      isSimpleItems items = length (unItems items) <= 4 && all (isSimple . Term) items
+
       -- Render the inner arguments of a function call
       absorbInner :: Expression -> Doc
-      -- If lists have only simple items, try to render them single-line instead of expanding
+      -- If the list is simple, try to render it single-line instead of expanding
       absorbInner (Term (List paropen items parclose))
-        | length (unItems items) <= 4 && all (isSimple . Term) items =
+        | isSimpleItems items =
             prettyList line paropen items parclose
       absorbInner expr = pretty expr
 
