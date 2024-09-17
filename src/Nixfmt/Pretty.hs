@@ -183,6 +183,15 @@ prettyTermWide :: Term -> Doc
 prettyTermWide (Set krec paropen items parclose) = prettySet True (krec, paropen, items, parclose)
 prettyTermWide t = prettyTerm t
 
+prettyList :: Doc -> Leaf -> Items Term -> Leaf -> Doc
+prettyList sep paropen@Ann{trailComment = post} items parclose =
+  pretty paropen{trailComment = Nothing}
+    <> surroundWith sur (nest $ pretty post <> sepBy sep (unItems items))
+    <> pretty parclose
+  where
+    -- If the brackets are on different lines, keep them like that
+    sur = if sourceLine paropen /= sourceLine parclose then hardline else line
+
 -- | Pretty print a term without wrapping it in a group.
 prettyTerm :: Term -> Doc
 prettyTerm (Token t) = pretty t
@@ -211,14 +220,7 @@ prettyTerm (List paropen@Ann{trailComment = Nothing} (Items []) parclose@Ann{pre
     -- If the brackets are on different lines, keep them like that
     sep = if sourceLine paropen /= sourceLine parclose then hardline else hardspace
 -- General list
--- Always expand if len > 1
-prettyTerm (List paropen@Ann{trailComment = post} items parclose) =
-  pretty (paropen{trailComment = Nothing})
-    <> surroundWith sur (nest $ pretty post <> prettyItems items)
-    <> pretty parclose
-  where
-    -- If the brackets are on different lines, keep them like that
-    sur = if sourceLine paropen /= sourceLine parclose then hardline else line
+prettyTerm (List paropen items parclose) = prettyList hardline paropen items parclose
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose@Ann{preTrivia = closePre}) =
@@ -390,15 +392,9 @@ prettyApp indentFunction pre hasPost f a =
       -- Render the inner arguments of a function call
       absorbInner :: Expression -> Doc
       -- If lists have only simple items, try to render them single-line instead of expanding
-      -- This is just a copy of the list rendering code, but with `sepBy line` instead of `sepBy hardline`
-      absorbInner (Term (List paropen@Ann{trailComment = post'} items parclose))
+      absorbInner (Term (List paropen items parclose))
         | length (unItems items) <= 4 && all (isSimple . Term) items =
-            pretty (paropen{trailComment = Nothing})
-              <> surroundWith sur (nest $ pretty post' <> sepBy line (unItems items))
-              <> pretty parclose
-        where
-          -- If the brackets are on different lines, keep them like that
-          sur = if sourceLine paropen /= sourceLine parclose then hardline else line
+            prettyList line paropen items parclose
       absorbInner expr = pretty expr
 
       -- Render the last argument of a function call
