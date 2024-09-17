@@ -200,12 +200,7 @@ in
       description = lib.mdDoc "Log level value between 0 (DEBUG) and 4 (FATAL).";
     };
     logType = mkOption {
-      type = types.enum [
-        "errorlog"
-        "file"
-        "syslog"
-        "systemd"
-      ];
+      type = types.enum [ "errorlog" "file" "syslog" "systemd" ];
       default = "syslog";
       description = lib.mdDoc ''
         Logging backend to use.
@@ -358,11 +353,7 @@ in
 
     config = {
       dbtype = mkOption {
-        type = types.enum [
-          "sqlite"
-          "pgsql"
-          "mysql"
-        ];
+        type = types.enum [ "sqlite" "pgsql" "mysql" ];
         default = "sqlite";
         description = lib.mdDoc "Database type.";
       };
@@ -436,12 +427,7 @@ in
       };
 
       overwriteProtocol = mkOption {
-        type = types.nullOr (
-          types.enum [
-            "http"
-            "https"
-          ]
-        );
+        type = types.nullOr (types.enum [ "http" "https" ]);
         default = null;
         example = "https";
 

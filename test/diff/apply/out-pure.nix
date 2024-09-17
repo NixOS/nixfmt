@@ -155,15 +155,8 @@
       utils.lib.eachDefaultSystem (system: { });
   }
   {
-    escapeSingleline = libStr.escape [
-      "\\"
-      ''"''
-      "\${"
-    ];
-    escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [
-      "''\${"
-      "'''"
-    ];
+    escapeSingleline = libStr.escape [ "\\" ''"'' "\${" ];
+    escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [ "''\${" "'''" ];
     test =
       foo
         [

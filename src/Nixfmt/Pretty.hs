@@ -401,6 +401,10 @@ prettyApp indentFunction pre hasPost f a =
 
       -- Render the last argument of a function call
       absorbLast :: Expression -> Doc
+      -- If the list is simple, try to render it single-line instead of expanding
+      absorbLast (Term (List paropen items parclose))
+        | isSimpleItems items =
+            group' Priority $ nest $ prettyList line paropen items parclose
       absorbLast (Term t)
         | isAbsorbable t =
             group' Priority $ nest $ prettyTerm t

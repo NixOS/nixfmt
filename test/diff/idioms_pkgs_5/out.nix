@@ -164,16 +164,10 @@ let
       # Including it then would cause needless mass rebuilds.
       #
       # TODO(@Ericson2314): Make [ "build" "host" ] always the default / resolve #87909
-      configurePlatforms ?
-        optionals
-          (
-            stdenv.hostPlatform != stdenv.buildPlatform
-            || config.configurePlatformsByDefault
-          )
-          [
-            "build"
-            "host"
-          ],
+      configurePlatforms ? optionals (
+        stdenv.hostPlatform != stdenv.buildPlatform
+        || config.configurePlatformsByDefault
+      ) [ "build" "host" ],
 
       # TODO(@Ericson2314): Make unconditional / resolve #33599
       # Check phase

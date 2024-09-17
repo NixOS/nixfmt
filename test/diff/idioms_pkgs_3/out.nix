@@ -299,10 +299,7 @@ buildStdenv.mkDerivation ({
       which
       wrapGAppsHook
     ]
-    ++ lib.optionals crashreporterSupport [
-      dump_syms
-      patchelf
-    ]
+    ++ lib.optionals crashreporterSupport [ dump_syms patchelf ]
     ++ lib.optionals pgoSupport [ xvfb-run ]
     ++ extraNativeBuildInputs;
 
@@ -486,10 +483,7 @@ buildStdenv.mkDerivation ({
     ++ lib.optional pulseaudioSupport libpulseaudio # only headers are needed
     ++ lib.optional sndioSupport sndio
     ++ lib.optional gssSupport libkrb5
-    ++ lib.optionals waylandSupport [
-      libxkbcommon
-      libdrm
-    ]
+    ++ lib.optionals waylandSupport [ libxkbcommon libdrm ]
     ++ lib.optional jemallocSupport jemalloc
     ++ extraBuildInputs;
 
