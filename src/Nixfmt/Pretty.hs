@@ -183,6 +183,15 @@ prettyTermWide :: Term -> Doc
 prettyTermWide (Set krec paropen items parclose) = prettySet True (krec, paropen, items, parclose)
 prettyTermWide t = prettyTerm t
 
+prettyList :: Doc -> Leaf -> Items Term -> Leaf -> Doc
+prettyList sep paropen@Ann{trailComment = post} items parclose =
+  pretty paropen{trailComment = Nothing}
+    <> surroundWith sur (nest $ pretty post <> sepBy sep (unItems items))
+    <> pretty parclose
+  where
+    -- If the brackets are on different lines, keep them like that
+    sur = if sourceLine paropen /= sourceLine parclose then hardline else line
+
 -- | Pretty print a term without wrapping it in a group.
 prettyTerm :: Term -> Doc
 prettyTerm (Token t) = pretty t
@@ -211,14 +220,7 @@ prettyTerm (List paropen@Ann{trailComment = Nothing} (Items []) parclose@Ann{pre
     -- If the brackets are on different lines, keep them like that
     sep = if sourceLine paropen /= sourceLine parclose then hardline else hardspace
 -- General list
--- Always expand if len > 1
-prettyTerm (List paropen@Ann{trailComment = post} items parclose) =
-  pretty (paropen{trailComment = Nothing})
-    <> surroundWith sur (nest $ pretty post <> prettyItems items)
-    <> pretty parclose
-  where
-    -- If the brackets are on different lines, keep them like that
-    sur = if sourceLine paropen /= sourceLine parclose then hardline else line
+prettyTerm (List paropen items parclose) = prettyList hardline paropen items parclose
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose@Ann{preTrivia = closePre}) =
@@ -376,36 +378,44 @@ instance Pretty Parameter where
 prettyApp :: Bool -> Doc -> Bool -> Expression -> Expression -> Doc
 prettyApp indentFunction pre hasPost f a =
   let -- Walk the function call chain
-      absorbApp :: Expression -> Doc
+      absorbApp :: Bool -> Expression -> Doc
       -- This is very hacky, but selections shouldn't be in a priority group,
       -- because if they get expanded before anything else,
       -- only the `.`-and-after part gets to a new line, which looks very odd
-      absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG $ absorbInner a')
-      absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority $ absorbInner a')
+      absorbApp _ (Application f' a'@(Term Selection{})) =
+        group' Transparent (absorbApp False f') <> line <> nest (group' RegularG $ absorbInner a')
+      absorbApp nextIsAList (Application f' a'@(Term List{})) =
+        group' Transparent (absorbApp True f') <> sep <> nest (group' Priority $ absorbInner a')
+        where
+          sep = if nextIsAList then hardline else line
+      -- Problem: The hardline forces multiple lines even when stuff fits on a single one
+      -- Something like https://github.com/NixOS/nixfmt/pull/256 should work better
+      absorbApp _ (Application f' a') =
+        group' Transparent (absorbApp False f') <> line <> nest (group' Priority $ absorbInner a')
       -- First argument
-      absorbApp expr
+      absorbApp _ expr
         | indentFunction && null comment' = nest $ group' RegularG $ line' <> pretty expr
         | otherwise = pretty expr
 
+      isSimpleItems = all (isSimple . Term)
+
       -- Render the inner arguments of a function call
       absorbInner :: Expression -> Doc
-      -- If lists have only simple items, try to render them single-line instead of expanding
-      -- This is just a copy of the list rendering code, but with `sepBy line` instead of `sepBy hardline`
-      absorbInner (Term (List paropen@Ann{trailComment = post'} items parclose))
-        | length (unItems items) <= 4 && all (isSimple . Term) items =
-            pretty (paropen{trailComment = Nothing})
-              <> surroundWith sur (nest $ pretty post' <> sepBy line (unItems items))
-              <> pretty parclose
-        where
-          -- If the brackets are on different lines, keep them like that
-          sur = if sourceLine paropen /= sourceLine parclose then hardline else line
+      -- If the list is simple, try to render it single-line instead of expanding
+      absorbInner (Term (List paropen items parclose))
+        | isSimpleItems items =
+            prettyList line paropen items parclose
       absorbInner expr = pretty expr
 
       -- Render the last argument of a function call
-      absorbLast :: Expression -> Doc
+      absorbLast :: Expression -> (Bool, Doc)
+      -- If the list is simple, try to render it single-line instead of expanding
+      absorbLast (Term (List paropen items parclose))
+        | isSimpleItems items =
+            (True, group' Priority $ nest $ prettyList line paropen items parclose)
       absorbLast (Term t)
         | isAbsorbable t =
-            group' Priority $ nest $ prettyTerm t
+            (False, group' Priority $ nest $ prettyTerm t)
       -- Special case: Absorb parenthesized function declaration with absorbable body
       absorbLast
         ( Term
@@ -416,14 +426,16 @@ prettyApp indentFunction pre hasPost f a =
               )
           )
           | isAbsorbableTerm body && not (any hasTrivia [open, name, colon]) =
-              group' Priority $
-                nest $
-                  pretty open
-                    <> pretty name
-                    <> pretty colon
-                    <> hardspace
-                    <> prettyTermWide body
-                    <> pretty close
+              ( False,
+                group' Priority $
+                  nest $
+                    pretty open
+                      <> pretty name
+                      <> pretty colon
+                      <> hardspace
+                      <> prettyTermWide body
+                      <> pretty close
+              )
       -- Special case: Absorb parenthesized function application with absorbable body
       absorbLast
         ( Term
@@ -434,16 +446,18 @@ prettyApp indentFunction pre hasPost f a =
               )
           )
           | isAbsorbableTerm body && not (any hasTrivia [open, ident, close]) =
-              group' Priority $
-                nest $
-                  pretty open
-                    <> pretty fn
-                    <> hardspace
-                    <> prettyTermWide body
-                    <> pretty close
+              ( False,
+                group' Priority $
+                  nest $
+                    pretty open
+                      <> pretty fn
+                      <> hardspace
+                      <> prettyTermWide body
+                      <> pretty close
+              )
       absorbLast (Term (Parenthesized open expr close)) =
-        absorbParen open expr close
-      absorbLast arg = group' RegularG $ nest $ pretty arg
+        (False, absorbParen open expr close)
+      absorbLast arg = (False, group' RegularG $ nest $ pretty arg)
 
       -- Extract comment before the first function and move it out, to prevent functions being force-expanded
       (fWithoutComment, comment') =
@@ -451,14 +465,16 @@ prettyApp indentFunction pre hasPost f a =
           ((\a'@Ann{preTrivia} -> (a'{preTrivia = []}, preTrivia)) . moveTrailingCommentUp)
           f
 
-      renderedF = pre <> group' Transparent (absorbApp fWithoutComment)
+      renderedF = pre <> group' Transparent (absorbApp endsWithAList fWithoutComment)
       renderedFUnexpanded = unexpandSpacing' Nothing renderedF
 
       post = if hasPost then line' else mempty
+
+      (endsWithAList, lastAbsorbed) = absorbLast a
   in pretty comment'
       <> ( if isSimple (Application f a) && isJust renderedFUnexpanded
-            then group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a
-            else group' RegularG $ renderedF <> line <> absorbLast a <> post
+            then group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> lastAbsorbed
+            else group' RegularG $ renderedF <> line <> lastAbsorbed <> post
          )
       <> (if hasPost && not (null comment') then hardline else mempty)
 

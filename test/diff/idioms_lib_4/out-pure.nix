@@ -771,13 +771,7 @@ rec {
       "3" =
         # cpu-kernel-environment
         if
-          elemAt l 1 == "linux"
-          || elem (elemAt l 2) [
-            "eabi"
-            "eabihf"
-            "elf"
-            "gnu"
-          ]
+          elemAt l 1 == "linux" || elem (elemAt l 2) [ "eabi" "eabihf" "elf" "gnu" ]
         then
           {
             cpu = elemAt l 0;
@@ -788,13 +782,7 @@ rec {
         # cpu-vendor-os
         else if
           elemAt l 1 == "apple"
-          || elem (elemAt l 2) [
-            "wasi"
-            "redox"
-            "mmixware"
-            "ghcjs"
-            "mingw32"
-          ]
+          || elem (elemAt l 2) [ "wasi" "redox" "mmixware" "ghcjs" "mingw32" ]
           || hasPrefix "freebsd" (elemAt l 2)
           || hasPrefix "netbsd" (elemAt l 2)
           || hasPrefix "genode" (elemAt l 2)

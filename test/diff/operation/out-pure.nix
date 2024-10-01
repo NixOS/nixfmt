@@ -168,10 +168,7 @@
     ]
     ++ (if foo then [ bar ] else [ baz ])
     ++ [ ]
-    ++ (optionals condition [
-      more
-      items
-    ])
+    ++ (optionals condition [ more items ])
   )
 
   # Test precedence
