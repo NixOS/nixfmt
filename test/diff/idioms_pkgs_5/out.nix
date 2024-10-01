@@ -697,16 +697,20 @@ let
             # having to wait while nix builds a derivation that might not be used.
             # See also https://github.com/NixOS/nix/issues/4629
             optionalAttrs (attrs ? disallowedReferences) {
-              disallowedReferences = map unsafeDerivationToUntrackedOutpath attrs.disallowedReferences;
+              disallowedReferences =
+                map unsafeDerivationToUntrackedOutpath attrs.disallowedReferences;
             }
           // optionalAttrs (attrs ? disallowedRequisites) {
-            disallowedRequisites = map unsafeDerivationToUntrackedOutpath attrs.disallowedRequisites;
+            disallowedRequisites =
+              map unsafeDerivationToUntrackedOutpath attrs.disallowedRequisites;
           }
           // optionalAttrs (attrs ? allowedReferences) {
-            allowedReferences = mapNullable unsafeDerivationToUntrackedOutpath attrs.allowedReferences;
+            allowedReferences =
+              mapNullable unsafeDerivationToUntrackedOutpath attrs.allowedReferences;
           }
           // optionalAttrs (attrs ? allowedRequisites) {
-            allowedRequisites = mapNullable unsafeDerivationToUntrackedOutpath attrs.allowedRequisites;
+            allowedRequisites =
+              mapNullable unsafeDerivationToUntrackedOutpath attrs.allowedRequisites;
           };
 
         meta = checkMeta.commonMeta {

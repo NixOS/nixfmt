@@ -150,7 +150,7 @@ instance Pretty Binder where
   pretty (Assignment selectors assign expr semicolon) =
     group $
       hcat selectors
-        <> nest (hardspace <> pretty assign <> nest (absorbRHS expr))
+        <> nest (hardspace <> pretty assign <> nest (line' <> group' Priority (absorbRHS expr)))
         <> pretty semicolon
 
 -- Pretty a set
@@ -381,6 +381,8 @@ prettyApp indentFunction pre hasPost f a =
       -- because if they get expanded before anything else,
       -- only the `.`-and-after part gets to a new line, which looks very odd
       absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG $ absorbInner a')
+      absorbApp (Application (Application f' l1@(Term List{})) l2@(Term List{})) =
+          group' Transparent (group' Transparent (absorbApp f') <> line <> nest (group' RegularG $ absorbInner l1)) <> line <> nest (group' RegularG $ absorbInner l2)
       absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority $ absorbInner a')
       -- First argument
       absorbApp expr

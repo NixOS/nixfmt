@@ -178,7 +178,8 @@ let
   '';
 
   # flakeNote will be printed in the remediation messages below.
-  flakeNote = "
+  flakeNote =
+    "
  Note: For `nix shell`, `nix build`, `nix develop` or any other Nix 2.4+
  (Flake) command, `--impure` must be passed in order to read this
  environment variable.
@@ -467,7 +468,8 @@ let
           {
             valid = "no";
             reason = "non-source";
-            errormsg = "contains elements not built from source (‘${showSourceType attrs.meta.sourceProvenance}’)";
+            errormsg =
+              "contains elements not built from source (‘${showSourceType attrs.meta.sourceProvenance}’)";
           }
         else if !allowBroken && attrs.meta.broken or false then
           {
