@@ -388,6 +388,8 @@ prettyApp indentFunction pre hasPost f a =
         group' Transparent (absorbApp True f') <> sep <> nest (group' Priority $ absorbInner a')
         where
           sep = if nextIsAList then hardline else line
+      -- Problem: The hardline forces multiple lines even when stuff fits on a single one
+      -- Something like https://github.com/NixOS/nixfmt/pull/256 should work better
       absorbApp _ (Application f' a') =
         group' Transparent (absorbApp False f') <> line <> nest (group' Priority $ absorbInner a')
       -- First argument
