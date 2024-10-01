@@ -150,7 +150,7 @@ instance Pretty Binder where
   pretty (Assignment selectors assign expr semicolon) =
     group $
       hcat selectors
-        <> nest (hardspace <> pretty assign <> nest (absorbRHS expr))
+        <> nest (hardspace <> pretty assign <> nest (line' <> group' Priority (absorbRHS expr)))
         <> pretty semicolon
 
 -- Pretty a set
@@ -560,7 +560,7 @@ absorbRHS expr = case expr of
   (Term _) -> group' RegularG (line <> pretty expr)
   -- Function call
   -- Absorb if all arguments except the last fit into the line, start on new line otherwise
-  (Application f a) -> line' <> group' Priority (prettyApp False line False f a)
+  (Application f a) -> prettyApp False line False f a
   (With{}) -> group' RegularG $ line <> pretty expr
   -- Special case `//` and `++` operations to be more compact in some cases
   -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line

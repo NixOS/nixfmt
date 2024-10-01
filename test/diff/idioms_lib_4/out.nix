@@ -705,7 +705,8 @@ rec {
 
   types.parsedPlatform = mkOptionType {
     name = "system";
-    description = "fully parsed representation of llvm- or nix-style platform tuple";
+    description =
+      "fully parsed representation of llvm- or nix-style platform tuple";
     merge = mergeOneOption;
     check =
       {
