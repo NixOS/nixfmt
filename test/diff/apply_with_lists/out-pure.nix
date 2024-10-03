@@ -17,7 +17,8 @@
     ]
   )
   (replaceStrings [ ''"'' "\\" ] [ ''\"'' "\\\\" ] name)
-  (replaceStrings [ ''"'' "\\" ]
+  (replaceStrings
+    [ ''"'' "\\" ]
     # force multiline
     [ ''\"'' "\\\\" ]
     name
@@ -46,20 +47,18 @@
     1
     2
   ] [ ])
-  (builtins.replaceStrings [ "@NIX_STORE_VERITY@" ] [
-    partitionTypes.usr-verity
-  ] (builtins.readFile ./assert_uki_repart_match.py))
+  (builtins.replaceStrings [ "@NIX_STORE_VERITY@" ] [ partitionTypes.usr-verity ]
+    (builtins.readFile ./assert_uki_repart_match.py)
+  )
   (replaceStrings [ "-" ] [ "_" ] (toUpper final.rust.cargoShortTarget))
-  (lib.mkChangedOptionModule [ "security" "acme" "validMin" ] [
-    "security"
-    "acme"
-    "defaults"
-    "validMinDays"
-  ] (config: config.security.acme.validMin / (24 * 3600)))
-  (lib.replaceStrings [ "https://registry" ".io/providers" ] [
-    "registry"
-    ".io"
-  ] homepage)
+  (lib.mkChangedOptionModule
+    [ "security" "acme" "validMin" ]
+    [ "security" "acme" "defaults" "validMinDays" ]
+    (config: config.security.acme.validMin / (24 * 3600))
+  )
+  (lib.replaceStrings [ "https://registry" ".io/providers" ] [ "registry" ".io" ]
+    homepage
+  )
   (lib.mkRenamedOptionModule [ "boot" "extraTTYs" ] [
     "console"
     "extraTTYs"
@@ -108,27 +107,32 @@
       setupWorkDir
     ]
   )
-  (lib.checkListOfEnum "${pname}: theme accent" [ "Blue" "Flamingo" "Green" ]
+  (lib.checkListOfEnum "${pname}: theme accent"
+    [ "Blue" "Flamingo" "Green" ]
     [ accent ]
     lib.checkListOfEnum
     "${pname}: color variant"
     [ "Latte" "Frappe" "Macchiato" "Mocha" ]
     [ variant ]
   )
-  (lib.switch [ coq.coq-version ssreflect.version ] [
-    {
-      cases = [
-        (lib.versions.range "8.15" "8.20")
-        lib.pred.true
-      ];
-      out = "2.0.4";
-    }
-    {
-      cases = [
-        "8.5"
-        lib.pred.true
-      ];
-      out = "20170512";
-    }
-  ] null)
+  (lib.switch
+    [ coq.coq-version ssreflect.version ]
+    [
+      {
+        cases = [
+          (lib.versions.range "8.15" "8.20")
+          lib.pred.true
+        ];
+        out = "2.0.4";
+      }
+      {
+        cases = [
+          "8.5"
+          lib.pred.true
+        ];
+        out = "20170512";
+      }
+    ]
+    null
+  )
 ]

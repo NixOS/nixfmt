@@ -381,6 +381,12 @@ prettyApp indentFunction pre hasPost f a =
       -- because if they get expanded before anything else,
       -- only the `.`-and-after part gets to a new line, which looks very odd
       absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG $ absorbInner a')
+      -- If two consecutive arguments are lists, treat them specially: Don't priority expand, and also
+      -- if one does not fit onto the line then put both on a new line each.
+      -- Note that this does not handle the case where the two last arguments are lists, as the last argument
+      -- is handled elsewhere and cannot be pattern-matched here.
+      absorbApp (Application (Application f' l1@(Term List{})) l2@(Term List{})) =
+        group' Transparent (group' Transparent (absorbApp f') <> nest (group' RegularG $ line <> group (absorbInner l1) <> line <> group (absorbInner l2)))
       absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority $ absorbInner a')
       -- First argument
       absorbApp expr
