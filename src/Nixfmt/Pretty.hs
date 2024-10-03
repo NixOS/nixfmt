@@ -457,15 +457,22 @@ prettyApp indentFunction pre hasPost f a =
           ((\a'@Ann{preTrivia} -> (a'{preTrivia = []}, preTrivia)) . moveTrailingCommentUp)
           f
 
-      renderedF = pre <> group' Transparent (absorbApp fWithoutComment)
-      renderedFUnexpanded = unexpandSpacing' Nothing renderedF
+      -- renderSimple will take a document to render, and call one of two callbacks depending on whether
+      -- it can take a simplified layout (with removed line breaks) or not.
+      renderSimple :: Doc -> (Doc -> Doc) -> (Doc -> Doc) -> Doc
+      renderSimple toRender renderIfSimple renderOtherwise =
+        let renderedF = pre <> group' Transparent toRender
+            renderedFUnexpanded = unexpandSpacing' Nothing renderedF
+        in if isSimple (Application f a) && isJust renderedFUnexpanded
+            then renderIfSimple (fromJust renderedFUnexpanded)
+            else renderOtherwise renderedF
 
       post = if hasPost then line' else mempty
   in pretty comment'
-      <> ( if isSimple (Application f a) && isJust renderedFUnexpanded
-            then group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a
-            else group' RegularG $ renderedF <> line <> absorbLast a <> post
-         )
+      <> renderSimple
+        (absorbApp fWithoutComment)
+        (\fRendered -> group' RegularG $ fRendered <> hardspace <> absorbLast a)
+        (\fRendered -> group' RegularG $ fRendered <> line <> absorbLast a <> post)
       <> (if hasPost && not (null comment') then hardline else mempty)
 
 prettyWith :: Bool -> Expression -> Doc
