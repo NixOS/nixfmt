@@ -469,10 +469,23 @@ prettyApp indentFunction pre hasPost f a =
 
       post = if hasPost then line' else mempty
   in pretty comment'
-      <> renderSimple
-        (absorbApp fWithoutComment)
-        (\fRendered -> group' RegularG $ fRendered <> hardspace <> absorbLast a)
-        (\fRendered -> group' RegularG $ fRendered <> line <> absorbLast a <> post)
+      <> case (fWithoutComment, a) of
+        -- When the two last arguments are lists, render these specially (same as above)
+        -- Also no need to wrap in renderSimple here, because we know that these kinds of arguments
+        -- are never "simple" by definition.
+        (Application fWithoutCommandAndWithoutArg l1@(Term List{}), l2@(Term List{})) ->
+          group' RegularG $
+            (pre <> group' Transparent (absorbApp fWithoutCommandAndWithoutArg))
+              <> line
+              <> nest (group (absorbInner l1))
+              <> line
+              <> nest (group (absorbInner l2))
+              <> post
+        _ ->
+          renderSimple
+            (absorbApp fWithoutComment)
+            (\fRendered -> group' RegularG $ fRendered <> hardspace <> absorbLast a)
+            (\fRendered -> group' RegularG $ fRendered <> line <> absorbLast a <> post)
       <> (if hasPost && not (null comment') then hardline else mempty)
 
 prettyWith :: Bool -> Expression -> Doc

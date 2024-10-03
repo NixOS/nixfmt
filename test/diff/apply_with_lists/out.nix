@@ -1,20 +1,15 @@
 # This file contains an assortment of test cases involving list-heavy function calls
 
 [
-  (f [ ] [
-    rhs
-    lhs
-  ])
+  (f [ ] [ rhs lhs ])
   (lib.mkMerge [
     false
     false
   ])
-  (replaceStrings [ "\${" "''" ]
+  (replaceStrings
+    [ "\${" "''" ]
     #force multiline
-    [
-      "''\${"
-      "'''"
-    ]
+    [ "''\${" "'''" ]
   )
   (replaceStrings [ ''"'' "\\" ] [ ''\"'' "\\\\" ] name)
   (replaceStrings
@@ -39,14 +34,20 @@
       ""
     ]
   )
-  (lists.removePrefix [
-    1
-    2
-  ] [ ])
-  (lists.removePrefix aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa [
-    1
-    2
-  ] [ ])
+  (lists.removePrefix
+    [
+      1
+      2
+    ]
+    [ ]
+  )
+  (lists.removePrefix aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    [
+      1
+      2
+    ]
+    [ ]
+  )
   (builtins.replaceStrings [ "@NIX_STORE_VERITY@" ] [ partitionTypes.usr-verity ]
     (builtins.readFile ./assert_uki_repart_match.py)
   )
@@ -59,15 +60,12 @@
   (lib.replaceStrings [ "https://registry" ".io/providers" ] [ "registry" ".io" ]
     homepage
   )
-  (lib.mkRenamedOptionModule [ "boot" "extraTTYs" ] [
-    "console"
-    "extraTTYs"
-  ])
+  (lib.mkRenamedOptionModule [ "boot" "extraTTYs" ] [ "console" "extraTTYs" ])
   # This line is engineered to exactly hit the line length limit
-  (lib.mkRenamedOptionModule [ "hardware" "package234" ] [
-    "hardware"
-    "graphics"
-  ])
+  (lib.mkRenamedOptionModule
+    [ "hardware" "package234" ]
+    [ "hardware" "graphics" ]
+  )
   (mkRenamedOptionModule
     [
       "services"
@@ -76,12 +74,7 @@
       "sddm"
       "enable"
     ]
-    [
-      "services"
-      "displayManager"
-      "sddm"
-      "enable"
-    ]
+    [ "services" "displayManager" "sddm" "enable" ]
   )
   (map (
     buildAllowCommand "allow" [
