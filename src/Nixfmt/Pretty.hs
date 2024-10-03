@@ -457,30 +457,16 @@ prettyApp indentFunction pre hasPost f a =
           ((\a'@Ann{preTrivia} -> (a'{preTrivia = []}, preTrivia)) . moveTrailingCommentUp)
           f
 
+      renderedF = pre <> group' Transparent (absorbApp fWithoutComment)
+      renderedFUnexpanded = unexpandSpacing' Nothing renderedF
+
       post = if hasPost then line' else mempty
-  in
-  case (f, a) of
-      (Application _ (Term List{}), Term List{}) ->
-        let
-            app = Application fWithoutComment a
-            renderedF = pre <> group' Transparent (absorbApp app)
-            renderedFUnexpanded = unexpandSpacing' Nothing renderedF
-        in pretty comment'
-            <> ( if isSimple app && isJust renderedFUnexpanded
-                  then group' RegularG $ fromJust renderedFUnexpanded
-                  else group' RegularG $ renderedF <> post
-              )
-            <> (if hasPost && not (null comment') then hardline else mempty)
-      _ ->
-        let
-            renderedF = pre <> group' Transparent (absorbApp fWithoutComment)
-            renderedFUnexpanded = unexpandSpacing' Nothing renderedF
-        in pretty comment'
-            <> ( if isSimple (Application f a) && isJust renderedFUnexpanded
-                  then group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a
-                  else group' RegularG $ renderedF <> line <> absorbLast a <> post
-              )
-            <> (if hasPost && not (null comment') then hardline else mempty)
+  in pretty comment'
+      <> ( if isSimple (Application f a) && isJust renderedFUnexpanded
+            then group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a
+            else group' RegularG $ renderedF <> line <> absorbLast a <> post
+         )
+      <> (if hasPost && not (null comment') then hardline else mempty)
 
 prettyWith :: Bool -> Expression -> Doc
 -- absorb the body

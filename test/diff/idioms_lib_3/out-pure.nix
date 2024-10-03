@@ -366,7 +366,10 @@ rec {
               ''"''
               "\${"
             ];
-            escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [ "''\${" "'''" ];
+            escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [
+              "''\${"
+              "'''"
+            ];
             singlelineResult =
               ''"'' + concatStringsSep "\\n" (map escapeSingleline lines) + ''"'';
             multilineResult =

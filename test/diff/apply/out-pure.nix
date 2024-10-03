@@ -160,7 +160,10 @@
       ''"''
       "\${"
     ];
-    escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [ "''\${" "'''" ];
+    escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [
+      "''\${"
+      "'''"
+    ];
     test =
       foo
         [
