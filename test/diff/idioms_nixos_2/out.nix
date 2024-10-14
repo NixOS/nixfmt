@@ -968,9 +968,8 @@ in
                     # will be omitted.
                     ${if c.dbname != null then "--database-name" else null} = ''"${c.dbname}"'';
                     ${if c.dbhost != null then "--database-host" else null} = ''"${c.dbhost}"'';
-                    ${
-                      if c.dbport != null then "--database-port" else null
-                    } = ''"${toString c.dbport}"'';
+                    ${if c.dbport != null then "--database-port" else null} =
+                      ''"${toString c.dbport}"'';
                     ${if c.dbuser != null then "--database-user" else null} = ''"${c.dbuser}"'';
                     "--database-pass" = "\"\$${dbpass.arg}\"";
                     "--admin-user" = ''"${c.adminuser}"'';
@@ -1182,27 +1181,29 @@ in
           "~ ^/(?:build|tests|config|lib|3rdparty|templates|data)(?:$|/)".extraConfig = ''
             return 404;
           '';
-          "~ ^/(?:\\.(?!well-known)|autotest|occ|issue|indie|db_|console)".extraConfig = ''
-            return 404;
-          '';
-          "~ ^\\/(?:index|remote|public|cron|core\\/ajax\\/update|status|ocs\\/v[12]|updater\\/.+|oc[ms]-provider\\/.+|.+\\/richdocumentscode\\/proxy)\\.php(?:$|\\/)" = {
-            priority = 500;
-            extraConfig = ''
-              include ${config.services.nginx.package}/conf/fastcgi.conf;
-              fastcgi_split_path_info ^(.+?\.php)(\\/.*)$;
-              set $path_info $fastcgi_path_info;
-              try_files $fastcgi_script_name =404;
-              fastcgi_param PATH_INFO $path_info;
-              fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-              fastcgi_param HTTPS ${if cfg.https then "on" else "off"};
-              fastcgi_param modHeadersAvailable true;
-              fastcgi_param front_controller_active true;
-              fastcgi_pass unix:${fpm.socket};
-              fastcgi_intercept_errors on;
-              fastcgi_request_buffering off;
-              fastcgi_read_timeout ${builtins.toString cfg.fastcgiTimeout}s;
+          "~ ^/(?:\\.(?!well-known)|autotest|occ|issue|indie|db_|console)".extraConfig =
+            ''
+              return 404;
             '';
-          };
+          "~ ^\\/(?:index|remote|public|cron|core\\/ajax\\/update|status|ocs\\/v[12]|updater\\/.+|oc[ms]-provider\\/.+|.+\\/richdocumentscode\\/proxy)\\.php(?:$|\\/)" =
+            {
+              priority = 500;
+              extraConfig = ''
+                include ${config.services.nginx.package}/conf/fastcgi.conf;
+                fastcgi_split_path_info ^(.+?\.php)(\\/.*)$;
+                set $path_info $fastcgi_path_info;
+                try_files $fastcgi_script_name =404;
+                fastcgi_param PATH_INFO $path_info;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                fastcgi_param HTTPS ${if cfg.https then "on" else "off"};
+                fastcgi_param modHeadersAvailable true;
+                fastcgi_param front_controller_active true;
+                fastcgi_pass unix:${fpm.socket};
+                fastcgi_intercept_errors on;
+                fastcgi_request_buffering off;
+                fastcgi_read_timeout ${builtins.toString cfg.fastcgiTimeout}s;
+              '';
+            };
           "~ \\.(?:css|js|woff2?|svg|gif|map)$".extraConfig = ''
             try_files $uri /index.php$request_uri;
             expires 6M;

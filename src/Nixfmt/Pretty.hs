@@ -150,8 +150,16 @@ instance Pretty Binder where
   pretty (Assignment selectors assign expr semicolon) =
     group $
       hcat selectors
-        <> nest (hardspace <> pretty assign <> nest (absorbRHS expr))
+        <> nest (hardspace <> pretty assign <> nest rhs)
         <> pretty semicolon
+    where
+      rhs =
+        -- In most cases, the LHS of a binding is fairly short. This means that when the RHS
+        -- overflows the line length limit, inserting a line break after the `=` does little good:
+        -- It won't reduce the overall line length by much while making the code uglier.
+        if length selectors <= 4 && all isSimpleSelector selectors
+          then absorbRHS expr
+          else line' <> group' Priority (absorbRHS expr)
 
 -- Pretty a set
 -- while we already pretty eagerly expand sets with more than one element,
