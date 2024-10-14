@@ -49,7 +49,8 @@ data Nixfmt = Nixfmt
     quiet :: Bool,
     strict :: Bool,
     verify :: Bool,
-    ast :: Bool
+    ast :: Bool,
+    ir :: Bool
   }
   deriving (Show, Data, Typeable)
 
@@ -76,7 +77,11 @@ options =
         ast =
           False
             &= help
-              "Pretty print the internal AST, only for debugging"
+              "Pretty print the internal AST, only for debugging",
+        ir =
+          False
+            &= help
+              "Pretty print the internal intermediate representation, only for debugging"
       }
       &= summary ("nixfmt " ++ versionFromFile)
       &= help "Format Nix source code"
@@ -157,6 +162,7 @@ type Formatter = FilePath -> Text -> Either String Text
 
 toFormatter :: Nixfmt -> Formatter
 toFormatter Nixfmt{ast = True} = Nixfmt.printAst
+toFormatter Nixfmt{ir = True} = Nixfmt.printIR
 toFormatter Nixfmt{width, verify = True, strict} = Nixfmt.formatVerify (layout width strict)
 toFormatter Nixfmt{width, verify = False, strict} = Nixfmt.format (layout width strict)
 

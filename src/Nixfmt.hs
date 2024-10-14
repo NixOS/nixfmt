@@ -7,6 +7,7 @@ module Nixfmt (
   format,
   formatVerify,
   printAst,
+  printIR,
 )
 where
 
@@ -15,7 +16,7 @@ import Data.Either (fromRight)
 import Data.Text (Text, unpack)
 import Data.Text.Lazy (toStrict)
 import qualified Nixfmt.Parser as Parser
-import Nixfmt.Predoc (Pretty)
+import Nixfmt.Predoc (Pretty, fixup, pretty)
 import Nixfmt.Pretty ()
 import Nixfmt.Types (Expression, LanguageElement, ParseErrorBundle, Whole (..), walkSubprograms)
 import qualified Text.Megaparsec as Megaparsec (parse)
@@ -40,6 +41,12 @@ printAst :: FilePath -> Text -> Either String Text
 printAst path unformatted = do
   Whole unformattedParsed' _ <- first errorBundlePretty . Megaparsec.parse Parser.file path $ unformatted
   Left (unpack $ toStrict $ pShow unformattedParsed')
+
+-- | Pretty print the internal IR for debugging
+printIR :: FilePath -> Text -> Either String Text
+printIR filename =
+  bimap errorBundlePretty (toStrict . pShow . fixup . pretty)
+    . Megaparsec.parse Parser.file filename
 
 -- Same functionality as `format`, but add sanity checks to guarantee the following properties of the formatter:
 -- - Correctness: The formatted output parses, and the parse tree is identical to the input's
