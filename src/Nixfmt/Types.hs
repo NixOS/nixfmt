@@ -48,6 +48,7 @@ import Control.Monad.State.Strict (StateT)
 import Data.Bifunctor (first)
 import Data.Foldable (toList)
 import Data.Function (on)
+import Data.Int (Int64)
 import Data.List.NonEmpty as NonEmpty
 import Data.Maybe (maybeToList)
 import Data.Text (Text, pack)
@@ -487,7 +488,7 @@ instance (LanguageElement a) => LanguageElement (NonEmpty a) where
   mapAllTokens f = NonEmpty.map (mapAllTokens f)
 
 data Token
-  = Integer Int
+  = Integer Int64
   | Float Text
   | Identifier Text
   | EnvPath Text
