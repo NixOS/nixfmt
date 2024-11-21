@@ -12,6 +12,7 @@ import Data.ByteString.Char8 (unpack)
 import Data.Either (lefts)
 import Data.FileEmbed
 import Data.List (isSuffixOf)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text.IO as TextIO (getContents, hPutStr, putStr)
 import Data.Version (showVersion)
@@ -49,7 +50,8 @@ data Nixfmt = Nixfmt
     quiet :: Bool,
     strict :: Bool,
     verify :: Bool,
-    ast :: Bool
+    ast :: Bool,
+    filename :: Maybe FilePath
   }
   deriving (Show, Data, Typeable)
 
@@ -76,7 +78,12 @@ options =
         ast =
           False
             &= help
-              "Pretty print the internal AST, only for debugging"
+              "Pretty print the internal AST, only for debugging",
+        filename =
+          Nothing
+            &= help
+              "The filename to display when the file input is given through stdin.\n\
+              \Useful for tools like editors and autoformatters that wish to use Nixfmt without providing it direct file access, while still providing context to where the file is."
       }
       &= summary ("nixfmt " ++ versionFromFile)
       &= help "Format Nix source code"
@@ -132,8 +139,8 @@ checkTarget format Target{tDoRead, tPath} = do
       | formatted == contents -> Right ()
       | otherwise -> Left $ tPath ++ ": not formatted"
 
-stdioTarget :: Target
-stdioTarget = Target TextIO.getContents "<stdin>" (const TextIO.putStr)
+stdioTarget :: Maybe FilePath -> Target
+stdioTarget filename = Target TextIO.getContents (fromMaybe "<stdin>" filename) (const TextIO.putStr)
 
 fileTarget :: FilePath -> Target
 fileTarget path = Target (readFileUtf8 path) path atomicWriteFile
@@ -148,8 +155,8 @@ checkFileTarget :: FilePath -> Target
 checkFileTarget path = Target (readFileUtf8 path) path (const $ const $ pure ())
 
 toTargets :: Nixfmt -> IO [Target]
-toTargets Nixfmt{files = []} = pure [stdioTarget]
-toTargets Nixfmt{files = ["-"]} = pure [stdioTarget]
+toTargets Nixfmt{files = [], filename} = pure [stdioTarget filename]
+toTargets Nixfmt{files = ["-"], filename} = pure [stdioTarget filename]
 toTargets Nixfmt{check = False, files = paths} = map fileTarget <$> collectAllNixFiles paths
 toTargets Nixfmt{check = True, files = paths} = map checkFileTarget <$> collectAllNixFiles paths
 
