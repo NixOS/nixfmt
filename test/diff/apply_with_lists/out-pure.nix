@@ -18,22 +18,7 @@
     [ ''\"'' "\\\\" ]
     name
   )
-  (replaceStrings
-    [
-      "@"
-      ":"
-      "\\"
-      "["
-      "]"
-    ]
-    [
-      "-"
-      "-"
-      "-"
-      ""
-      ""
-    ]
-  )
+  (replaceStrings [ "@" ":" "\\" "[" "]" ] [ "-" "-" "-" "" "" ])
   (lists.removePrefix
     [
       1
@@ -67,13 +52,7 @@
     [ "hardware" "graphics" ]
   )
   (mkRenamedOptionModule
-    [
-      "services"
-      "xserver"
-      "displayManager"
-      "sddm"
-      "enable"
-    ]
+    [ "services" "xserver" "displayManager" "sddm" "enable" ]
     [ "services" "displayManager" "sddm" "enable" ]
   )
   (map (

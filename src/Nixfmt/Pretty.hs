@@ -398,7 +398,7 @@ prettyApp indentFunction pre hasPost f a =
       -- If lists have only simple items, try to render them single-line instead of expanding
       -- This is just a copy of the list rendering code, but with `sepBy line` instead of `sepBy hardline`
       absorbInner (Term (List paropen@Ann{trailComment = post'} items parclose))
-        | length (unItems items) <= 4 && all (isSimple . Term) items =
+        | length (unItems items) <= 6 && all (isSimple . Term) items =
             pretty (paropen{trailComment = Nothing})
               <> surroundWith sur (nest $ pretty post' <> sepBy line (unItems items))
               <> pretty parclose
