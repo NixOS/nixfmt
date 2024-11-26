@@ -381,6 +381,12 @@ prettyApp indentFunction pre hasPost f a =
       -- because if they get expanded before anything else,
       -- only the `.`-and-after part gets to a new line, which looks very odd
       absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG $ absorbInner a')
+      -- If two consecutive arguments are lists, treat them specially: Don't priority expand, and also
+      -- if one does not fit onto the line then put both on a new line each.
+      -- Note that this does not handle the case where the two last arguments are lists, as the last argument
+      -- is handled elsewhere and cannot be pattern-matched here.
+      absorbApp (Application (Application f' l1@(Term List{})) l2@(Term List{})) =
+        group' Transparent (group' Transparent (absorbApp f') <> nest (group' RegularG $ line <> group (absorbInner l1) <> line <> group (absorbInner l2)))
       absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority $ absorbInner a')
       -- First argument
       absorbApp expr
@@ -392,7 +398,7 @@ prettyApp indentFunction pre hasPost f a =
       -- If lists have only simple items, try to render them single-line instead of expanding
       -- This is just a copy of the list rendering code, but with `sepBy line` instead of `sepBy hardline`
       absorbInner (Term (List paropen@Ann{trailComment = post'} items parclose))
-        | length (unItems items) <= 4 && all (isSimple . Term) items =
+        | length (unItems items) <= 6 && all (isSimple . Term) items =
             pretty (paropen{trailComment = Nothing})
               <> surroundWith sur (nest $ pretty post' <> sepBy line (unItems items))
               <> pretty parclose
@@ -451,15 +457,35 @@ prettyApp indentFunction pre hasPost f a =
           ((\a'@Ann{preTrivia} -> (a'{preTrivia = []}, preTrivia)) . moveTrailingCommentUp)
           f
 
-      renderedF = pre <> group' Transparent (absorbApp fWithoutComment)
-      renderedFUnexpanded = unexpandSpacing' Nothing renderedF
+      -- renderSimple will take a document to render, and call one of two callbacks depending on whether
+      -- it can take a simplified layout (with removed line breaks) or not.
+      renderSimple :: Doc -> (Doc -> Doc) -> (Doc -> Doc) -> Doc
+      renderSimple toRender renderIfSimple renderOtherwise =
+        let renderedF = pre <> group' Transparent toRender
+            renderedFUnexpanded = unexpandSpacing' Nothing renderedF
+        in if isSimple (Application f a) && isJust renderedFUnexpanded
+            then renderIfSimple (fromJust renderedFUnexpanded)
+            else renderOtherwise renderedF
 
       post = if hasPost then line' else mempty
   in pretty comment'
-      <> ( if isSimple (Application f a) && isJust renderedFUnexpanded
-            then group' RegularG $ fromJust renderedFUnexpanded <> hardspace <> absorbLast a
-            else group' RegularG $ renderedF <> line <> absorbLast a <> post
-         )
+      <> case (fWithoutComment, a) of
+        -- When the two last arguments are lists, render these specially (same as above)
+        -- Also no need to wrap in renderSimple here, because we know that these kinds of arguments
+        -- are never "simple" by definition.
+        (Application fWithoutCommandAndWithoutArg l1@(Term List{}), l2@(Term List{})) ->
+          group' RegularG $
+            (pre <> group' Transparent (absorbApp fWithoutCommandAndWithoutArg))
+              <> line
+              <> nest (group (absorbInner l1))
+              <> line
+              <> nest (group (absorbInner l2))
+              <> post
+        _ ->
+          renderSimple
+            (absorbApp fWithoutComment)
+            (\fRendered -> group' RegularG $ fRendered <> hardspace <> absorbLast a)
+            (\fRendered -> group' RegularG $ fRendered <> line <> absorbLast a <> post)
       <> (if hasPost && not (null comment') then hardline else mempty)
 
 prettyWith :: Bool -> Expression -> Doc

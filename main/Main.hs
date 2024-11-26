@@ -51,7 +51,8 @@ data Nixfmt = Nixfmt
     strict :: Bool,
     verify :: Bool,
     ast :: Bool,
-    filename :: Maybe FilePath
+    filename :: Maybe FilePath,
+    ir :: Bool
   }
   deriving (Show, Data, Typeable)
 
@@ -83,7 +84,11 @@ options =
           Nothing
             &= help
               "The filename to display when the file input is given through stdin.\n\
-              \Useful for tools like editors and autoformatters that wish to use Nixfmt without providing it direct file access, while still providing context to where the file is."
+              \Useful for tools like editors and autoformatters that wish to use Nixfmt without providing it direct file access, while still providing context to where the file is.",
+        ir =
+          False
+            &= help
+              "Pretty print the internal intermediate representation, only for debugging"
       }
       &= summary ("nixfmt " ++ versionFromFile)
       &= help "Format Nix source code"
@@ -164,6 +169,7 @@ type Formatter = FilePath -> Text -> Either String Text
 
 toFormatter :: Nixfmt -> Formatter
 toFormatter Nixfmt{ast = True} = Nixfmt.printAst
+toFormatter Nixfmt{ir = True} = Nixfmt.printIR
 toFormatter Nixfmt{width, verify = True, strict} = Nixfmt.formatVerify (layout width strict)
 toFormatter Nixfmt{width, verify = False, strict} = Nixfmt.format (layout width strict)
 
