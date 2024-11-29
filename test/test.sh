@@ -56,6 +56,8 @@ for file in test/correct/*.nix; do
   verifyCorrect "$file"
 done
 
+verifyCorrect test/correct-indent-4.nix --indent=4
+
 # Verify "invalid"
 for file in test/invalid/*.nix; do
   if nixfmt < "$file" > /dev/null 2>&1; then
