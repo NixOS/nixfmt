@@ -46,6 +46,7 @@ type Width = Int
 data Nixfmt = Nixfmt
   { files :: [FilePath],
     width :: Width,
+    indent :: Int,
     check :: Bool,
     quiet :: Bool,
     strict :: Bool,
@@ -62,6 +63,7 @@ versionFromFile = maybe (showVersion version) unpack $(embedFileIfExists ".versi
 options :: Nixfmt
 options =
   let defaultWidth = 100
+      defaultIndent = 2
       addDefaultHint value message =
         message ++ "\n[default: " ++ show value ++ "]"
   in Nixfmt
@@ -69,6 +71,7 @@ options =
         width =
           defaultWidth
             &= help (addDefaultHint defaultWidth "Maximum width in characters"),
+        indent = defaultIndent &= help (addDefaultHint defaultIndent "Number of spaces to use for indentation"),
         check = False &= help "Check whether files are formatted without modifying them",
         quiet = False &= help "Do not report errors",
         strict = False &= help "Enable a stricter formatting mode that isn't influenced as much by how the input is formatted",
@@ -170,8 +173,8 @@ type Formatter = FilePath -> Text -> Either String Text
 toFormatter :: Nixfmt -> Formatter
 toFormatter Nixfmt{ast = True} = Nixfmt.printAst
 toFormatter Nixfmt{ir = True} = Nixfmt.printIR
-toFormatter Nixfmt{width, verify = True, strict} = Nixfmt.formatVerify (layout width strict)
-toFormatter Nixfmt{width, verify = False, strict} = Nixfmt.format (layout width strict)
+toFormatter Nixfmt{width, indent, verify = True, strict} = Nixfmt.formatVerify (layout width indent strict)
+toFormatter Nixfmt{width, indent, verify = False, strict} = Nixfmt.format (layout width indent strict)
 
 type Operation = Formatter -> Target -> IO Result
 
