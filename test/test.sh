@@ -20,26 +20,40 @@ else
   alias nixfmt="nixfmt -w 80"
 fi
 
+if [[ $* == *--update-diff* ]]; then
+  updateDiff=1
+else
+  updateDiff=
+fi
+
 # Do a test run to make sure it compiles fine
 nixfmt --version
 
-# Verify "correct", files that don't change when formatted
-for file in test/correct/*.nix; do
-  echo "Checking $file …"
-  if ! out=$(nixfmt --strict --verify < "$file"); then
+# verifyCorrect FILE [EXTRA_ARGS]
+verifyCorrect() {
+  local file=$1
+  shift
+
+  echo "Checking $file (${*:-no options}) …"
+  if ! out=$(nixfmt --strict --verify "$@" < "$file"); then
     echo "[ERROR] failed nixfmt verification"
     exit 1
   fi
 
   if diff --color=always --unified "$file" <(echo "$out"); then
     echo "[OK]"
-  elif [[ $* == *--update-diff* ]]; then
+  elif [[ -n "$updateDiff" ]]; then
     echo "$out" > "$file"
     echo "[UPDATED] $file"
   else
     echo "[ERROR] Formatting not stable (run with --update-diff to update the diff)"
     exit 1
   fi
+}
+
+# Verify "correct", files that don't change when formatted
+for file in test/correct/*.nix; do
+  verifyCorrect "$file"
 done
 
 # Verify "invalid"
@@ -60,7 +74,7 @@ for file in test/diff/**/in.nix; do
 
   if diff --color=always --unified "$outfile" <(echo "$out"); then
     echo "[OK]"
-  elif [[ $* == *--update-diff* ]]; then
+  elif [[ -n "$updateDiff" ]]; then
     echo "$out" > "$outfile"
     echo "[UPDATED] $outfile"
   else
@@ -74,7 +88,7 @@ for file in test/diff/**/in.nix; do
 
   if diff --color=always --unified "$outfile" <(echo "$out"); then
     echo "[OK]"
-  elif [[ $* == *--update-diff* ]]; then
+  elif [[ -n "$updateDiff" ]]; then
     echo "$out" > "$outfile"
     echo "[UPDATED] $outfile"
   else
