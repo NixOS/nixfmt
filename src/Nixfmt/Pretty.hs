@@ -603,7 +603,11 @@ absorbRHS expr = case expr of
   -- Special case `//` and `++` operations to be more compact in some cases
   -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
   (Operation (Term t) (LoneAnn op) b)
-    | isAbsorbable t && isUpdateOrConcat op ->
+    | isAbsorbable t
+        && isUpdateOrConcat op
+        -- Exclude further operations on the RHS
+        -- Hotfix for https://github.com/NixOS/nixfmt/issues/198
+        && case b of (Operation{}) -> False; _ -> True ->
         group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
   -- Case 2a: LHS fits onto first line, RHS is an absorbable term
   (Operation l (LoneAnn op) (Term t))

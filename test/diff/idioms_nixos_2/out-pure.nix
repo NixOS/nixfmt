@@ -51,7 +51,8 @@ let
       post_max_size = cfg.maxUploadSize;
       memory_limit = cfg.maxUploadSize;
     }
-    // cfg.phpOptions // optionalAttrs cfg.caching.apcu { "apc.enable_cli" = "1"; };
+    // cfg.phpOptions
+    // optionalAttrs cfg.caching.apcu { "apc.enable_cli" = "1"; };
 
   occ = pkgs.writeScriptBin "nextcloud-occ" ''
     #! ${pkgs.runtimeShell}
