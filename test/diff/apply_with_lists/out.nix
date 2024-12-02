@@ -19,18 +19,9 @@
     name
   )
   (replaceStrings [ "@" ":" "\\" "[" "]" ] [ "-" "-" "-" "" "" ])
-  (lists.removePrefix
-    [
-      1
-      2
-    ]
-    [ ]
-  )
+  (lists.removePrefix [ 1 2 ] [ ])
   (lists.removePrefix aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-    [
-      1
-      2
-    ]
+    [ 1 2 ]
     [ ]
   )
   (builtins.replaceStrings [ "@NIX_STORE_VERITY@" ] [ partitionTypes.usr-verity ]

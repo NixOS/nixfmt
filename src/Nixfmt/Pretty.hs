@@ -776,6 +776,9 @@ isSimple (Term (SimpleString (LoneAnn _))) = True
 isSimple (Term (IndentedString (LoneAnn _))) = True
 isSimple (Term (Path (LoneAnn _))) = True
 isSimple (Term (Token (LoneAnn (Identifier _)))) = True
+isSimple (Term (Token (LoneAnn (Integer _)))) = True
+isSimple (Term (Token (LoneAnn (Float _)))) = True
+isSimple (Term (Token (LoneAnn (EnvPath _)))) = True
 isSimple (Term (Selection t selectors def)) =
   isSimple (Term t) && all isSimpleSelector selectors && isNothing def
 isSimple (Term (Parenthesized (LoneAnn _) e (LoneAnn _))) = isSimple e
