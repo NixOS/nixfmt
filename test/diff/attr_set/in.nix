@@ -274,4 +274,21 @@
         pkgs.xorg.fontadobe75dpi
       ];
   }
+  # Regression https://github.com/NixOS/nixfmt/issues/253
+  {
+    foo1 = {
+    };
+    foo2 = bar {
+    };
+    foo3 = bar {
+    } {
+    };
+    foo4 = [
+    ];
+    foo5 = bar [
+    ];
+    foo6 = bar [
+    ] [
+    ];
+  }
 ]

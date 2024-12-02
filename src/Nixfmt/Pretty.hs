@@ -540,6 +540,12 @@ isAbsorbable (Path _) = True
 -- Non-empty sets and lists
 isAbsorbable (Set _ _ (Items (_ : _)) _) = True
 isAbsorbable (List _ (Items (_ : _)) _) = True
+-- Empty sets and lists if they have a line break
+-- https://github.com/NixOS/nixfmt/issues/253
+isAbsorbable (Set _ (Ann{sourceLine = line1}) (Items []) (Ann{sourceLine = line2}))
+  | line1 /= line2 = True
+isAbsorbable (List (Ann{sourceLine = line1}) (Items []) (Ann{sourceLine = line2}))
+  | line1 /= line2 = True
 isAbsorbable (Parenthesized (LoneAnn _) (Term t) _) = isAbsorbable t
 isAbsorbable _ = False
 
