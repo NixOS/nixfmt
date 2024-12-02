@@ -413,7 +413,10 @@ prettyApp indentFunction pre hasPost f a =
               <> pretty parclose
         where
           -- If the brackets are on different lines, keep them like that
-          sur = if sourceLine paropen /= sourceLine parclose then hardline else line
+          sur
+            | sourceLine paropen /= sourceLine parclose = hardline
+            | null $ unItems items = hardspace
+            | otherwise = line
       absorbInner expr = pretty expr
 
       -- Render the last argument of a function call
