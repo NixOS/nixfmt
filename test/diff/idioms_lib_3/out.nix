@@ -151,8 +151,8 @@ rec {
           [${mkSectionName sectName}]
         ''
         + toKeyValue { inherit mkKeyValue listsAsDuplicateKeys; } sectValues;
+      # map input to ini sections
     in
-    # map input to ini sections
     mapAttrsToStringsSep "\n" mkSection attrsOfAttrs;
 
   # Generate an INI-style config file from an attrset
