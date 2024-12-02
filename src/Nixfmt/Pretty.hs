@@ -62,6 +62,7 @@ import Nixfmt.Types (
   mapLastToken',
   tokenText,
  )
+import Nixfmt.Util (isSpaces)
 import Prelude hiding (String)
 
 toLineComment :: TrailingComment -> Trivium
@@ -805,11 +806,13 @@ instance Pretty StringPart where
           (unexpandSpacing' (Just 30) whole')
 
 instance Pretty [StringPart] where
-  -- When the interpolation is the only thing on the string line,
+  -- When the interpolation is the only thing on the string line (ignoring leading whitespace),
   -- then absorb the content (i.e. don't surround with line').
   -- Only do this when there are no comments
-  pretty [Interpolation (Whole expr [])] =
-    group $ text "${" <> nest inner <> text "}"
+  pretty [Interpolation (Whole expr [])] = pretty [TextPart "", Interpolation (Whole expr [])]
+  pretty [TextPart pre, Interpolation (Whole expr [])]
+    | isSpaces pre =
+        text pre <> offset (textWidth pre) (group $ text "${" <> nest inner <> text "}")
     where
       -- Code copied over from parentheses. Could be factored out into a common function one day
       inner = case expr of

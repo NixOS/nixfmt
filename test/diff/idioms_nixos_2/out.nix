@@ -842,11 +842,9 @@ in
                     'use_ssl' => ${boolToString s3.useSsl},
                     ${optionalString (s3.region != null) "'region' => '${s3.region}',"}
                     'use_path_style' => ${boolToString s3.usePathStyle},
-                    ${
-                      optionalString (
-                        s3.sseCKeyFile != null
-                      ) "'sse_c_key' => nix_read_secret('${s3.sseCKeyFile}'),"
-                    }
+                    ${optionalString (
+                      s3.sseCKeyFile != null
+                    ) "'sse_c_key' => nix_read_secret('${s3.sseCKeyFile}'),"}
                   ],
                 ]
               '';
@@ -888,9 +886,8 @@ in
               }
               $CONFIG = [
                 'apps_paths' => [
-                  ${
-                    optionalString (cfg.extraApps != { })
-                      "[ 'path' => '${cfg.home}/nix-apps', 'url' => '/nix-apps', 'writable' => false ],"
+                  ${optionalString (cfg.extraApps != { })
+                    "[ 'path' => '${cfg.home}/nix-apps', 'url' => '/nix-apps', 'writable' => false ],"
                   }
                   [ 'path' => '${cfg.home}/apps', 'url' => '/apps', 'writable' => false ],
                   [ 'path' => '${cfg.home}/store-apps', 'url' => '/store-apps', 'writable' => true ],
@@ -901,37 +898,29 @@ in
                 ${optionalString cfg.caching.apcu "'memcache.local' => '\\OC\\Memcache\\APCu',"}
                 'log_type' => '${cfg.logType}',
                 'loglevel' => '${builtins.toString cfg.logLevel}',
-                ${
-                  optionalString (
-                    c.overwriteProtocol != null
-                  ) "'overwriteprotocol' => '${c.overwriteProtocol}',"
-                }
+                ${optionalString (
+                  c.overwriteProtocol != null
+                ) "'overwriteprotocol' => '${c.overwriteProtocol}',"}
                 ${optionalString (c.dbname != null) "'dbname' => '${c.dbname}',"}
                 ${optionalString (c.dbhost != null) "'dbhost' => '${c.dbhost}',"}
                 ${optionalString (c.dbport != null) "'dbport' => '${toString c.dbport}',"}
                 ${optionalString (c.dbuser != null) "'dbuser' => '${c.dbuser}',"}
-                ${
-                  optionalString (
-                    c.dbtableprefix != null
-                  ) "'dbtableprefix' => '${toString c.dbtableprefix}',"
-                }
-                ${
-                  optionalString (c.dbpassFile != null) ''
-                    'dbpassword' => nix_read_secret(
-                      "${c.dbpassFile}"
-                    ),
-                  ''
-                }
+                ${optionalString (
+                  c.dbtableprefix != null
+                ) "'dbtableprefix' => '${toString c.dbtableprefix}',"}
+                ${optionalString (c.dbpassFile != null) ''
+                  'dbpassword' => nix_read_secret(
+                    "${c.dbpassFile}"
+                  ),
+                ''}
                 'dbtype' => '${c.dbtype}',
                 'trusted_domains' => ${
                   writePhpArray ([ cfg.hostName ] ++ c.extraTrustedDomains)
                 },
                 'trusted_proxies' => ${writePhpArray (c.trustedProxies)},
-                ${
-                  optionalString (
-                    c.defaultPhoneRegion != null
-                  ) "'default_phone_region' => '${c.defaultPhoneRegion}',"
-                }
+                ${optionalString (
+                  c.defaultPhoneRegion != null
+                ) "'default_phone_region' => '${c.defaultPhoneRegion}',"}
                 ${optionalString (nextcloudGreaterOrEqualThan "23") "'profile.enabled' => ${boolToString cfg.globalProfiles},"}
                 ${objectstoreConfig}
               ];
