@@ -12,7 +12,7 @@ module Nixfmt.Util (
 )
 where
 
-import Data.Char (isAlpha, isDigit, isSpace)
+import Data.Char (isAlpha, isDigit)
 import Data.Text as Text (
   Text,
   all,
@@ -73,7 +73,7 @@ commonPrefix a b =
 -- prefix of zero texts is infinite, represented as Nothing.
 commonIndentation :: [Text] -> Maybe Text
 commonIndentation [] = Nothing
-commonIndentation [x] = Just $ Text.takeWhile isSpace x
+commonIndentation [x] = Just $ Text.takeWhile (== ' ') x
 commonIndentation (x : y : xs) = commonIndentation (commonPrefix x y : xs)
 
 isSpaces :: Text -> Bool
