@@ -65,9 +65,9 @@ let
     let
       b = 0;
 
+      # foo
+      # bar
     in
-    # foo
-    # bar
     # baz
     # qux
     null;
