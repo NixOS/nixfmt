@@ -62,6 +62,7 @@ import Nixfmt.Types (
   mapLastToken',
   tokenText,
  )
+import Nixfmt.Util (isSpaces)
 import Prelude hiding (String)
 
 toLineComment :: TrailingComment -> Trivium
@@ -412,7 +413,10 @@ prettyApp indentFunction pre hasPost f a =
               <> pretty parclose
         where
           -- If the brackets are on different lines, keep them like that
-          sur = if sourceLine paropen /= sourceLine parclose then hardline else line
+          sur
+            | sourceLine paropen /= sourceLine parclose = hardline
+            | null $ unItems items = hardspace
+            | otherwise = line
       absorbInner expr = pretty expr
 
       -- Render the last argument of a function call
@@ -536,6 +540,12 @@ isAbsorbable (Path _) = True
 -- Non-empty sets and lists
 isAbsorbable (Set _ _ (Items (_ : _)) _) = True
 isAbsorbable (List _ (Items (_ : _)) _) = True
+-- Empty sets and lists if they have a line break
+-- https://github.com/NixOS/nixfmt/issues/253
+isAbsorbable (Set _ (Ann{sourceLine = line1}) (Items []) (Ann{sourceLine = line2}))
+  | line1 /= line2 = True
+isAbsorbable (List (Ann{sourceLine = line1}) (Items []) (Ann{sourceLine = line2}))
+  | line1 /= line2 = True
 isAbsorbable (Parenthesized (LoneAnn _) (Term t) _) = isAbsorbable t
 isAbsorbable _ = False
 
@@ -599,7 +609,11 @@ absorbRHS expr = case expr of
   -- Special case `//` and `++` operations to be more compact in some cases
   -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
   (Operation (Term t) (LoneAnn op) b)
-    | isAbsorbable t && isUpdateOrConcat op ->
+    | isAbsorbable t
+        && isUpdateOrConcat op
+        -- Exclude further operations on the RHS
+        -- Hotfix for https://github.com/NixOS/nixfmt/issues/198
+        && case b of (Operation{}) -> False; _ -> True ->
         group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
   -- Case 2a: LHS fits onto first line, RHS is an absorbable term
   (Operation l (LoneAnn op) (Term t))
@@ -768,6 +782,9 @@ isSimple (Term (SimpleString (LoneAnn _))) = True
 isSimple (Term (IndentedString (LoneAnn _))) = True
 isSimple (Term (Path (LoneAnn _))) = True
 isSimple (Term (Token (LoneAnn (Identifier _)))) = True
+isSimple (Term (Token (LoneAnn (Integer _)))) = True
+isSimple (Term (Token (LoneAnn (Float _)))) = True
+isSimple (Term (Token (LoneAnn (EnvPath _)))) = True
 isSimple (Term (Selection t selectors def)) =
   isSimple (Term t) && all isSimpleSelector selectors && isNothing def
 isSimple (Term (Parenthesized (LoneAnn _) e (LoneAnn _))) = isSimple e
@@ -805,11 +822,13 @@ instance Pretty StringPart where
           (unexpandSpacing' (Just 30) whole')
 
 instance Pretty [StringPart] where
-  -- When the interpolation is the only thing on the string line,
+  -- When the interpolation is the only thing on the string line (ignoring leading whitespace),
   -- then absorb the content (i.e. don't surround with line').
   -- Only do this when there are no comments
-  pretty [Interpolation (Whole expr [])] =
-    group $ text "${" <> nest inner <> text "}"
+  pretty [Interpolation (Whole expr [])] = pretty [TextPart "", Interpolation (Whole expr [])]
+  pretty [TextPart pre, Interpolation (Whole expr [])]
+    | isSpaces pre =
+        text pre <> offset (textWidth pre) (group $ text "${" <> nest inner <> text "}")
     where
       -- Code copied over from parentheses. Could be factored out into a common function one day
       inner = case expr of

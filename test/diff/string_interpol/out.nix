@@ -30,23 +30,19 @@
           type nat hook prerouting priority dstnat
           policy accept
 
-          ${
-            builtins.concatStringsSep "\n" (
-              map (
-                e:
-                "iifname \"${cfg.upstreamIface}\" tcp dport ${builtins.toString e.sourcePort} dnat to ${e.destination}"
-              ) tcpPortMap
-            )
-          }
+          ${builtins.concatStringsSep "\n" (
+            map (
+              e:
+              "iifname \"${cfg.upstreamIface}\" tcp dport ${builtins.toString e.sourcePort} dnat to ${e.destination}"
+            ) tcpPortMap
+          )}
 
-          ${
-            builtins.concatStringsSep "\n" (
-              map (
-                e:
-                "ifname \"${cfg.upstreamIface}\" udp dport ${builtins.toString e.sourcePort} dnat to ${e.destination}"
-              ) udpPortMap
-            )
-          }
+          ${builtins.concatStringsSep "\n" (
+            map (
+              e:
+              "ifname \"${cfg.upstreamIface}\" udp dport ${builtins.toString e.sourcePort} dnat to ${e.destination}"
+            ) udpPortMap
+          )}
         }
     '';
   }

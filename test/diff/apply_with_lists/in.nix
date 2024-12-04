@@ -75,4 +75,7 @@
       out = "20170512";
     }
   ] null)
+  # https://github.com/NixOS/nixfmt/issues/268 regression test. [] and {} should be treated the same
+  (defaultNullOpts.mkNullable (with types; either str (listOf str)) [] "Some example long text that causes the line to be too long.")
+  (defaultNullOpts.mkNullable (with types; either str (listOf str)) {} "Some example long text that causes the line to be too long.")
 ]

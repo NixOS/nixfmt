@@ -292,6 +292,7 @@ stripIndentation parts = case commonIndentation $ mapMaybe lineHead parts of
   Nothing -> map (const []) parts
   Just indentation -> map (stripParts indentation) parts
 
+-- Merge adjacent string parts which resulted as parsing artifacts
 normalizeLine :: [StringPart] -> [StringPart]
 normalizeLine [] = []
 normalizeLine (TextPart "" : xs) = normalizeLine xs
