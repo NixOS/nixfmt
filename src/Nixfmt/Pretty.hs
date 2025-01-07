@@ -646,31 +646,13 @@ instance Pretty Expression where
       convertTrailing Nothing = []
       convertTrailing (Just (TrailingComment t)) = [LineComment (" " <> t)]
 
-      -- Extract detached comments at the bottom.
-      -- This uses a custom variant of span/spanJust/spanMaybe.
-      -- Note that this is a foldr which walks from the bottom, but the lists
-      -- are constructed in a way that they end up correct again.
-      (binderComments, bindersWithoutComments) =
-        foldr
-          ( \item (start, rest) -> case item of
-              (Comments inner)
-                | null rest ->
-                    -- Only move all non-empty-line trivia below the `in`
-                    let (comments, el) = break (== EmptyLine) (reverse inner)
-                    in (reverse comments : start, Comments (reverse el) : rest)
-              _ -> (start, item : rest)
-          )
-          ([], [])
-          (unItems binders)
-
       letPart = group $ pretty let_ <> hardline <> letBody
-      letBody = nest $ prettyItems (Items bindersWithoutComments)
+      letBody = nest $ prettyItems binders
       inPart =
         group $
           pretty in_
             <> hardline
-            -- Take our trailing and inject it between `in` and body
-            <> pretty (concat binderComments ++ preTrivia ++ convertTrailing trailComment)
+            <> pretty (preTrivia ++ convertTrailing trailComment)
             <> pretty expr
   pretty (Assert assert cond semicolon expr) =
     group $
