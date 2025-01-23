@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Copyright (c) 2025 Jan Malakhovski <oxij@oxij.org>
+#
+# This file can be redistributed under the terms of Unlicense
+# <https://unlicense.org> license.
+
+usage() {
+    cat - << EOF
+usage: $0 LOCAL BASE REMOTE MERGED
+
+A \`git-mergetool\`-compatible merge tool that uses \`nixfmt\` to merge more
+stuff.
+
+This tool rejects all non-\`.nix\` files, for \`.nix\` files it simply
+
+- calls \`nixfmt\` on its first three inputs, followed by
+- running \`git merge-file\` on the same inputs, followed by
+- running \`nixfmt\` on the result.
+
+Put the following to your \`~/.gitconfig\`:
+
+\`\`\`
+[mergetool "nixfmt"]
+    cmd = nixfmt-mergetool "\$LOCAL" "\$BASE" "\$REMOTE" "\$MERGED"
+    trustExitCode = true
+\`\`\`
+
+Then, when \`git merge\` or \`git rebase\` fails, run
+
+\`\`\`
+git mergetool -t nixfmt .
+# or, only for some specific files
+git mergetool -t nixfmt FILE1 FILE2 FILE3
+\`\`\`
+
+and some \`.nix\` files will probably get merged automagically.
+
+Note that files that \`git\` merges successfully even before \`git mergetool\`
+will be ignored by \`git mergetool\`.
+
+If you don't like the result, run
+
+\`\`\`
+git restore --merge .
+# or, only for some specific files
+git restore --merge FILE1 FILE2 FILE3
+\`\`\`
+
+to return back to the unmerged state.
+EOF
+    exit 1
+}
+
+[[ $# == 0 ]] && usage
+case "$1" in
+    --h|--help|--usage) usage ;;
+esac
+
+[[ "${4##*.}" != "nix" ]] && echo "skipping $4" && exit 1
+
+echo "merging $4"
+
+nixfmt "$1" "$2" "$3"
+ret=$?
+[[ $ret != 0 ]] && echo "pre-formatting \`nixfmt\` failed" && exit $ret
+
+trap 'rm -f "$4.merge.nix"' 0
+
+git merge-file --stdout "$1" "$2" "$3" > "$4.merge.nix"
+ret=$?
+[[ $ret != 0 ]] && echo "\`git merge-file\` failed" && exit $ret
+
+nixfmt "$4.merge.nix"
+ret=$?
+[[ $ret != 0 ]] && echo "post-formatting \`nixfmt\` failed" && exit $ret
+
+mv "$4.merge.nix" "$4"
