@@ -9,6 +9,10 @@ on:
     branches:
       - master
 
+permissions:
+  pull-requests: write
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
