@@ -347,11 +347,11 @@ mergeSpacings Hardspace (Newlines x) = Newlines x
 mergeSpacings _ (Newlines x) = Newlines (x + 1)
 mergeSpacings _ y = y
 
-layout :: (Pretty a, LanguageElement a) => Int -> Bool -> a -> Text
-layout width strict =
+layout :: (Pretty a, LanguageElement a) => Int -> Int -> Bool -> a -> Text
+layout width indentWidth strict =
   (<> "\n")
     . Text.strip
-    . layoutGreedy width
+    . layoutGreedy width indentWidth
     . fixup
     . pretty
     -- In strict mode, set the line number of all tokens to zero
@@ -480,8 +480,8 @@ indent n = Text.replicate n " "
 type St = (Int, NonEmpty (Int, Int))
 
 -- tw   Target Width
-layoutGreedy :: Int -> Doc -> Text
-layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, singleton (0, 0))
+layoutGreedy :: Int -> Int -> Doc -> Text
+layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, singleton (0, 0))
   where
     -- Simple helpers around `put` with a tuple state
     putL = modify . first . const
@@ -496,7 +496,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
           case textNL `compare` nl of
             -- Push the textNL onto the stack, but only increase the actual indentation (`ci`)
             -- if this is the first one of a line. All subsequent nestings within the line effectively get "swallowed"
-            GT -> putR ((if cc == 0 then ci + 2 else ci, textNL) <| indents) >> go'
+            GT -> putR ((if cc == 0 then ci + iw else ci, textNL) <| indents) >> go'
             -- Need to go down one or more levels
             -- Just pop from the stack and recurse until the indent matches again
             LT -> putR (NonEmpty.fromList indents') >> putText textNL textOffset t
@@ -623,14 +623,14 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
                 _ -> grp
               (nl, off) = nextIndent grp'
 
-              indentWillIncrease = if fst (nextIndent rest) > lineNL then 2 else 0
+              indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
                 where
                   lastLineNL = snd $ NonEmpty.head ci
-                  lineNL = lastLineNL + (if nl > lastLineNL then 2 else 0)
+                  lineNL = lastLineNL + (if nl > lastLineNL then iw else 0)
           in fits indentWillIncrease (tw - firstLineWidth rest) grp'
               <&> \t -> runState (putText nl off t) (cc, ci)
         else
-          let indentWillIncrease = if fst (nextIndent rest) > lineNL then 2 else 0
+          let indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
                 where
                   lineNL = snd $ NonEmpty.head ci
           in fits (indentWillIncrease - cc) (tw - cc - firstLineWidth rest) grp
