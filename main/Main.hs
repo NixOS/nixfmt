@@ -1,20 +1,23 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
-import Control.Monad (unless)
+import Control.Monad (forM, unless)
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Except (ExceptT (ExceptT), runExceptT, throwE)
 import Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
+import Data.Bifunctor (first)
 import Data.ByteString.Char8 (unpack)
 import Data.Either (lefts)
 import Data.FileEmbed
-import Data.List (isSuffixOf)
+import Data.List (intersperse, isSuffixOf)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text.IO as TextIO (getContents, hPutStr, putStr)
+import qualified Data.Text.IO as TextIO (getContents, hGetContents, hPutStr, putStr)
 import Data.Version (showVersion)
 import GHC.IO.Encoding (utf8)
 import qualified Nixfmt
@@ -33,11 +36,12 @@ import System.Console.CmdArgs (
 import System.Directory (doesDirectoryExist, listDirectory)
 import System.Exit (ExitCode (..), exitFailure, exitSuccess)
 import System.FilePath ((</>))
-import System.IO (hPutStrLn, hSetEncoding, stderr)
+import System.IO (Handle, hGetContents, hPutStrLn, hSetEncoding, stderr)
 import System.IO.Atomic (withOutputFile)
 import System.IO.Utf8 (readFileUtf8, withUtf8StdHandles)
 import System.Posix.Process (exitImmediately)
 import System.Posix.Signals (Handler (..), installHandler, keyboardSignal)
+import System.Process (CreateProcess (std_out), StdStream (CreatePipe), createProcess, proc, waitForProcess)
 
 type Result = Either String ()
 
@@ -47,6 +51,7 @@ data Nixfmt = Nixfmt
   { files :: [FilePath],
     width :: Width,
     check :: Bool,
+    mergetool :: Bool,
     quiet :: Bool,
     strict :: Bool,
     verify :: Bool,
@@ -70,6 +75,7 @@ options =
           defaultWidth
             &= help (addDefaultHint defaultWidth "Maximum width in characters"),
         check = False &= help "Check whether files are formatted without modifying them",
+        mergetool = False &= help "Whether to run in git mergetool mode, see https://github.com/NixOS/nixfmt?tab=readme-ov-file#git-mergetool for more info",
         quiet = False &= help "Do not report errors",
         strict = False &= help "Enable a stricter formatting mode that isn't influenced as much by how the input is formatted",
         verify =
@@ -156,6 +162,14 @@ fileTarget path = Target (readFileUtf8 path) path atomicWriteFile
     -- Don't do anything if the file is already formatted
     atomicWriteFile False _ = mempty
 
+-- | Writes to a (potentially non-existent) file path, but reads from a potentially separate handle
+copyTarget :: Handle -> FilePath -> Target
+copyTarget from to = Target (TextIO.hGetContents from) to atomicWriteFile
+  where
+    atomicWriteFile _ t = withOutputFile to $ \h -> do
+      hSetEncoding h utf8
+      TextIO.hPutStr h t
+
 checkFileTarget :: FilePath -> Target
 checkFileTarget path = Target (readFileUtf8 path) path (const $ const $ pure ())
 
@@ -183,8 +197,54 @@ toWriteError :: Nixfmt -> String -> IO ()
 toWriteError Nixfmt{quiet = False} = hPutStrLn stderr
 toWriteError Nixfmt{quiet = True} = const $ return ()
 
+-- | `git mergetool` mode, which rejects all non-\`.nix\` files, while for \`.nix\` files it simply
+-- - Calls `nixfmt` on its first three inputs (the BASE, LOCAL and REMOTE versions to merge)
+-- - Runs `git merge-file` on the same inputs
+-- - Runs `nixfmt` on the result and stores it in the path given in the fourth argument (the MERGED file)
+mergeToolJob :: Nixfmt -> IO Result
+mergeToolJob opts@Nixfmt{files = [base, local, remote, merged]} = runExceptT $ do
+  let formatter = toFormatter opts
+      joinResults :: [Result] -> Result
+      joinResults xs = case lefts xs of
+        [] -> Right ()
+        ls -> Left (mconcat (intersperse "\n" ls))
+      inputs =
+        [ ("base", base),
+          ("local", local),
+          ("remote", remote)
+        ]
+
+  unless (".nix" `isSuffixOf` merged) $
+    throwE ("Skipping non-Nix file " ++ merged)
+
+  ExceptT $
+    joinResults
+      <$> forM
+        inputs
+        ( \(name, path) -> do
+            first (<> "pre-formatting the " <> name <> " version failed")
+              <$> formatTarget formatter (fileTarget path)
+        )
+
+  (_, Just out, _, process) <- do
+    lift $
+      createProcess
+        (proc "git" ["merge-file", "--stdout", base, local, remote])
+          { std_out = CreatePipe
+          }
+
+  lift (waitForProcess process) >>= \case
+    ExitFailure code -> do
+      output <- lift $ hGetContents out
+      throwE $ output <> "`git merge-file` failed with exit code " <> show code <> "\n"
+    ExitSuccess -> return ()
+
+  ExceptT $ formatTarget formatter (copyTarget out merged)
+mergeToolJob _ = return $ Left "--mergetool mode expects exactly 4 file arguments ($BASE, $LOCAL, $REMOTE, $MERGED)"
+
 toJobs :: Nixfmt -> IO [IO Result]
-toJobs opts = map (toOperation opts $ toFormatter opts) <$> toTargets opts
+toJobs opts@Nixfmt{mergetool = False} = map (toOperation opts $ toFormatter opts) <$> toTargets opts
+toJobs opts@Nixfmt{mergetool = True} = return [mergeToolJob opts]
 
 writeErrorBundle :: (String -> IO ()) -> Result -> IO Result
 writeErrorBundle doWrite result = do
