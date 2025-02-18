@@ -93,3 +93,25 @@
 
   "--${"test"}"
 ]
+
+  # Regression https://github.com/NixOS/nixfmt/issues/228
+  {
+    one = ''
+      foo
+    ''
+    + optional2 true ''
+      rstrst
+    '';
+
+    many = ''
+      foo
+    ''
+    + optional1 true ""
+    + optional2 true ''
+      bar
+    ''
+    + optional3 true ''
+      bar
+    ''
+    + "";
+  }

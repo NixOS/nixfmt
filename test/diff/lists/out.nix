@@ -128,3 +128,28 @@
     ]
   ]
 ]
+
+  # Regression https://github.com/NixOS/nixfmt/issues/228
+  {
+    one = [
+      "hello"
+      "beautiful"
+    ]
+    ++ lib.optionals true [
+      (x ++ [ bash ])
+      "wonderful"
+      "world"
+    ];
+
+    many = [
+      "hello"
+      "beautiful"
+    ]
+    ++ lib.optionals true [
+      (x ++ [ bash ])
+      "wonderful"
+      "world"
+    ]
+    ++ lib.optionals true [ ]
+    ++ [ ];
+  }

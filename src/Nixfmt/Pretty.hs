@@ -606,15 +606,17 @@ absorbRHS expr = case expr of
   -- Absorb if all arguments except the last fit into the line, start on new line otherwise
   (Application f a) -> prettyApp False line False f a
   (With{}) -> group' RegularG $ line <> pretty expr
-  -- Special case `//` and `++` operations to be more compact in some cases
-  -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
+  -- Special case `//`, `++` and `+` operations to be more compact in some cases
+  -- Case 1a: two arguments, LHS is absorbable term, RHS fits onto the last line
   (Operation (Term t) (LoneAnn op) b)
     | isAbsorbable t
-        && isUpdateOrConcat op
+        && isUpdateOrConcatOrPlus op
         -- Exclude further operations on the RHS
         -- Hotfix for https://github.com/NixOS/nixfmt/issues/198
-        && case b of (Operation{}) -> False; _ -> True ->
-        group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
+        && case b of (Operation _ (LoneAnn _) Application{}) -> False; _ -> True ->
+            group' RegularG $ hardspace <> group' Priority (prettyTermWide t) <> hardline <> pretty op <> hardspace <> pretty b
+  -- Case 1b: Special case to enable absorbtion for chain of `+` operations
+  (Operation l (LoneAnn TPlus) _) | case l of Operation{} -> True; _ -> False -> hardspace <> group expr
   -- Case 2a: LHS fits onto first line, RHS is an absorbable term
   (Operation l (LoneAnn op) (Term t))
     | isAbsorbable t && isUpdateOrConcat op ->
@@ -632,6 +634,9 @@ absorbRHS expr = case expr of
     isUpdateOrConcat TUpdate = True
     isUpdateOrConcat TConcat = True
     isUpdateOrConcat _ = False
+
+    isUpdateOrConcatOrPlus TPlus = True
+    isUpdateOrConcatOrPlus op = isUpdateOrConcat op
 
 instance Pretty Expression where
   pretty (Term t) = pretty t

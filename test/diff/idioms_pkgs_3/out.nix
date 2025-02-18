@@ -239,7 +239,8 @@ buildStdenv.mkDerivation ({
 
   outputs = [
     "out"
-  ] ++ lib.optionals crashreporterSupport [ "symbols" ];
+  ]
+  ++ lib.optionals crashreporterSupport [ "symbols" ];
 
   # Add another configure-build-profiling run before the final configure phase if we build with pgo
   preConfigurePhases = lib.optionals pgoSupport [
@@ -262,12 +263,11 @@ buildStdenv.mkDerivation ({
     ++ lib.optional (lib.versionAtLeast version "96") ./no-buildconfig-ffx96.patch
     ++ extraPatches;
 
-  postPatch =
-    ''
-      rm -rf obj-x86_64-pc-linux-gnu
-      patchShebangs mach build
-    ''
-    + extraPostPatch;
+  postPatch = ''
+    rm -rf obj-x86_64-pc-linux-gnu
+    patchShebangs mach build
+  ''
+  + extraPostPatch;
 
   # Ignore trivial whitespace changes in patches, this fixes compatibility of
   # ./env_var_for_system_dir.patch with Firefox >=65 without having to track
@@ -281,101 +281,99 @@ buildStdenv.mkDerivation ({
   HOST_CC = "${llvmPackagesBuildBuild.stdenv.cc}/bin/cc";
   HOST_CXX = "${llvmPackagesBuildBuild.stdenv.cc}/bin/c++";
 
-  nativeBuildInputs =
-    [
-      autoconf
-      cargo
-      gnum4
-      llvmPackagesBuildBuild.bintools
-      makeWrapper
-      nodejs
-      perl
-      pkg-config
-      python3
-      rust-cbindgen
-      rustPlatform.bindgenHook
-      rustc
-      unzip
-      which
-      wrapGAppsHook
-    ]
-    ++ lib.optionals crashreporterSupport [
-      dump_syms
-      patchelf
-    ]
-    ++ lib.optionals pgoSupport [ xvfb-run ]
-    ++ extraNativeBuildInputs;
+  nativeBuildInputs = [
+    autoconf
+    cargo
+    gnum4
+    llvmPackagesBuildBuild.bintools
+    makeWrapper
+    nodejs
+    perl
+    pkg-config
+    python3
+    rust-cbindgen
+    rustPlatform.bindgenHook
+    rustc
+    unzip
+    which
+    wrapGAppsHook
+  ]
+  ++ lib.optionals crashreporterSupport [
+    dump_syms
+    patchelf
+  ]
+  ++ lib.optionals pgoSupport [ xvfb-run ]
+  ++ extraNativeBuildInputs;
 
   setOutputFlags = false; # `./mach configure` doesn't understand `--*dir=` flags.
 
-  preConfigure =
-    ''
-      # remove distributed configuration files
-      rm -f configure js/src/configure .mozconfig*
+  preConfigure = ''
+    # remove distributed configuration files
+    rm -f configure js/src/configure .mozconfig*
 
-      # Runs autoconf through ./mach configure in configurePhase
-      configureScript="$(realpath ./mach) configure"
+    # Runs autoconf through ./mach configure in configurePhase
+    configureScript="$(realpath ./mach) configure"
 
-      # Set predictable directories for build and state
-      export MOZ_OBJDIR=$(pwd)/mozobj
-      export MOZBUILD_STATE_PATH=$(pwd)/mozbuild
+    # Set predictable directories for build and state
+    export MOZ_OBJDIR=$(pwd)/mozobj
+    export MOZBUILD_STATE_PATH=$(pwd)/mozbuild
 
-      # Don't try to send libnotify notifications during build
-      export MOZ_NOSPAM=1
+    # Don't try to send libnotify notifications during build
+    export MOZ_NOSPAM=1
 
-      # Set consistent remoting name to ensure wmclass matches with desktop file
-      export MOZ_APP_REMOTINGNAME="${binaryName}"
+    # Set consistent remoting name to ensure wmclass matches with desktop file
+    export MOZ_APP_REMOTINGNAME="${binaryName}"
 
-      # AS=as in the environment causes build failure
-      # https://bugzilla.mozilla.org/show_bug.cgi?id=1497286
-      unset AS
+    # AS=as in the environment causes build failure
+    # https://bugzilla.mozilla.org/show_bug.cgi?id=1497286
+    unset AS
 
-      # Use our own python
-      export MACH_BUILD_PYTHON_NATIVE_PACKAGE_SOURCE=system
+    # Use our own python
+    export MACH_BUILD_PYTHON_NATIVE_PACKAGE_SOURCE=system
 
-      # RBox WASM Sandboxing
-      export WASM_CC=${pkgsCross.wasi32.stdenv.cc}/bin/${pkgsCross.wasi32.stdenv.cc.targetPrefix}cc
-      export WASM_CXX=${pkgsCross.wasi32.stdenv.cc}/bin/${pkgsCross.wasi32.stdenv.cc.targetPrefix}c++
-    ''
-    + lib.optionalString pgoSupport ''
-      if [ -e "$TMPDIR/merged.profdata" ]; then
-        echo "Configuring with profiling data"
-        for i in "''${!configureFlagsArray[@]}"; do
-          if [[ ''${configureFlagsArray[i]} = "--enable-profile-generate=cross" ]]; then
-            unset 'configureFlagsArray[i]'
-          fi
-        done
-        configureFlagsArray+=(
-          "--enable-profile-use=cross"
-          "--with-pgo-profile-path="$TMPDIR/merged.profdata""
-          "--with-pgo-jarlog="$TMPDIR/jarlog""
-        )
-      else
-        echo "Configuring to generate profiling data"
-        configureFlagsArray+=(
-          "--enable-profile-generate=cross"
-        )
-      fi
-    ''
-    + lib.optionalString googleAPISupport ''
-      # Google API key used by Chromium and Firefox.
-      # Note: These are for NixOS/nixpkgs use ONLY. For your own distribution,
-      # please get your own set of keys at https://www.chromium.org/developers/how-tos/api-keys/.
-      echo "AIzaSyDGi15Zwl11UNe6Y-5XW_upsfyw31qwZPI" > $TMPDIR/google-api-key
-      # 60.5+ & 66+ did split the google API key arguments: https://bugzilla.mozilla.org/show_bug.cgi?id=1531176
-      configureFlagsArray+=("--with-google-location-service-api-keyfile=$TMPDIR/google-api-key")
-      configureFlagsArray+=("--with-google-safebrowsing-api-keyfile=$TMPDIR/google-api-key")
-    ''
-    + lib.optionalString mlsAPISupport ''
-      # Mozilla Location services API key
-      # Note: These are for NixOS/nixpkgs use ONLY. For your own distribution,
-      # please get your own set of keys at https://location.services.mozilla.com/api.
-      echo "dfd7836c-d458-4917-98bb-421c82d3c8a0" > $TMPDIR/mls-api-key
-      configureFlagsArray+=("--with-mozilla-api-keyfile=$TMPDIR/mls-api-key")
-    ''
-    + lib.optionalString (enableOfficialBranding && !stdenv.is32bit) ''
-      export MOZILLA_OFFICIAL=1
-    '';
+    # RBox WASM Sandboxing
+    export WASM_CC=${pkgsCross.wasi32.stdenv.cc}/bin/${pkgsCross.wasi32.stdenv.cc.targetPrefix}cc
+    export WASM_CXX=${pkgsCross.wasi32.stdenv.cc}/bin/${pkgsCross.wasi32.stdenv.cc.targetPrefix}c++
+  ''
+  + lib.optionalString pgoSupport ''
+    if [ -e "$TMPDIR/merged.profdata" ]; then
+      echo "Configuring with profiling data"
+      for i in "''${!configureFlagsArray[@]}"; do
+        if [[ ''${configureFlagsArray[i]} = "--enable-profile-generate=cross" ]]; then
+          unset 'configureFlagsArray[i]'
+        fi
+      done
+      configureFlagsArray+=(
+        "--enable-profile-use=cross"
+        "--with-pgo-profile-path="$TMPDIR/merged.profdata""
+        "--with-pgo-jarlog="$TMPDIR/jarlog""
+      )
+    else
+      echo "Configuring to generate profiling data"
+      configureFlagsArray+=(
+        "--enable-profile-generate=cross"
+      )
+    fi
+  ''
+  + lib.optionalString googleAPISupport ''
+    # Google API key used by Chromium and Firefox.
+    # Note: These are for NixOS/nixpkgs use ONLY. For your own distribution,
+    # please get your own set of keys at https://www.chromium.org/developers/how-tos/api-keys/.
+    echo "AIzaSyDGi15Zwl11UNe6Y-5XW_upsfyw31qwZPI" > $TMPDIR/google-api-key
+    # 60.5+ & 66+ did split the google API key arguments: https://bugzilla.mozilla.org/show_bug.cgi?id=1531176
+    configureFlagsArray+=("--with-google-location-service-api-keyfile=$TMPDIR/google-api-key")
+    configureFlagsArray+=("--with-google-safebrowsing-api-keyfile=$TMPDIR/google-api-key")
+  ''
+  + lib.optionalString mlsAPISupport ''
+    # Mozilla Location services API key
+    # Note: These are for NixOS/nixpkgs use ONLY. For your own distribution,
+    # please get your own set of keys at https://location.services.mozilla.com/api.
+    echo "dfd7836c-d458-4917-98bb-421c82d3c8a0" > $TMPDIR/mls-api-key
+    configureFlagsArray+=("--with-mozilla-api-keyfile=$TMPDIR/mls-api-key")
+  ''
+  + lib.optionalString (enableOfficialBranding && !stdenv.is32bit) ''
+    export MOZILLA_OFFICIAL=1
+  '';
 
   # firefox has a different definition of configurePlatforms from nixpkgs, see configureFlags
   configurePlatforms = [ ];
@@ -442,56 +440,55 @@ buildStdenv.mkDerivation ({
     ++ lib.optional (branding != null) "--with-branding=${branding}"
     ++ extraConfigureFlags;
 
-  buildInputs =
-    [
-      bzip2
-      dbus
-      dbus-glib
-      file
-      fontconfig
-      freetype
-      glib
-      gtk3
-      icu
-      libffi
-      libGL
-      libGLU
-      libevent
-      libjpeg
-      libpng
-      libstartup_notification
-      libvpx
-      libwebp
-      nasm
-      nspr
-      pango
-      perl
-      xorg.libX11
-      xorg.libXcursor
-      xorg.libXdamage
-      xorg.libXext
-      xorg.libXft
-      xorg.libXi
-      xorg.libXrender
-      xorg.libXt
-      xorg.libXtst
-      xorg.pixman
-      xorg.xorgproto
-      zip
-      zlib
-    ]
-    ++ [ (if (lib.versionAtLeast version "103") then nss_latest else nss_esr) ]
-    ++ lib.optional alsaSupport alsa-lib
-    ++ lib.optional jackSupport libjack2
-    ++ lib.optional pulseaudioSupport libpulseaudio # only headers are needed
-    ++ lib.optional sndioSupport sndio
-    ++ lib.optional gssSupport libkrb5
-    ++ lib.optionals waylandSupport [
-      libxkbcommon
-      libdrm
-    ]
-    ++ lib.optional jemallocSupport jemalloc
-    ++ extraBuildInputs;
+  buildInputs = [
+    bzip2
+    dbus
+    dbus-glib
+    file
+    fontconfig
+    freetype
+    glib
+    gtk3
+    icu
+    libffi
+    libGL
+    libGLU
+    libevent
+    libjpeg
+    libpng
+    libstartup_notification
+    libvpx
+    libwebp
+    nasm
+    nspr
+    pango
+    perl
+    xorg.libX11
+    xorg.libXcursor
+    xorg.libXdamage
+    xorg.libXext
+    xorg.libXft
+    xorg.libXi
+    xorg.libXrender
+    xorg.libXt
+    xorg.libXtst
+    xorg.pixman
+    xorg.xorgproto
+    zip
+    zlib
+  ]
+  ++ [ (if (lib.versionAtLeast version "103") then nss_latest else nss_esr) ]
+  ++ lib.optional alsaSupport alsa-lib
+  ++ lib.optional jackSupport libjack2
+  ++ lib.optional pulseaudioSupport libpulseaudio # only headers are needed
+  ++ lib.optional sndioSupport sndio
+  ++ lib.optional gssSupport libkrb5
+  ++ lib.optionals waylandSupport [
+    libxkbcommon
+    libdrm
+  ]
+  ++ lib.optional jemallocSupport jemalloc
+  ++ extraBuildInputs;
 
   profilingPhase = lib.optionalString pgoSupport ''
     # Package up Firefox for profiling
@@ -541,20 +538,19 @@ buildStdenv.mkDerivation ({
       cd mozobj
     '';
 
-  postInstall =
-    ''
-      # Install distribution customizations
-      install -Dvm644 ${distributionIni} $out/lib/${binaryName}/distribution/distribution.ini
-      install -Dvm644 ${defaultPrefsFile} $out/lib/${binaryName}/browser/defaults/preferences/nixos-default-prefs.js
+  postInstall = ''
+    # Install distribution customizations
+    install -Dvm644 ${distributionIni} $out/lib/${binaryName}/distribution/distribution.ini
+    install -Dvm644 ${defaultPrefsFile} $out/lib/${binaryName}/browser/defaults/preferences/nixos-default-prefs.js
 
-    ''
-    + lib.optionalString buildStdenv.isLinux ''
-      # Remove SDK cruft. FIXME: move to a separate output?
-      rm -rf $out/share/idl $out/include $out/lib/${binaryName}-devel-*
+  ''
+  + lib.optionalString buildStdenv.isLinux ''
+    # Remove SDK cruft. FIXME: move to a separate output?
+    rm -rf $out/share/idl $out/include $out/lib/${binaryName}-devel-*
 
-      # Needed to find Mozilla runtime
-      gappsWrapperArgs+=(--argv0 "$out/bin/.${binaryName}-wrapped")
-    '';
+    # Needed to find Mozilla runtime
+    gappsWrapperArgs+=(--argv0 "$out/bin/.${binaryName}-wrapped")
+  '';
 
   postFixup = lib.optionalString crashreporterSupport ''
     patchelf --add-rpath "${lib.makeLibraryPath [ curl ]}" $out/lib/${binaryName}/crashreporter
@@ -580,7 +576,8 @@ buildStdenv.mkDerivation ({
     inherit tests;
     inherit gtk3;
     inherit wasiSysRoot;
-  } // extraPassthru;
+  }
+  // extraPassthru;
 
   hardeningDisable = [ "format" ]; # -Werror=format-security
 

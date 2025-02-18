@@ -291,4 +291,26 @@
     ] [
     ];
   }
+  # Regression https://github.com/NixOS/nixfmt/issues/228
+  {
+    one =
+    {
+      a = 1;
+      b = 2;
+    } // lib.optionalAttrs true {
+      c = 3;
+      d = 4;
+    };
+   many =
+    {
+      a = 3;
+      b = 4;
+    } // lib.optionalAttrs true {
+      c = 3;
+      d = 4;
+    } // lib.optionalAttrs true {
+      f = 5;
+      g = 6;
+    } // {};
+  }
 ]

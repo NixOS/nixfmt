@@ -286,12 +286,12 @@ in
     (mkIf (!config.boot.isContainer) {
       system.build = { inherit kernel; };
 
-      system.modulesTree = [ kernel ] ++ config.boot.extraModulePackages;
+      system.modulesTree = [ kernel ]
+        ++ config.boot.extraModulePackages;
 
       # Implement consoleLogLevel both in early boot and using sysctl
       # (so you don't need to reboot to have changes take effect).
-      boot.kernelParams =
-        [ "loglevel=${toString config.boot.consoleLogLevel}" ]
+      boot.kernelParams = [ "loglevel=${toString config.boot.consoleLogLevel}" ]
         ++ optionals config.boot.vesa [
           "vga=0x317"
           "nomodeset"

@@ -134,22 +134,21 @@
           # several
           items
         ];
-    a =
-      [
-        some
-        flags # multiline
-      ]
-      ++ [ short ]
-      ++ [
-        more
-        stuff # multiline
-      ]
-      ++ (if foo then [ bar ] else [ baz ])
-      ++ [ ]
-      ++ (optionals condition [
-        more
-        items
-      ]);
+    a = [
+      some
+      flags # multiline
+    ]
+    ++ [ short ]
+    ++ [
+      more
+      stuff # multiline
+    ]
+    ++ (if foo then [ bar ] else [ baz ])
+    ++ [ ]
+    ++ (optionals condition [
+      more
+      items
+    ]);
     b = with pkgs; [
       a
       lot
@@ -279,34 +278,32 @@
           "${host_name}.lo.m-0.eu"
         ];
       }) secret-config.ssh-hosts;
-    programs.ssh.knownHosts9 =
-      {
-        multi = 1;
-        line = 2;
-      }
-      // lib.mapAttrs (
-        host_name: publicKey: {
-          inherit publicKey;
-          extraHostNames = [
-            "${host_name}.m-0.eu"
-            "${host_name}.vpn.m-0.eu"
-            "${host_name}.lo.m-0.eu"
-          ];
-        }
-      );
-    programs.ssh.knownHosts10 =
-      {
-        multi = 1;
-        line = 2;
-      }
-      // lib.mapAttrs (host_name: publicKey: {
+    programs.ssh.knownHosts9 = {
+      multi = 1;
+      line = 2;
+    }
+    // lib.mapAttrs (
+      host_name: publicKey: {
         inherit publicKey;
         extraHostNames = [
           "${host_name}.m-0.eu"
           "${host_name}.vpn.m-0.eu"
           "${host_name}.lo.m-0.eu"
         ];
-      }) secret-config.ssh-hosts;
+      }
+    );
+    programs.ssh.knownHosts10 = {
+      multi = 1;
+      line = 2;
+    }
+    // lib.mapAttrs (host_name: publicKey: {
+      inherit publicKey;
+      extraHostNames = [
+        "${host_name}.m-0.eu"
+        "${host_name}.vpn.m-0.eu"
+        "${host_name}.lo.m-0.eu"
+      ];
+    }) secret-config.ssh-hosts;
   }
 
   # Parentheses
@@ -403,5 +400,29 @@
         ]
         [
         ];
+  }
+  # Regression https://github.com/NixOS/nixfmt/issues/228
+  {
+    one = {
+      a = 1;
+      b = 2;
+    }
+    // lib.optionalAttrs true {
+      c = 3;
+      d = 4;
+    };
+    many = {
+      a = 3;
+      b = 4;
+    }
+    // lib.optionalAttrs true {
+      c = 3;
+      d = 4;
+    }
+    // lib.optionalAttrs true {
+      f = 5;
+      g = 6;
+    }
+    // { };
   }
 ]
