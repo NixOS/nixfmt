@@ -614,7 +614,7 @@ absorbRHS expr = case expr of
         -- Exclude further operations on the RHS
         -- Hotfix for https://github.com/NixOS/nixfmt/issues/198
         && case b of (Operation _ (LoneAnn _) Application{}) -> False; _ -> True ->
-            group' RegularG $ hardspace <> group' Priority (prettyTermWide t) <> hardline <> pretty op <> hardspace <> pretty b
+        group' RegularG $ hardspace <> group' Priority (prettyTermWide t) <> hardline <> pretty op <> hardspace <> pretty b
   -- Case 1b: Special case to enable absorbtion for chain of `+` operations
   (Operation l (LoneAnn TPlus) _) | case l of Operation{} -> True; _ -> False -> hardspace <> group expr
   -- Case 2a: LHS fits onto first line, RHS is an absorbable term
