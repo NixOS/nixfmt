@@ -189,6 +189,63 @@ null_ls.setup({
 
 This only works when `nixfmt-rfc-style` is installed (see above for installation instructions).
 
+### git mergetool
+
+Nixfmt provides a mode usable by [`git mergetool`](https://git-scm.com/docs/git-mergetool)
+via `--mergetool` that allows resolving formatting-related conflicts automatically in many cases.
+
+It can be installed by any of these methods:
+
+- For only for the current repo, run:
+  ```
+  git config mergetool.nixfmt.cmd 'nixfmt --mergetool "$BASE" "$LOCAL" "$REMOTE" "$MERGED"'
+  git config mergetool.nixfmt.trustExitCode true
+  ```
+- For all repos with a mutable config file, run
+  ```
+  git config --global mergetool.nixfmt.cmd 'nixfmt --mergetool "$BASE" "$LOCAL" "$REMOTE" "$MERGED"'
+  git config --global mergetool.nixfmt.trustExitCode true
+  ```
+- For all repos with a NixOS-provided config file, add this to your `configuration.nix`:
+  ```nix
+  programs.git.config = {
+    mergetool.nixfmt = {
+      cmd = "nixfmt --mergetool \"$BASE\" \"$LOCAL\" \"$REMOTE\" \"$MERGED\"";
+      trustExitCode = true;
+    };
+  };
+  ```
+- For all repos with a home-manager-provided config file, add this to your `home.nix`:
+  ```nix
+  programs.git.extraConfig = {
+    mergetool.nixfmt = {
+      cmd = "nixfmt --mergetool \"$BASE\" \"$LOCAL\" \"$REMOTE\" \"$MERGED\"";
+      trustExitCode = true;
+    };
+  };
+  ```
+
+Then, when `git merge` or `git rebase` fails, run
+```
+git mergetool -t nixfmt .
+# or, only for some specific files
+git mergetool -t nixfmt FILE1 FILE2 FILE3
+```
+
+and some `.nix` files will probably get merged automagically.
+
+Note that files that `git` merges successfully even before `git mergetool`
+will be ignored by \`git mergetool\`.
+
+If you don't like the result, run
+```
+git restore --merge .
+# or, only for some specific files
+git restore --merge FILE1 FILE2 FILE3
+```
+
+to return back to the unmerged state.
+
 ## Development
 
 ### With Nix
