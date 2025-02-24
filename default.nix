@@ -115,6 +115,16 @@ in
 build
 // {
   packages.nixfmt = build;
+  packages.nixfmt-tree = pkgs.writeShellScriptBin "nixfmt-tree" ''
+    set -x
+    exec ${pkgs.treefmt}/bin/treefmt --config-file ${pkgs.writeText "treefmt.toml" ''
+      on-unmatched = "debug"
+
+      [formatter.nixfmt]
+      command = "${lib.getExe build}"
+      includes = ["*.nix"]
+    ''} --tree-root .
+  '';
 
   inherit pkgs;
 
