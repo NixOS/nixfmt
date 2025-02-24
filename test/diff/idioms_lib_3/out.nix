@@ -380,8 +380,9 @@ rec {
               "\${"
             ];
             escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [ "''\${" "'''" ];
-            singlelineResult =
-              ''"'' + concatStringsSep "\\n" (map escapeSingleline lines) + ''"'';
+            singlelineResult = ''"''
+              + concatStringsSep "\\n" (map escapeSingleline lines)
+              + ''"'';
             multilineResult =
               let
                 escapedLines = map escapeMultiline lines;
