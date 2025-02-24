@@ -30,7 +30,7 @@ executable nixfmt
   other-extensions:    DeriveDataTypeable
   hs-source-dirs:      main
   build-depends:
-      base             >= 4.12.0 && < 4.21
+      base             >= 4.12.0
     , bytestring
     , cmdargs          >= 0.10.20 && < 0.11
     , file-embed
@@ -78,7 +78,7 @@ library
 
   hs-source-dirs:      src
   build-depends:
-      base             >= 4.12.0 && < 4.21
+      base             >= 4.12.0
     , megaparsec       >= 9.0.1 && < 9.6
     , mtl
     , parser-combinators >= 1.0.3 && < 1.4
