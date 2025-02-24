@@ -121,7 +121,7 @@ collectNixFiles path = do
       warningPrinted <- get
       -- We don't want to print the warning more than once
       unless warningPrinted $ do
-        lift $ hPutStrLn stderr $ "\ESC[33mPassing directories or non-Nix files (such as \"" <> path <> "\") is deprecated and will be unsupported soon, please use https://treefmt.com/ instead, e.g. via https://github.com/numtide/treefmt-nix\ESC[0m"
+        lift $ hPutStrLn stderr $ "\ESC[33mPassing directories or non-Nix files (such as \"" <> path <> "\") is deprecated and will be unsupported soon. Please use the `pkgs.nixfmt-tree` wrapper instead, or https://github.com/numtide/treefmt-nix for more flexibility\ESC[0m"
         put True
 
 -- | Recursively collect nix files in a list of directories
