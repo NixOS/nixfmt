@@ -2,12 +2,16 @@
 
 This page collects information and processes for the Nix formatting team.
 
-## Links
-
 - Official team page and current members: [Nix formatting team on `nixos.org`](https://nixos.org/community/teams/formatting)
 - GitHub team: [@NixOS/nix-formatting](https://github.com/orgs/NixOS/teams/nix-formatting/members)
 - Matrix room: [#nix-formatting:nixos.org](https://matrix.to/#/#nix-formatting:nixos.org)
-- Meeting calendar: [Search for "Nix formatting"](https://calendar.google.com/calendar/u/0/embed?src=b9o52fobqjak8oq8lfkhg3t0qg@group.calendar.google.com)
+
+## Meetings
+
+There is an open team meeting **every second Tuesday at [20:00 (Europe/Zurich)](https://dateful.com/convert/zurich?t=20)**.
+See the [google calendar](https://calendar.google.com/calendar/u/0/embed?src=b9o52fobqjak8oq8lfkhg3t0qg@group.calendar.google.com)
+(search for "Nix formatting") to see the next date.
+
 - Meeting link: [Jitsi](https://meet.zrh.init7.net/nix-formatting)
 - Live meeting notes: [HedgeDoc](https://pad.lassul.us/nix-formatting)
 
