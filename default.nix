@@ -95,9 +95,18 @@ let
       nativeBuildInputs = with pkgs; [
         shellcheck
         build
+        gitMinimal
       ];
       patchPhase = "patchShebangs .";
-      buildPhase = "./test/test.sh";
+      buildPhase = ''
+        export HOME=$(mktemp -d)
+        export PAGER=cat
+        git config --global user.name "Test"
+        git config --global user.email "test@test.com"
+        git config --global init.defaultBranch main
+        ./test/test.sh
+        ./test/mergetool.sh
+      '';
       installPhase = "touch $out";
     };
     treefmt = treefmtEval.config.build.check source;
