@@ -39,7 +39,7 @@ It's also possible to install `nixfmt` directly from the repository using `nix-e
 Also, updates are not done automatically (as it would with the system packages).
 
 ```console
-$ nix-env -i -f https://github.com/NixOS/nixfmt/archive/master.tar.gz -i
+$ nix-env -i -f https://github.com/NixOS/nixfmt/archive/master.tar.gz
 ```
 
 ### nix fmt
