@@ -149,4 +149,13 @@
     ]
     ++ lib.optionals true [ ]
     ++ [ ];
+
+    boot.kernelParams =
+      [ aaaaaaaaaaaaaa ]
+      ++ optionals config.boot.vesa [
+        "vga=0x317"
+        "nomodeset"
+      ];
+
+    foo = [ bar ] ++ baz;
   }

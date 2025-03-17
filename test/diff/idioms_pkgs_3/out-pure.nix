@@ -237,8 +237,7 @@ buildStdenv.mkDerivation ({
 
   inherit src unpackPhase meta;
 
-  outputs = [ "out" ]
-    ++ lib.optionals crashreporterSupport [ "symbols" ];
+  outputs = [ "out" ] ++ lib.optionals crashreporterSupport [ "symbols" ];
 
   # Add another configure-build-profiling run before the final configure phase if we build with pgo
   preConfigurePhases = lib.optionals pgoSupport [

@@ -235,17 +235,18 @@ This rule has turned out to be very practical at catching code that could be pot
     # Bad indentation
     buildInputs = [
         foo # <-- Not okay, increase by 2 levels
-      ] ++ lib.optionals cond [
+      ]
+      ++ lib.optionals cond [
         bar
       ];
 
     # Okay indentation, subsequent lines at most one more level
-    buildInputs =
-      [
-        foo 
-      ] ++ lib.optionals cond [
-        bar
-      ];
+    buildInputs = [
+      foo
+    ]
+    ++ lib.optionals cond [
+      bar
+    ];
 
     # Bad indentation
     attribute = { args }: let
@@ -824,42 +825,39 @@ foo
 
 # Good, this is the non-compact operator form
 {
-  foo =
-    {
-      x = 10;
-      y = 20;
-    }
-    // bar
-    // {
-      z = 30;
-      w = 40;
-    };
+  foo = {
+    x = 10;
+    y = 20;
+  }
+  // bar
+  // {
+    z = 30;
+    w = 40;
+  };
 }
 
 # Good
 {
-  postPatch =
-    ''
-      patchShebangs .
-    ''
-    + lib.optionalString withFrei0r ''
-      substituteInPlace libavfilter/vf_frei0r.c \
-        --replace /usr/local/lib/frei0r-1 ${frei0r}/lib/frei0r-1
-      substituteInPlace doc/filters.texi \
-        --replace /usr/local/lib/frei0r-1 ${frei0r}/lib/frei0r-1
-    '';
+  postPatch = ''
+    patchShebangs .
+  ''
+  + lib.optionalString withFrei0r ''
+    substituteInPlace libavfilter/vf_frei0r.c \
+      --replace /usr/local/lib/frei0r-1 ${frei0r}/lib/frei0r-1
+    substituteInPlace doc/filters.texi \
+      --replace /usr/local/lib/frei0r-1 ${frei0r}/lib/frei0r-1
+  '';
 
-  configureFlags =
-    [
-      # *  Program flags
-      (enableFeature buildFfmpeg "ffmpeg")
-      (enableFeature buildFfplay "ffplay")
-      (enableFeature buildFfprobe "ffprobe")
-    ]
-    ++ optionals withBin [ "--bindir=${placeholder "bin"}/bin" ]
-    ++ [
-      # ...
-    ];
+  configureFlags = [
+    # *  Program flags
+    (enableFeature buildFfmpeg "ffmpeg")
+    (enableFeature buildFfplay "ffplay")
+    (enableFeature buildFfprobe "ffprobe")
+  ]
+  ++ optionals withBin [ "--bindir=${placeholder "bin"}/bin" ]
+  ++ [
+    # ...
+  ];
 }
 ```
 

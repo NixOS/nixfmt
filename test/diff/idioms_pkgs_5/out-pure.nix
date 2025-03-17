@@ -643,7 +643,8 @@ let
             # TODO: remove `unique` once nix has a list canonicalization primitive
             __sandboxProfile =
               let
-                profiles = [ stdenv.extraSandboxProfile ]
+                profiles =
+                  [ stdenv.extraSandboxProfile ]
                   ++ computedSandboxProfile
                   ++ computedPropagatedSandboxProfile
                   ++ [
