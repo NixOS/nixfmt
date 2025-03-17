@@ -644,8 +644,8 @@ absorbRHS expr = case expr of
 
     -- Check if a term is actually absorbed
     isAbsorbed = \case
-      (Set _ _ _ _) -> True
-      (List (Ann{sourceLine = line1}) (Items (xs)) (Ann{sourceLine = line2})) ->
+      Set{} -> True
+      (List (Ann{sourceLine = line1}) (Items xs) (Ann{sourceLine = line2})) ->
         length xs > 1 || line1 /= line2
       _ -> False
 
