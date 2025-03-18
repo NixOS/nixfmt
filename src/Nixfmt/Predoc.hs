@@ -600,9 +600,13 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
         mapStateT (Just . runIdentity) $
           go prio (unexpandSpacing post ++ rest)
       -- Try to render post onto one line
-      postRendered <- goGroup post rest
+      postRendered <- goGroup (fixListConcat post) rest
       -- If none of these failed, put together and return
       return (preRendered ++ prioRendered ++ postRendered)
+      where
+        -- Special case where list concatenation doesn't fit one line we need to replace space with newline
+        fixListConcat (Spacing Space : xs@(Text _ _ _ "++":_)) = newline <> xs
+        fixListConcat xs = xs
 
     -- Try to fit the group onto a single line, while accounting for the fact that the first
     -- bits of rest must fit as well (until the first possibility for a line break within rest).
