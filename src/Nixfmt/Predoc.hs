@@ -605,7 +605,7 @@ layoutGreedy tw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, s
       return (preRendered ++ prioRendered ++ postRendered)
       where
         -- Special case where list concatenation doesn't fit one line we need to replace space with newline
-        fixListConcat (Spacing Space : xs@(Text _ _ _ "++":_)) = newline <> xs
+        fixListConcat (Spacing Space : xs@(Text _ _ _ "++" : _)) = newline <> xs
         fixListConcat xs = xs
 
     -- Try to fit the group onto a single line, while accounting for the fact that the first
