@@ -232,7 +232,7 @@ mergeToolJob opts@Nixfmt{files = [base, local, remote, merged]} = runExceptT $ d
   (_, Just out, _, process) <- do
     lift $
       createProcess
-        (proc "git" ["merge-file", "--stdout", base, local, remote])
+        (proc "git" ["merge-file", "--stdout", local, base, remote])
           { std_out = CreatePipe
           }
 
