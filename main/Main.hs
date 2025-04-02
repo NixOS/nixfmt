@@ -17,7 +17,7 @@ import Data.FileEmbed
 import Data.List (intersperse, isSuffixOf)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text.IO as TextIO (getContents, hGetContents, hPutStr, putStr)
+import qualified Data.Text.IO as TextIO (getContents, hPutStr, putStr)
 import Data.Version (showVersion)
 import GHC.IO.Encoding (utf8)
 import qualified Nixfmt
@@ -36,12 +36,12 @@ import System.Console.CmdArgs (
 import System.Directory (doesDirectoryExist, listDirectory)
 import System.Exit (ExitCode (..), exitFailure, exitSuccess)
 import System.FilePath ((</>))
-import System.IO (Handle, hGetContents, hPutStrLn, hSetEncoding, stderr)
+import System.IO (IOMode (WriteMode), hPutStrLn, hSetEncoding, stderr, withFile)
 import System.IO.Atomic (withOutputFile)
 import System.IO.Utf8 (readFileUtf8, withUtf8StdHandles)
 import System.Posix.Process (exitImmediately)
 import System.Posix.Signals (Handler (..), installHandler, keyboardSignal)
-import System.Process (CreateProcess (std_out), StdStream (CreatePipe), createProcess, proc, waitForProcess)
+import System.Process (CreateProcess (std_out), StdStream (UseHandle), proc, waitForProcess, withCreateProcess)
 
 type Result = Either String ()
 
@@ -165,14 +165,6 @@ fileTarget path = Target (readFileUtf8 path) path atomicWriteFile
     -- Don't do anything if the file is already formatted
     atomicWriteFile False _ = mempty
 
--- | Writes to a (potentially non-existent) file path, but reads from a potentially separate handle
-copyTarget :: Handle -> FilePath -> Target
-copyTarget from to = Target (TextIO.hGetContents from) to atomicWriteFile
-  where
-    atomicWriteFile _ t = withOutputFile to $ \h -> do
-      hSetEncoding h utf8
-      TextIO.hPutStr h t
-
 checkFileTarget :: FilePath -> Target
 checkFileTarget path = Target (readFileUtf8 path) path (const $ const $ pure ())
 
@@ -229,20 +221,20 @@ mergeToolJob opts@Nixfmt{files = [base, local, remote, merged]} = runExceptT $ d
               <$> formatTarget formatter (fileTarget path)
         )
 
-  (_, Just out, _, process) <- do
-    lift $
-      createProcess
-        (proc "git" ["merge-file", "--stdout", local, base, remote])
-          { std_out = CreatePipe
-          }
+  exitCode <- lift $ withFile merged WriteMode $ \out -> do
+    withCreateProcess
+      (proc "git" ["merge-file", "--stdout", local, base, remote])
+        { std_out = UseHandle out
+        }
+      $ \_ _ _ -> waitForProcess
 
-  lift (waitForProcess process) >>= \case
+  case exitCode of
     ExitFailure code -> do
-      output <- lift $ hGetContents out
+      output <- lift $ readFile merged
       throwE $ output <> "`git merge-file` failed with exit code " <> show code <> "\n"
     ExitSuccess -> return ()
 
-  ExceptT $ formatTarget formatter (copyTarget out merged)
+  ExceptT $ formatTarget formatter (fileTarget merged)
 mergeToolJob _ = return $ Left "--mergetool mode expects exactly 4 file arguments ($BASE, $LOCAL, $REMOTE, $MERGED)"
 
 toJobs :: Nixfmt -> IO [IO Result]

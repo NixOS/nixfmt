@@ -245,3 +245,39 @@ git merge feature >/dev/null && exit 1
 git mergetool -t nixfmt . && exit 1
 
 echo -e "\e[32mSuccessfully failed!\e[0m"
+
+setup "big-file"
+
+# Poorly-formatted file, the numbers should be indented
+echo "[" > a.nix
+if ! seq 10000 >> a.nix; then
+  echo "Failed!"
+  exit 1
+fi
+echo "]" >> a.nix
+
+git add -A
+git commit -q -m "init"
+
+git branch -c feature
+
+# Format file on main
+nixfmt a.nix
+git commit -a -q -m "format"
+
+git switch -q feature
+
+# Change file on feature branch in a conflicting way
+sed 's/0/1/g' -i a.nix
+git commit -a -q -m "change"
+
+git switch -q main
+
+
+# Try to merge the feature branch, will give a merge conflict
+git merge feature >/dev/null && exit 1
+
+# Resolve it automatically, should work
+git mergetool -t nixfmt .
+
+echo -e "\e[32mSuccess!\e[0m"
