@@ -33,15 +33,15 @@ import System.Console.CmdArgs (
   typ,
   (&=),
  )
-import System.Directory (doesDirectoryExist, listDirectory)
+import System.Directory (doesDirectoryExist, listDirectory, renameFile)
 import System.Exit (ExitCode (..), exitFailure, exitSuccess)
 import System.FilePath ((</>))
-import System.IO (IOMode (WriteMode), hPutStrLn, hSetEncoding, stderr, withFile)
+import System.IO (hPutStrLn, hSetEncoding, stderr)
 import System.IO.Atomic (withOutputFile)
 import System.IO.Utf8 (readFileUtf8, withUtf8StdHandles)
 import System.Posix.Process (exitImmediately)
 import System.Posix.Signals (Handler (..), installHandler, keyboardSignal)
-import System.Process (CreateProcess (std_out), StdStream (UseHandle), proc, waitForProcess, withCreateProcess)
+import System.Process (callProcess)
 
 type Result = Either String ()
 
@@ -221,20 +221,13 @@ mergeToolJob opts@Nixfmt{files = [base, local, remote, merged]} = runExceptT $ d
               <$> formatTarget formatter (fileTarget path)
         )
 
-  exitCode <- lift $ withFile merged WriteMode $ \out -> do
-    withCreateProcess
-      (proc "git" ["merge-file", "--stdout", local, base, remote])
-        { std_out = UseHandle out
-        }
-      $ \_ _ _ -> waitForProcess
+  lift $ callProcess "git" ["merge-file", local, base, remote]
+  -- git merge-file writes the result to the local version
 
-  case exitCode of
-    ExitFailure code -> do
-      output <- lift $ readFile merged
-      throwE $ output <> "`git merge-file` failed with exit code " <> show code <> "\n"
-    ExitSuccess -> return ()
+  ExceptT $ formatTarget formatter (fileTarget local)
 
-  ExceptT $ formatTarget formatter (fileTarget merged)
+  -- Atomic move at the end
+  lift $ renameFile local merged
 mergeToolJob _ = return $ Left "--mergetool mode expects exactly 4 file arguments ($BASE, $LOCAL, $REMOTE, $MERGED)"
 
 toJobs :: Nixfmt -> IO [IO Result]
