@@ -83,6 +83,61 @@ git commit -q --no-edit
 
 echo -e "\e[32mSuccess!\e[0m"
 
+# Check that files are merged correctly
+setup "correct-merging"
+
+# Poorly-formatted file
+cat > a.nix <<EOF
+{
+  x,
+
+  y,
+
+  z
+}:
+null
+EOF
+
+git add -A
+git commit -q -m "init"
+
+git branch -c feature
+
+# One normal change and one that will conflict with the reformat
+sed 's/x/x2/;s/z/z2/' -i a.nix
+git commit -a -q -m "change"
+
+git switch -q feature
+# One normal change and the reformat
+sed 's/y/y2/' -i a.nix
+nixfmt a.nix
+
+git commit -a -q -m "change"
+
+git switch -q main
+
+# Try to merge the feature branch, will give a merge conflict
+git merge feature >/dev/null && exit 1
+
+# Resolve it automatically
+git mergetool -t nixfmt .
+if ! diff a.nix <(cat <<EOF
+{
+  x2,
+
+  y2,
+
+  z2,
+}:
+null
+EOF
+); then
+  echo "Mergetool didn't call git merge-file correctly"
+  exit 1
+fi
+git commit -q --no-edit
+
+echo -e "\e[32mSuccess!\e[0m"
 
 # Test that it doesn't try to resolve non-Nix files
 setup "non-Nix"
@@ -190,3 +245,39 @@ git merge feature >/dev/null && exit 1
 git mergetool -t nixfmt . && exit 1
 
 echo -e "\e[32mSuccessfully failed!\e[0m"
+
+setup "big-file"
+
+# Poorly-formatted file, the numbers should be indented
+echo "[" > a.nix
+if ! seq 10000 >> a.nix; then
+  echo "Failed!"
+  exit 1
+fi
+echo "]" >> a.nix
+
+git add -A
+git commit -q -m "init"
+
+git branch -c feature
+
+# Format file on main
+nixfmt a.nix
+git commit -a -q -m "format"
+
+git switch -q feature
+
+# Change file on feature branch in a conflicting way
+sed 's/0/1/g' -i a.nix
+git commit -a -q -m "change"
+
+git switch -q main
+
+
+# Try to merge the feature branch, will give a merge conflict
+git merge feature >/dev/null && exit 1
+
+# Resolve it automatically, should work
+git mergetool -t nixfmt .
+
+echo -e "\e[32mSuccess!\e[0m"
