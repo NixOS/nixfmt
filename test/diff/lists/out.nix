@@ -128,3 +128,41 @@
     ]
   ]
 ]
+
+  # Regression https://github.com/NixOS/nixfmt/issues/228
+  {
+    one = [
+      "hello"
+      "beautiful"
+    ]
+    ++ lib.optionals true [
+      (x ++ [ bash ])
+      "wonderful"
+      "world"
+    ];
+
+    many = [
+      "hello"
+      "beautiful"
+    ]
+    ++ lib.optionals true [
+      (x ++ [ bash ])
+      "wonderful"
+      "world"
+    ]
+    ++ lib.optionals true [ ]
+    ++ [ ];
+
+    boot.kernelParams =
+      [ aaaaaaaaaaaaaa ]
+      ++ optionals config.boot.vesa [
+        "vga=0x317"
+        "nomodeset"
+      ];
+
+    foo = [ bar ] ++ baz;
+
+    options =
+      [ "loop" ]
+      ++ lib.optional (config.boot.kernelPackages.kernel.kernelAtLeast "6.2") "threads=multi";
+  }
