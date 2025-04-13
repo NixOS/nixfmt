@@ -48,10 +48,9 @@ import Control.Monad.State.Strict (StateT)
 import Data.Bifunctor (first)
 import Data.Foldable (toList)
 import Data.Function (on)
-import Data.Int (Int64)
 import Data.List.NonEmpty as NonEmpty
 import Data.Maybe (maybeToList)
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Data.Void (Void)
 import Text.Megaparsec (Pos)
 import qualified Text.Megaparsec as MP (ParseErrorBundle, Parsec, pos1)
@@ -488,7 +487,7 @@ instance (LanguageElement a) => LanguageElement (NonEmpty a) where
   mapAllTokens f = NonEmpty.map (mapAllTokens f)
 
 data Token
-  = Integer Int64
+  = Integer Text
   | Float Text
   | Identifier Text
   | EnvPath Text
@@ -588,7 +587,7 @@ operators =
 
 tokenText :: Token -> Text
 tokenText (Identifier i) = i
-tokenText (Integer i) = pack (show i)
+tokenText (Integer i) = i
 tokenText (Float f) = f
 tokenText (EnvPath p) = "<" <> p <> ">"
 tokenText KAssert = "assert"
