@@ -607,14 +607,17 @@ absorbRHS expr = case expr of
   (Application f a) -> prettyApp False line False f a
   (With{}) -> group' RegularG $ line <> pretty expr
   -- Special case `//` and `++` operations to be more compact in some cases
-  -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
+  -- Case 1a: two arguments, LHS is absorbable term, RHS fits onto the last line
   (Operation (Term t) (LoneAnn op) b)
     | isAbsorbable t
         && isUpdateOrConcat op
         -- Exclude further operations on the RHS
         -- Hotfix for https://github.com/NixOS/nixfmt/issues/198
-        && case b of (Operation{}) -> False; _ -> True ->
-        group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
+        && case b of (Operation _ (LoneAnn _) Application{}) -> False; _ -> True ->
+        let (groupSep, opSep) = if isAbsorbed t then (hardspace, hardline) else (line, line)
+        in group' RegularG $ groupSep <> group' Priority (prettyTermWide t) <> opSep <> pretty op <> hardspace <> pretty b
+  -- Case 1b: Special case to enable absorbtion for `+` operation
+  (Operation l (LoneAnn TPlus) _) | isAbsorbableLeftAssoc l -> hardspace <> group expr
   -- Case 2a: LHS fits onto first line, RHS is an absorbable term
   (Operation l (LoneAnn op) (Term t))
     | isAbsorbable t && isUpdateOrConcat op ->
@@ -632,6 +635,19 @@ absorbRHS expr = case expr of
     isUpdateOrConcat TUpdate = True
     isUpdateOrConcat TConcat = True
     isUpdateOrConcat _ = False
+
+    -- Recursively check if the left side of an operation is absorbable
+    isAbsorbableLeftAssoc = \case
+      (Operation l _ _) -> isAbsorbableLeftAssoc l
+      (Term t) -> isAbsorbable t
+      _ -> False
+
+    -- Check if a term is actually absorbed
+    isAbsorbed = \case
+      Set{} -> True
+      (List (Ann{sourceLine = line1}) (Items xs) (Ann{sourceLine = line2})) ->
+        length xs > 1 || line1 /= line2
+      _ -> False
 
 instance Pretty Expression where
   pretty (Term t) = pretty t
