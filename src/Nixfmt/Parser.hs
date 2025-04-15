@@ -14,7 +14,7 @@ import Data.Char (isAlpha)
 import Data.Foldable (toList)
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import qualified Data.Text as Text
 import Data.Void (Void)
 import Nixfmt.Lexer (lexeme, takeTrivia, whole)
@@ -71,8 +71,7 @@ import Text.Megaparsec (
   try,
   (<|>),
  )
-import Text.Megaparsec.Char (char)
-import qualified Text.Megaparsec.Char.Lexer as L (decimal)
+import Text.Megaparsec.Char (char, digitChar)
 import Prelude hiding (String)
 
 -- HELPER FUNCTIONS
@@ -110,7 +109,7 @@ reserved t =
 -- VALUES
 
 integer :: Parser (Ann Token)
-integer = ann Integer L.decimal
+integer = ann Integer (pack <$> some digitChar)
 
 float :: Parser (Ann Token)
 float = ann Float floatParse
