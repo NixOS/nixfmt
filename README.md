@@ -14,7 +14,7 @@ Be aware of this if you track the [`master`](https://github.com/NixOS/nixfmt/tre
 Until the [next release](https://github.com/NixOS/nixfmt/issues/272), `nixfmt` should be considered **very unstable**.
 
 A recent version of `nixfmt` is available as `pkgs.nixfmt-rfc-style` in Nixpkgs.
-The original `nixfmt` is also still available as `pkgs.nixfmt-classic` for now, though unmaintained.
+The original `nixfmt` is still available as `pkgs.nixfmt-classic`, but it is unmaintained and will eventually be removed.
 
 For more details, see the [RFC implementation tracking issue](https://github.com/NixOS/nixfmt/issues/153).
 
