@@ -1,16 +1,20 @@
 # `nixfmt`
 
-`nixfmt` is a formatter for Nix code, intended to easily apply a uniform style.
-
-You are encouraged to test this out on your code and submit any undesirable formatting you find as an issue
+`nixfmt` is the official formatter for Nix language code, intended to easily apply a uniform style.
 
 ![Build Status](https://github.com/NixOS/nixfmt/actions/workflows/main.yml/badge.svg?branch=master)
 
 ## State
 
-`nixfmt` will form the basis for the initial official standard Nix formatter, as established by [RFC 166](https://github.com/NixOS/rfcs/pull/166).
+`nixfmt` was originally developed by [Serokell](https://github.com/serokell).
+It was used as the basis for the official standardised Nix formatter, as established by [RFC 166](https://github.com/NixOS/rfcs/pull/166).
 
-The established standard Nix formatting differs considerably from the original one. Be aware of this if you track the main branch. Until the first new release the main branch should be considered **very unstable**.
+The official standard differs considerably from the original implementation.
+Be aware of this if you track the [`master`](https://github.com/NixOS/nixfmt/tree/master) branch.
+Until the first new release, `nixfmt` should be considered **very unstable**.
+
+A recent version of `nixfmt` is available as `pkgs.nixfmt-rfc-style` in Nixpkgs.
+The original `nixfmt` is also still available as `pkgs.nixfmt-classic` for now, though unmaintained.
 
 For more details, see the [RFC implementation tracking issue](https://github.com/NixOS/nixfmt/issues/153).
 
