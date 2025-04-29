@@ -16,6 +16,10 @@ For more details, see the [RFC implementation tracking issue](https://github.com
 
 ## Installation
 
+> [!NOTE]
+> `nixfmt` can only process one file at a time.
+> Consider using a configuration helper for [formatting a project](#in-a-project).
+
 ### In the environment
 
 #### NixOS
