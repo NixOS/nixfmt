@@ -11,7 +11,7 @@ It was used as the basis for the official standardised Nix formatter, as establi
 
 The official standard differs considerably from the original implementation.
 Be aware of this if you track the [`master`](https://github.com/NixOS/nixfmt/tree/master) branch.
-Until the [next release](https://github.com/NixOS/nixfmt/issues/272), `nixfmt` should be considered **very unstable**.
+Until the [next release](https://github.com/NixOS/nixfmt/issues/272), expect `nixfmt` to change.
 
 A recent version of `nixfmt` is available as `pkgs.nixfmt-rfc-style` in Nixpkgs.
 The original `nixfmt` is still available as `pkgs.nixfmt-classic`, but it is unmaintained and will eventually be removed.
