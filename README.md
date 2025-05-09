@@ -281,8 +281,6 @@ to return back to the unmerged state.
 
 ## Development
 
-You are encouraged to test this out on your code and submit any undesirable formatting you find as an issue.
-
 ### With Nix
 
 Haskell dependencies will be built by Nix.
