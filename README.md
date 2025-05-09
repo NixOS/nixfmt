@@ -18,94 +18,159 @@ The original `nixfmt` is still available as `pkgs.nixfmt-classic`, but it is unm
 
 For more details, see the [RFC implementation tracking issue](https://github.com/NixOS/nixfmt/issues/153).
 
-## Installation And Usage Instructions
+## Installation
 
-### nixpkgs/NixOS
+> [!NOTE]
+> `nixfmt` can only process one file at a time.
+> Consider using a configuration helper for [formatting a project](#in-a-project).
 
-`nixfmt` was used as the basis for the official Nix formatter with a standardized formatting.
-The new formatting differs considerably from the original one.
-A recent nixfmt version is available as `pkgs.nixfmt-rfc-style` in Nixpkgs.
-The formatting of this version differs considerably from the original nixfmt that was used as the basis for the standardised official formatter, which is also still available as `pkgs.nixfmt-classic` for now, though unmaintained.
+### In the environment
 
-So installing this `nixfmt` is as simple as adding to the system packages:
+#### NixOS
+
+To install `nixfmt` on NixOS for all users, add it to the [`environment.systemPackages`](https://search.nixos.org/options?show=environment.systemPackages) configuration option:
 
 ```nix
 { pkgs, ... }:
-
 {
   environment.systemPackages = [ pkgs.nixfmt-rfc-style ];
 }
 ```
 
-### From the repository
+To install it on NixOS for a particular user, add it to the [`users.users.<user>.packages`](https://search.nixos.org/options?show=users.users.%3Cname%3E.packages) configuration option:
 
-It's also possible to install `nixfmt` directly from the repository using `nix-env`.
-Also, updates are not done automatically (as it would with the system packages).
-
-```console
-$ nix-env -i -f https://github.com/NixOS/nixfmt/archive/master.tar.gz
 ```
-
-### nix fmt
-
-[nix fmt](https://nix.dev/manual/nix/latest/command-ref/new-cli/nix3-fmt) (which is a flakes-only feature) can be configured by adding the following to `flake.nix` (assuming a `nixpkgs` input exists):
-```nix
+{ pkgs, ... }:
 {
-  outputs =
-    { nixpkgs, self }:
-    {
-      formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-rfc-style;
-    };
+  users.users.example-user-name.packages = [ pkgs.nixfmt-rfc-style ];
 }
 ```
 
-### treefmt
+#### Home Manager
 
-[treefmt](https://github.com/numtide/treefmt) can be used to format repositories consisting of different languages with one command.
-A possible configuration for `nixfmt` in `treefmt.toml` looks like this:
+To install `nixfmt` in Home Manager, add it adding to the [`home.packages`](https://nix-community.github.io/home-manager/options.xhtml#opt-home.packages) configuration option:
+
+```nix
+{ pkgs, ... }:
+{
+  home.packages = [ pkgs.nixfmt-rfc-style ];
+}
+```
+
+#### Declarative shell environment
+
+To make `nixfmt` available in a shell environment invoked with [`nix-shell`](https://nix.dev/manual/nix/2.28/command-ref/nix-shell), add it to the `packages` argument of `mkShell`:
+
+```nix
+{ pkgs }:
+pkgs.mkShellNoCC {
+  packages = [ pkgs.nixfmt-rfc-style ];
+}
+```
+
+### In an editor
+
+#### neovim + nixd
+
+```lua
+local nvim_lsp = require("lspconfig")
+nvim_lsp.nixd.setup({
+   settings = {
+      nixd = {
+         formatting = {
+            command = { "nixfmt" },
+         },
+      },
+   },
+})
+```
+
+> [!NOTE]
+> This only works when `nixfmt` is available [in the environment](#in-the-environment).
+
+#### neovim + nil
+
+```lua
+local nvim_lsp = require("lspconfig")
+nvim_lsp.nil_ls.setup({
+   settings = {
+      ['nil'] = {
+         formatting = {
+            command = { "nixfmt" },
+         },
+      },
+   },
+})
+```
+
+> [!NOTE]
+> This only works when `nixfmt` is available [in the environment](#in-the-environment).
+
+#### neovim + none-ls
+
+```lua
+local null_ls = require("null-ls")
+null_ls.setup({
+    sources = {
+        null_ls.builtins.formatting.nixfmt,
+    },
+})
+```
+
+> [!NOTE]
+> This only works when `nixfmt` is available [in the environment](#in-the-environment).
+
+### In a project
+
+#### `treefmt-nix`
+
+[`treefmt-nix`](https://github.com/numtide/treefmt-nix) automatically configures the correct packages and formatters for [`treefmt`](https://github.com/numtide/treefmt) using the Nix language, and has native support for `nixfmt`:
+
+```nix
+{ pkgs, treefmt-nix }:
+treefmt-nix.mkWrapper pkgs {
+  programs.nixfmt.enable = true;
+};
+```
+
+#### `treefmt`
+
+[`treefmt`](https://github.com/numtide/treefmt) can also be used directly:
+
 ```toml
+# treefmt.toml
 [formatter.nixfmt-rfc-style]
 command = "nixfmt"
 includes = ["*.nix"]
 ```
 
-This only works when `nixfmt-rfc-style` is installed (see above for installation instructions).
+> [!NOTE]
+> This only works when `nixfmt` is available [in the environment](#in-the-environment).
 
-`treefmt` can be integrated into text editors and CI to ensure consistent formatting for all filetypes.
+#### `git-hooks.nix`
 
-### treefmt-nix
-
-[treefmt-nix](https://github.com/numtide/treefmt-nix) automatically configures the correct packages and formatters using a Nix configuration and has native support for `nixfmt`:
-
-```nix
-# ...
-treefmt-nix.mkWrapper nixpkgs {
-  # ... other options ...
-  programs.nixfmt-rfc-style.enable = true;
-}
-```
-
-More information about configuration can be found in [the README](https://github.com/numtide/treefmt-nix?tab=readme-ov-file#integration-into-nix).
-
-### git-hooks.nix
-
-[git-hooks.nix](https://github.com/cachix/git-hooks.nix) can automatically configure git hooks like `pre-commit` using nix configuration and has native support for `nixfmt`:
+[`git-hooks.nix`](https://github.com/cachix/git-hooks.nix) can automatically configure Git hooks like [`pre-commit`](https://pre-commit.com/) using the Nix language, and has native support for `nixfmt`:
 
 ```nix
+{ pkgs, git-hooks }:
 {
-  pre-commit-check = nix-pre-commit-hooks.run {
-    # ... other options ...
+  pre-commit-check = git-hooks.run {
     hooks = {
-      # ... other hooks ...
       nixfmt-rfc-style.enable = true;
     };
+  };
+  shell = pkgs.mkShellNoCC {
+    packages = [ pre-commit-check.enabledPackages ];
+    shellHook = ''
+      ${pre-commit-check.shellHook}
+    '';
   };
 }
 ```
 
-### `pre-commit` tool
+#### `pre-commit`
 
-If you have Nix files in a Git repo and you want to make sure that they’re formatted with `nixfmt`, then you can use the `pre-commit` tool from [pre-commit.com](https://pre-commit.com):
+[`pre-commit`](https://pre-commit.com/) can also be used directly:
 
 1. Make sure that you have the `pre-commit` command:
 
@@ -146,56 +211,9 @@ If you have Nix files in a Git repo and you want to make sure that they’re for
 > [!WARNING]
 > `nixfmt`’s integration with the `pre-commit` tool is relatively new. At the moment, none of the stable releases of `nixfmt` can be used with the `pre-commit` tool. You’ll have to use an unstable version for the time being.
 
-### neovim + nixd
+#### `git mergetool`
 
-```lua
-local nvim_lsp = require("lspconfig")
-nvim_lsp.nixd.setup({
-   settings = {
-      nixd = {
-         formatting = {
-            command = { "nixfmt" },
-         },
-      },
-   },
-})
-```
-
-This only works when `nixfmt-rfc-style` is installed (see above for installation instructions).
-
-### neovim + nil
-
-```lua
-local nvim_lsp = require("lspconfig")
-nvim_lsp.nil_ls.setup({
-   settings = {
-      ['nil'] = {
-         formatting = {
-            command = { "nixfmt" },
-         },
-      },
-   },
-})
-```
-
-This only works when `nixfmt-rfc-style` is installed (see above for installation instructions).
-
-### neovim + none-ls
-
-```lua
-local null_ls = require("null-ls")
-null_ls.setup({
-    sources = {
-        null_ls.builtins.formatting.nixfmt,
-    },
-})
-```
-
-This only works when `nixfmt-rfc-style` is installed (see above for installation instructions).
-
-### git mergetool
-
-Nixfmt provides a mode usable by [`git mergetool`](https://git-scm.com/docs/git-mergetool)
+`nixfmt` provides a mode usable by [`git mergetool`](https://git-scm.com/docs/git-mergetool)
 via `--mergetool` that allows resolving formatting-related conflicts automatically in many cases.
 
 It can be installed by any of these methods:
@@ -249,6 +267,21 @@ git restore --merge FILE1 FILE2 FILE3
 ```
 
 to return back to the unmerged state.
+
+#### `nix fmt` (experimental)
+
+[nix fmt](https://nix.dev/manual/nix/latest/command-ref/new-cli/nix3-fmt) (part of the [`flakes` experimental feature](https://nix.dev/manual/nix/latest/development/experimental-features#xp-feature-flakes)) can be configured to use `nixfmt` by setting the `formatter` flake output to the respective package (assuming a `nixpkgs` flake input exists):
+
+```nix
+# flake.nix
+{
+  outputs =
+    { nixpkgs, self }:
+    {
+      formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-rfc-style;
+    };
+}
+```
 
 ## Development
 
