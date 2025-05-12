@@ -120,6 +120,13 @@ null_ls.setup({
 > [!NOTE]
 > This only works when `nixfmt` is available [in the environment](#in-the-environment).
 
+#### Visual Studio Code (VSC)
+
+[vscode-nix-ide](https://github.com/nix-community/vscode-nix-ide) can invoke `nixfmt`.
+
+> [!NOTE]
+> This only works when `nixfmt` is available [in the environment](#in-the-environment).
+
 ### In a project
 
 #### `treefmt-nix`
