@@ -134,22 +134,21 @@
           # several
           items
         ];
-    a =
-      [
-        some
-        flags # multiline
-      ]
-      ++ [ short ]
-      ++ [
-        more
-        stuff # multiline
-      ]
-      ++ (if foo then [ bar ] else [ baz ])
-      ++ [ ]
-      ++ (optionals condition [
-        more
-        items
-      ]);
+    a = [
+      some
+      flags # multiline
+    ]
+    ++ [ short ]
+    ++ [
+      more
+      stuff # multiline
+    ]
+    ++ (if foo then [ bar ] else [ baz ])
+    ++ [ ]
+    ++ (optionals condition [
+      more
+      items
+    ]);
     b = with pkgs; [
       a
       lot
@@ -279,34 +278,32 @@
           "${host_name}.lo.m-0.eu"
         ];
       }) secret-config.ssh-hosts;
-    programs.ssh.knownHosts9 =
-      {
-        multi = 1;
-        line = 2;
-      }
-      // lib.mapAttrs (
-        host_name: publicKey: {
-          inherit publicKey;
-          extraHostNames = [
-            "${host_name}.m-0.eu"
-            "${host_name}.vpn.m-0.eu"
-            "${host_name}.lo.m-0.eu"
-          ];
-        }
-      );
-    programs.ssh.knownHosts10 =
-      {
-        multi = 1;
-        line = 2;
-      }
-      // lib.mapAttrs (host_name: publicKey: {
+    programs.ssh.knownHosts9 = {
+      multi = 1;
+      line = 2;
+    }
+    // lib.mapAttrs (
+      host_name: publicKey: {
         inherit publicKey;
         extraHostNames = [
           "${host_name}.m-0.eu"
           "${host_name}.vpn.m-0.eu"
           "${host_name}.lo.m-0.eu"
         ];
-      }) secret-config.ssh-hosts;
+      }
+    );
+    programs.ssh.knownHosts10 = {
+      multi = 1;
+      line = 2;
+    }
+    // lib.mapAttrs (host_name: publicKey: {
+      inherit publicKey;
+      extraHostNames = [
+        "${host_name}.m-0.eu"
+        "${host_name}.vpn.m-0.eu"
+        "${host_name}.lo.m-0.eu"
+      ];
+    }) secret-config.ssh-hosts;
   }
 
   # Parentheses
@@ -412,17 +409,19 @@
       + ccccccccccccccccccccccccccccc
       + ddddddddddddddddddddddddddddd;
 
-    boot.kernelParams =
-      [ aaaaaaaaaaaaaa ]
-      ++ optionals config.boot.vesa [
-        "vga=0x317"
-        "nomodeset"
-      ];
+    boot.kernelParams = [
+      aaaaaaaaaaaaaa
+    ]
+    ++ optionals config.boot.vesa [
+      "vga=0x317"
+      "nomodeset"
+    ];
 
-    foo2 =
-      [ bar ]
-      ++ baz # newline!
-      ++ meow;
+    foo2 = [
+      bar
+    ]
+    ++ baz # newline!
+    ++ meow;
 
     foo3 =
       some function application that kinda is long # and
@@ -439,17 +438,21 @@
         a
         b
         c
-      ] ++ more stuff;
+      ]
+      ++ more stuff;
 
     foo4 # nasty
-      =  # comments
-        [ bar ]
-        ++ baz # newline!
-        ++ meow;
+      = # comments
+      [
+        bar
+      ]
+      ++ baz # newline!
+      ++ meow;
 
     environment.systemPackages =
       # Include the PAM modules in the system path mostly for the manpages.
-      [ package ] ++ lib.optional config.users.ldap.enable pam_ldap;
+      [ package ]
+      ++ lib.optional config.users.ldap.enable pam_ldap;
 
     environment.systemPackages2 =
       # Include the PAM modules in the system path mostly for the manpages.

@@ -502,6 +502,34 @@ prettyApp indentFunction pre hasPost f a =
             (\fRendered -> group' RegularG $ fRendered <> line <> absorbLast a <> post)
       <> (if hasPost && not (null comment') then hardline else mempty)
 
+prettyOp :: Bool -> Expression -> Leaf -> Doc
+prettyOp forceFirstTermWide operation op =
+  let -- Walk the operation tree and put a list of things on the same level.
+      -- We still need to keep the operators around because they might have comments attached to them.
+      -- An operator is put together with its succeeding expression. Only the first operand has none.
+      flatten :: Maybe Leaf -> Expression -> [(Maybe Leaf, Expression)]
+      flatten opL (Operation a opR b) | opR == op = flatten opL a ++ flatten (Just opR) b
+      flatten opL x = [(opL, x)]
+
+      -- Called on every operand except the first one (a.k.a. RHS)
+      absorbOperation :: Expression -> Doc
+      absorbOperation (Term t) | isAbsorbable t = hardspace <> pretty t
+      -- Force nested operations to start on a new line
+      absorbOperation x@(Operation{}) = group' RegularG $ line <> pretty x
+      -- Force applications to start on a new line if more than the last argument is multiline
+      absorbOperation (Application f a) = group $ prettyApp False line False f a
+      absorbOperation x = hardspace <> pretty x
+
+      prettyOperation :: (Maybe Leaf, Expression) -> Doc
+      -- First element
+      prettyOperation (Nothing, Term t) | isAbsorbableTerm t && forceFirstTermWide = prettyTermWide t
+      prettyOperation (Nothing, expr) = pretty expr
+      -- The others
+      prettyOperation (Just op', expr) =
+        line <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
+  in group' RegularG $
+      (concatMap prettyOperation . flatten Nothing) operation
+
 prettyWith :: Bool -> Expression -> Doc
 -- absorb the body
 prettyWith True (With with expr0 semicolon (Term expr1)) =
@@ -608,15 +636,14 @@ absorbRHS expr = case expr of
   -- Absorb if all arguments except the last fit into the line, start on new line otherwise
   (Application f a) -> nest $ prettyApp False line False f a
   (With{}) -> nest $ group' RegularG $ line <> pretty expr
-  -- Special case `//` and `++` operations to be more compact in some cases
-  -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
-  (Operation (Term t) (LoneAnn op) b)
-    | isAbsorbable t
-        && isUpdateOrConcat op
-        -- Exclude further operations on the RHS
-        -- Hotfix for https://github.com/NixOS/nixfmt/issues/198
-        && case b of (Operation{}) -> False; _ -> True ->
-        nest $ group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
+  -- Special case `//` and `++` and `+` operations to be more compact in some cases
+  -- Case 1: LHS is absorbable term, unindent concatenations
+  -- https://github.com/NixOS/nixfmt/issues/228
+  (Operation (Term t) op@(Ann{value}) _)
+    | isAbsorbableTerm t
+        && matchFirstToken (\Ann{preTrivia} -> preTrivia == []) t
+        && elem value [TUpdate, TConcat, TPlus] ->
+        hardspace <> prettyOp True expr op
   -- Case 2a: LHS fits onto first line, RHS is an absorbable term
   (Operation l (LoneAnn op) (Term t))
     | isAbsorbable t && isUpdateOrConcat op ->
@@ -715,31 +742,7 @@ instance Pretty Expression where
     | op' == TLess || op' == TGreater || op' == TLessEqual || op' == TGreaterEqual || op' == TEqual || op' == TUnequal =
         pretty a <> softline <> pretty op <> hardspace <> pretty b
   -- all other operators
-  pretty operation@(Operation _ op _) =
-    let -- Walk the operation tree and put a list of things on the same level.
-        -- We still need to keep the operators around because they might have comments attached to them.
-        -- An operator is put together with its succeeding expression. Only the first operand has none.
-        flatten :: Maybe Leaf -> Expression -> [(Maybe Leaf, Expression)]
-        flatten opL (Operation a opR b) | opR == op = flatten opL a ++ flatten (Just opR) b
-        flatten opL x = [(opL, x)]
-
-        -- Called on every operand except the first one (a.k.a. RHS)
-        absorbOperation :: Expression -> Doc
-        absorbOperation (Term t) | isAbsorbable t = hardspace <> pretty t
-        -- Force nested operations to start on a new line
-        absorbOperation x@(Operation{}) = group' RegularG $ line <> pretty x
-        -- Force applications to start on a new line if more than the last argument is multiline
-        absorbOperation (Application f a) = group $ prettyApp False line False f a
-        absorbOperation x = hardspace <> pretty x
-
-        prettyOperation :: (Maybe Leaf, Expression) -> Doc
-        -- First element
-        prettyOperation (Nothing, expr) = pretty expr
-        -- The others
-        prettyOperation (Just op', expr) =
-          line <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
-    in group' RegularG $
-        (concatMap prettyOperation . flatten Nothing) operation
+  pretty operation@(Operation _ op _) = prettyOp False operation op
   pretty (MemberCheck expr qmark sel) =
     pretty expr
       <> softline
