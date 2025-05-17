@@ -45,16 +45,15 @@ let
     mkKeyValue = generators.mkKeyValueDefault { } " = ";
   };
 
-  phpOptions =
-    {
-      upload_max_filesize = cfg.maxUploadSize;
-      post_max_size = cfg.maxUploadSize;
-      memory_limit = cfg.maxUploadSize;
-    }
-    // cfg.phpOptions
-    // optionalAttrs cfg.caching.apcu {
-      "apc.enable_cli" = "1";
-    };
+  phpOptions = {
+    upload_max_filesize = cfg.maxUploadSize;
+    post_max_size = cfg.maxUploadSize;
+    memory_limit = cfg.maxUploadSize;
+  }
+  // cfg.phpOptions
+  // optionalAttrs cfg.caching.apcu {
+    "apc.enable_cli" = "1";
+  };
 
   occ = pkgs.writeScriptBin "nextcloud-occ" ''
     #! ${pkgs.runtimeShell}

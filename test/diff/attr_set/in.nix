@@ -291,4 +291,37 @@
     ] [
     ];
   }
+  # https://github.com/NixOS/nixfmt/issues/228
+  {
+    foo = aaaaaaaaaaaaaaaaaaaaaaaaa
+    + bbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    + ccccccccccccccccccccccccccccc
+    + ddddddddddddddddddddddddddddd;
+
+    boot.kernelParams = [ aaaaaaaaaaaaaa ]
+      ++ optionals config.boot.vesa [
+        "vga=0x317"
+        "nomodeset"
+      ];
+
+    foo2 = [ bar ]
+      ++ baz # newline!
+      ++ meow;
+
+    foo3 =
+      some function application that kinda is long
+      ++ [
+        a
+        list
+      ];
+    some.long.attribute # with a comment
+      = [ stuff ]
+      ++ more stuff;
+
+    foo4 # nasty
+      = # comments
+      [ bar ]
+      ++ baz # newline!
+      ++ meow;
+  }
 ]
