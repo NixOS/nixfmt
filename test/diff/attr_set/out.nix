@@ -134,22 +134,21 @@
           # several
           items
         ];
-    a =
-      [
-        some
-        flags # multiline
-      ]
-      ++ [ short ]
-      ++ [
-        more
-        stuff # multiline
-      ]
-      ++ (if foo then [ bar ] else [ baz ])
-      ++ [ ]
-      ++ (optionals condition [
-        more
-        items
-      ]);
+    a = [
+      some
+      flags # multiline
+    ]
+    ++ [ short ]
+    ++ [
+      more
+      stuff # multiline
+    ]
+    ++ (if foo then [ bar ] else [ baz ])
+    ++ [ ]
+    ++ (optionals condition [
+      more
+      items
+    ]);
     b = with pkgs; [
       a
       lot

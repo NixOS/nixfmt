@@ -623,6 +623,8 @@ absorbRHS expr = case expr of
   (Operation l (LoneAnn op) (Application f a))
     | isUpdateOrConcat op ->
         nest $ line <> group l <> line <> prettyApp False (pretty op <> hardspace) False f a
+  (Operation (Term t) _ _) | isAbsorbableTerm t ->
+      hardspace <> pretty expr
   -- Everything else:
   -- If it fits on one line, it fits
   -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
