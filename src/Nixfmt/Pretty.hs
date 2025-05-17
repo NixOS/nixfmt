@@ -151,7 +151,7 @@ instance Pretty Binder where
   pretty (Assignment selectors assign expr semicolon) =
     group $
       hcat selectors
-        <> nest (hardspace <> pretty assign <> nest rhs)
+        <> nest (hardspace <> pretty assign <> rhs)
         <> pretty semicolon
     where
       rhs =
@@ -262,7 +262,7 @@ instance Pretty ParamAttr where
     group $
       pretty name
         <> hardspace
-        <> nest (pretty qmark <> nest (absorbRHS def))
+        <> nest (pretty qmark <> absorbRHS def)
         <> pretty maybeComma
   -- `...`
   pretty (ParamEllipsis ellipsis) =
@@ -588,24 +588,24 @@ absorbRHS expr = case expr of
   -- Exception to the case below: Don't force-expand attrsets if they only contain a single inherit statement
   (Term (Set _ _ binders _))
     | case unItems binders of [Item (Inherit{})] -> True; _ -> False ->
-        hardspace <> group (absorbExpr False expr)
+        nest $ hardspace <> group (absorbExpr False expr)
   -- Absorbable expression. Always start on the same line, and force-expand attrsets
-  _ | isAbsorbableExpr expr -> hardspace <> group (absorbExpr True expr)
+  _ | isAbsorbableExpr expr -> nest $ hardspace <> group (absorbExpr True expr)
   -- Parenthesized expression. Same thing as the special case for parenthesized last argument in function calls.
-  (Term (Parenthesized open expr' close)) -> hardspace <> absorbParen open expr' close
+  (Term (Parenthesized open expr' close)) -> nest $ hardspace <> absorbParen open expr' close
   -- Not all strings are absorbable, but in this case we always want to keep them attached.
   -- Because there's nothing to gain from having them start on a new line.
-  (Term (SimpleString _)) -> hardspace <> group expr
-  (Term (IndentedString _)) -> hardspace <> group expr
+  (Term (SimpleString _)) -> nest $ hardspace <> group expr
+  (Term (IndentedString _)) -> nest $ hardspace <> group expr
   -- Same for path
-  (Term (Path _)) -> hardspace <> group expr
+  (Term (Path _)) -> nest $ hardspace <> group expr
   -- Non-absorbable term
   -- If it is multi-line, force it to start on a new line with indentation
-  (Term _) -> group' RegularG (line <> pretty expr)
+  (Term _) -> nest $ group' RegularG (line <> pretty expr)
   -- Function call
   -- Absorb if all arguments except the last fit into the line, start on new line otherwise
-  (Application f a) -> prettyApp False line False f a
-  (With{}) -> group' RegularG $ line <> pretty expr
+  (Application f a) -> nest $ prettyApp False line False f a
+  (With{}) -> nest $ group' RegularG $ line <> pretty expr
   -- Special case `//` and `++` operations to be more compact in some cases
   -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
   (Operation (Term t) (LoneAnn op) b)
@@ -614,20 +614,20 @@ absorbRHS expr = case expr of
         -- Exclude further operations on the RHS
         -- Hotfix for https://github.com/NixOS/nixfmt/issues/198
         && case b of (Operation{}) -> False; _ -> True ->
-        group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
+        nest $ group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
   -- Case 2a: LHS fits onto first line, RHS is an absorbable term
   (Operation l (LoneAnn op) (Term t))
     | isAbsorbable t && isUpdateOrConcat op ->
-        group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
+        nest $ group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
   -- Case 2b: LHS fits onto first line, RHS is a function application
   (Operation l (LoneAnn op) (Application f a))
     | isUpdateOrConcat op ->
-        line <> group l <> line <> prettyApp False (pretty op <> hardspace) False f a
+        nest $ line <> group l <> line <> prettyApp False (pretty op <> hardspace) False f a
   -- Everything else:
   -- If it fits on one line, it fits
   -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
   -- Otherwise, start on new line, expand fully (including the semicolon)
-  _ -> line <> group expr
+  _ -> nest $ line <> group expr
   where
     isUpdateOrConcat TUpdate = True
     isUpdateOrConcat TConcat = True
