@@ -573,7 +573,8 @@ buildStdenv.mkDerivation ({
     inherit tests;
     inherit gtk3;
     inherit wasiSysRoot;
-  } // extraPassthru;
+  }
+  // extraPassthru;
 
   hardeningDisable = [ "format" ]; # -Werror=format-security
 

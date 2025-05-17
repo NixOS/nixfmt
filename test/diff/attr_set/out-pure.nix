@@ -275,34 +275,32 @@
           "${host_name}.lo.m-0.eu"
         ];
       }) secret-config.ssh-hosts;
-    programs.ssh.knownHosts9 =
-      {
-        multi = 1;
-        line = 2;
-      }
-      // lib.mapAttrs (
-        host_name: publicKey: {
-          inherit publicKey;
-          extraHostNames = [
-            "${host_name}.m-0.eu"
-            "${host_name}.vpn.m-0.eu"
-            "${host_name}.lo.m-0.eu"
-          ];
-        }
-      );
-    programs.ssh.knownHosts10 =
-      {
-        multi = 1;
-        line = 2;
-      }
-      // lib.mapAttrs (host_name: publicKey: {
+    programs.ssh.knownHosts9 = {
+      multi = 1;
+      line = 2;
+    }
+    // lib.mapAttrs (
+      host_name: publicKey: {
         inherit publicKey;
         extraHostNames = [
           "${host_name}.m-0.eu"
           "${host_name}.vpn.m-0.eu"
           "${host_name}.lo.m-0.eu"
         ];
-      }) secret-config.ssh-hosts;
+      }
+    );
+    programs.ssh.knownHosts10 = {
+      multi = 1;
+      line = 2;
+    }
+    // lib.mapAttrs (host_name: publicKey: {
+      inherit publicKey;
+      extraHostNames = [
+        "${host_name}.m-0.eu"
+        "${host_name}.vpn.m-0.eu"
+        "${host_name}.lo.m-0.eu"
+      ];
+    }) secret-config.ssh-hosts;
   }
 
   # Parentheses
@@ -385,5 +383,45 @@
     foo4 = [ ];
     foo5 = bar [ ];
     foo6 = bar [ ] [ ];
+  }
+  # https://github.com/NixOS/nixfmt/issues/228
+  {
+    foo =
+      aaaaaaaaaaaaaaaaaaaaaaaaa
+      + bbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      + ccccccccccccccccccccccccccccc
+      + ddddddddddddddddddddddddddddd;
+
+    boot.kernelParams = [
+      aaaaaaaaaaaaaa
+    ]
+    ++ optionals config.boot.vesa [
+      "vga=0x317"
+      "nomodeset"
+    ];
+
+    foo2 = [
+      bar
+    ]
+    ++ baz # newline!
+    ++ meow;
+
+    foo3 = some function application that kinda is long ++ [
+      a
+      list
+    ];
+    some.long.attribute # with a comment
+      = [
+        stuff
+      ]
+      ++ more stuff;
+
+    foo4 # nasty
+      = # comments
+      [
+        bar
+      ]
+      ++ baz # newline!
+      ++ meow;
   }
 ]

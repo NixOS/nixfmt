@@ -606,6 +606,9 @@ absorbRHS expr = case expr of
   -- Absorb if all arguments except the last fit into the line, start on new line otherwise
   (Application f a) -> nest $ prettyApp False line False f a
   (With{}) -> nest $ group' RegularG $ line <> pretty expr
+  -- https://github.com/NixOS/nixfmt/issues/298#issuecomment-2888254696
+  (Operation (Term l) op r) | isAbsorbableTerm l ->
+      hardspace <> prettyTermWide l <> line <> pretty op <> hardspace <> pretty r
   -- Special case `//` and `++` operations to be more compact in some cases
   -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
   (Operation (Term t) (LoneAnn op) b)
@@ -623,8 +626,6 @@ absorbRHS expr = case expr of
   (Operation l (LoneAnn op) (Application f a))
     | isUpdateOrConcat op ->
         nest $ line <> group l <> line <> prettyApp False (pretty op <> hardspace) False f a
-  (Operation (Term t) _ _) | isAbsorbableTerm t ->
-      hardspace <> pretty expr
   -- Everything else:
   -- If it fits on one line, it fits
   -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
