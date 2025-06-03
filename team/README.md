@@ -29,7 +29,7 @@ The team lead has additional responsibilities:
 
 ## Processes
 
-After every meeting, the notes must be posted to [Discourse](https://discourse.nixos.org/)
+After every meeting, the notes must be posted to [Discourse](https://discourse.nixos.org/).
 
 For all non-trivial decisions:
 - At least 2 members must reach consensus
@@ -38,3 +38,26 @@ For all non-trivial decisions:
   - GitHub issues/PRs
   - Design documents in the repository
   - Meeting notes
+
+## Onboarding
+
+### Team members
+
+- Add them to the [@NixOS/nix-formatting] GitHub team
+- Ensure they are on our Matrix channels:
+  - [#nix-formatting:nixos.org](https://matrix.to/#/#nix-formatting:nixos.org)
+  - [Internal discussion channel](https://matrix.to/#/!kEOZRmGPKpDpKcEBim:matrix.org)
+- Finally, add them to [Nix Formatting Team on `nixos.org`]
+
+### Team lead
+
+- Give them access to the Google Calendar ([example PR](https://github.com/NixOS/org/pull/104))
+- Ensure they are an admin on our Matrix channels (see list above)
+- GitHub:
+  - Make them a maintainer of the [@NixOS/nix-formatting] GitHub team
+  - Make them an admin on `NixOS/nixfmt`: <https://github.com/NixOS/nixfmt/settings/access>
+- Update their role on [Nix Formatting Team on `nixos.org`]
+- Later, revoke the old team lead's permissions (as appropriate)
+
+[@NixOS/nix-formatting]: https://github.com/orgs/NixOS/teams/nix-formatting
+[Nix Formatting Team on `nixos.org`]: https://nixos.org/community/teams/formatting
