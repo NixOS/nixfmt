@@ -637,20 +637,22 @@ absorbRHS expr = case expr of
   (Application f a) -> nest $ prettyApp False line False f a
   (With{}) -> nest $ group' RegularG $ line <> pretty expr
   -- Special case `//` and `++` and `+` operations to be more compact in some cases
+  -- The following code assumes all of these operators are parsed with right-handed associativity
+  -- (even though in Nix, addition technically is considered left-associative)
   -- Case 1: LHS is absorbable term, unindent concatenations
   -- https://github.com/NixOS/nixfmt/issues/228
   (Operation (Term t) op@(Ann{value}) _)
     | isAbsorbableTerm t
-        && matchFirstToken (\Ann{preTrivia} -> preTrivia == []) t
-        && elem value [TUpdate, TConcat, TPlus] ->
+        && matchFirstToken (not . hasPreTrivia) t
+        && isUpdateConcatPlus value ->
         hardspace <> prettyOp True expr op
   -- Case 2a: LHS fits onto first line, RHS is an absorbable term
   (Operation l (LoneAnn op) (Term t))
-    | isAbsorbable t && isUpdateOrConcat op ->
+    | isAbsorbable t && isUpdateConcatPlus op ->
         nest $ group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
   -- Case 2b: LHS fits onto first line, RHS is a function application
   (Operation l (LoneAnn op) (Application f a))
-    | isUpdateOrConcat op
+    | isUpdateConcatPlus op
         && matchFirstToken (not . hasPreTrivia) f ->
         nest $ line <> group l <> line <> prettyApp False (pretty op <> hardspace) False f a
   -- Everything else:
@@ -659,9 +661,10 @@ absorbRHS expr = case expr of
   -- Otherwise, start on new line, expand fully (including the semicolon)
   _ -> nest $ line <> group expr
   where
-    isUpdateOrConcat TUpdate = True
-    isUpdateOrConcat TConcat = True
-    isUpdateOrConcat _ = False
+    isUpdateConcatPlus TUpdate = True
+    isUpdateConcatPlus TConcat = True
+    isUpdateConcatPlus TPlus = True
+    isUpdateConcatPlus _ = False
 
 instance Pretty Expression where
   pretty (Term t) = pretty t
