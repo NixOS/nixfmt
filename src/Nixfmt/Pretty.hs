@@ -56,10 +56,12 @@ import Nixfmt.Types (
   Trivium (..),
   Whole (..),
   ann,
+  hasPreTrivia,
   hasTrivia,
   mapFirstToken,
   mapFirstToken',
   mapLastToken',
+  matchFirstToken,
   tokenText,
  )
 import Nixfmt.Util (isSpaces)
@@ -621,7 +623,8 @@ absorbRHS expr = case expr of
         nest $ group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
   -- Case 2b: LHS fits onto first line, RHS is a function application
   (Operation l (LoneAnn op) (Application f a))
-    | isUpdateOrConcat op ->
+    | isUpdateOrConcat op
+        && matchFirstToken (not . hasPreTrivia) f ->
         nest $ line <> group l <> line <> prettyApp False (pretty op <> hardspace) False f a
   -- Everything else:
   -- If it fits on one line, it fits
