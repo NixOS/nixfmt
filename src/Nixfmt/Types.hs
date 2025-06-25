@@ -98,8 +98,8 @@ hasTrivia :: Ann a -> Bool
 hasTrivia (LoneAnn _) = False
 hasTrivia _ = True
 
-hasPreTrivia ::Ann a -> Bool
-hasPreTrivia Ann { preTrivia } = preTrivia /= []
+hasPreTrivia :: Ann a -> Bool
+hasPreTrivia Ann{preTrivia} = preTrivia /= []
 
 -- | Create a new annotated value without any annotations
 ann :: Pos -> a -> Ann a
