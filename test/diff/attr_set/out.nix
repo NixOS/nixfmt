@@ -451,8 +451,7 @@
 
     environment.systemPackages =
       # Include the PAM modules in the system path mostly for the manpages.
-      [ package ]
-      ++ lib.optional config.users.ldap.enable pam_ldap;
+      [ package ] ++ lib.optional config.users.ldap.enable pam_ldap;
 
     environment.systemPackages2 =
       # Include the PAM modules in the system path mostly for the manpages.

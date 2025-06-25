@@ -646,15 +646,10 @@ absorbRHS expr = case expr of
         && matchFirstToken (not . hasPreTrivia) t
         && isUpdateConcatPlus value ->
         hardspace <> prettyOp True expr op
-  -- Case 2a: LHS fits onto first line, RHS is an absorbable term
+  -- Case 2: LHS fits onto first line, RHS is an absorbable term
   (Operation l (LoneAnn op) (Term t))
     | isAbsorbable t && isUpdateConcatPlus op ->
         nest $ group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
-  -- Case 2b: LHS fits onto first line, RHS is a function application
-  (Operation l (LoneAnn op) (Application f a))
-    | isUpdateConcatPlus op
-        && matchFirstToken (not . hasPreTrivia) f ->
-        nest $ line <> group l <> line <> prettyApp False (pretty op <> hardspace) False f a
   -- Everything else:
   -- If it fits on one line, it fits
   -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
