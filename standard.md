@@ -1282,6 +1282,27 @@ Notable special cases are:
       dependencies
     ];
   ```
+- Operator chains (specifically, `++`, `//` and `+`) where the first element is absorbable are treated specially to avoid diff churn. Assuming the following input:
+  ```nix
+  foo = [
+    bar
+  ];
+  ```
+  Normally (see "otherwise newline and indent" above), concatenating items onto that list would be formatted like this, causing the entire list to re-indent:
+  ```nix
+  foo =
+    [
+      bar
+    ]
+    ++ baz;
+  ```
+  Instead, we format it as such:
+  ```nix
+  foo = [
+    bar
+  ]
+  ++ baz;
+  ```
 
 **Alternatives**
 

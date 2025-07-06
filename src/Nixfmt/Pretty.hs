@@ -56,10 +56,12 @@ import Nixfmt.Types (
   Trivium (..),
   Whole (..),
   ann,
+  hasPreTrivia,
   hasTrivia,
   mapFirstToken,
   mapFirstToken',
   mapLastToken',
+  matchFirstToken,
   tokenText,
  )
 import Nixfmt.Util (isSpaces)
@@ -151,7 +153,7 @@ instance Pretty Binder where
   pretty (Assignment selectors assign expr semicolon) =
     group $
       hcat selectors
-        <> nest (hardspace <> pretty assign <> nest rhs)
+        <> nest (hardspace <> pretty assign <> rhs)
         <> pretty semicolon
     where
       rhs =
@@ -262,7 +264,7 @@ instance Pretty ParamAttr where
     group $
       pretty name
         <> hardspace
-        <> nest (pretty qmark <> nest (absorbRHS def))
+        <> nest (pretty qmark <> absorbRHS def)
         <> pretty maybeComma
   -- `...`
   pretty (ParamEllipsis ellipsis) =
@@ -500,6 +502,34 @@ prettyApp indentFunction pre hasPost f a =
             (\fRendered -> group' RegularG $ fRendered <> line <> absorbLast a <> post)
       <> (if hasPost && not (null comment') then hardline else mempty)
 
+prettyOp :: Bool -> Expression -> Leaf -> Doc
+prettyOp forceFirstTermWide operation op =
+  let -- Walk the operation tree and put a list of things on the same level.
+      -- We still need to keep the operators around because they might have comments attached to them.
+      -- An operator is put together with its succeeding expression. Only the first operand has none.
+      flatten :: Maybe Leaf -> Expression -> [(Maybe Leaf, Expression)]
+      flatten opL (Operation a opR b) | opR == op = flatten opL a ++ flatten (Just opR) b
+      flatten opL x = [(opL, x)]
+
+      -- Called on every operand except the first one (a.k.a. RHS)
+      absorbOperation :: Expression -> Doc
+      absorbOperation (Term t) | isAbsorbable t = hardspace <> pretty t
+      -- Force nested operations to start on a new line
+      absorbOperation x@(Operation{}) = group' RegularG $ line <> pretty x
+      -- Force applications to start on a new line if more than the last argument is multiline
+      absorbOperation (Application f a) = group $ prettyApp False line False f a
+      absorbOperation x = hardspace <> pretty x
+
+      prettyOperation :: (Maybe Leaf, Expression) -> Doc
+      -- First element
+      prettyOperation (Nothing, Term t) | isAbsorbableTerm t && forceFirstTermWide = prettyTermWide t
+      prettyOperation (Nothing, expr) = pretty expr
+      -- The others
+      prettyOperation (Just op', expr) =
+        line <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
+  in group' RegularG $
+      (concatMap prettyOperation . flatten Nothing) operation
+
 prettyWith :: Bool -> Expression -> Doc
 -- absorb the body
 prettyWith True (With with expr0 semicolon (Term expr1)) =
@@ -588,50 +618,48 @@ absorbRHS expr = case expr of
   -- Exception to the case below: Don't force-expand attrsets if they only contain a single inherit statement
   (Term (Set _ _ binders _))
     | case unItems binders of [Item (Inherit{})] -> True; _ -> False ->
-        hardspace <> group (absorbExpr False expr)
+        nest $ hardspace <> group (absorbExpr False expr)
   -- Absorbable expression. Always start on the same line, and force-expand attrsets
-  _ | isAbsorbableExpr expr -> hardspace <> group (absorbExpr True expr)
+  _ | isAbsorbableExpr expr -> nest $ hardspace <> group (absorbExpr True expr)
   -- Parenthesized expression. Same thing as the special case for parenthesized last argument in function calls.
-  (Term (Parenthesized open expr' close)) -> hardspace <> absorbParen open expr' close
+  (Term (Parenthesized open expr' close)) -> nest $ hardspace <> absorbParen open expr' close
   -- Not all strings are absorbable, but in this case we always want to keep them attached.
   -- Because there's nothing to gain from having them start on a new line.
-  (Term (SimpleString _)) -> hardspace <> group expr
-  (Term (IndentedString _)) -> hardspace <> group expr
+  (Term (SimpleString _)) -> nest $ hardspace <> group expr
+  (Term (IndentedString _)) -> nest $ hardspace <> group expr
   -- Same for path
-  (Term (Path _)) -> hardspace <> group expr
+  (Term (Path _)) -> nest $ hardspace <> group expr
   -- Non-absorbable term
   -- If it is multi-line, force it to start on a new line with indentation
-  (Term _) -> group' RegularG (line <> pretty expr)
+  (Term _) -> nest $ group' RegularG (line <> pretty expr)
   -- Function call
   -- Absorb if all arguments except the last fit into the line, start on new line otherwise
-  (Application f a) -> prettyApp False line False f a
-  (With{}) -> group' RegularG $ line <> pretty expr
-  -- Special case `//` and `++` operations to be more compact in some cases
-  -- Case 1: two arguments, LHS is absorbable term, RHS fits onto the last line
-  (Operation (Term t) (LoneAnn op) b)
-    | isAbsorbable t
-        && isUpdateOrConcat op
-        -- Exclude further operations on the RHS
-        -- Hotfix for https://github.com/NixOS/nixfmt/issues/198
-        && case b of (Operation{}) -> False; _ -> True ->
-        group' RegularG $ line <> group' Priority (prettyTermWide t) <> line <> pretty op <> hardspace <> pretty b
-  -- Case 2a: LHS fits onto first line, RHS is an absorbable term
+  (Application f a) -> nest $ prettyApp False line False f a
+  (With{}) -> nest $ group' RegularG $ line <> pretty expr
+  -- Special case `//` and `++` and `+` operations to be more compact in some cases
+  -- The following code assumes all of these operators are parsed with right-handed associativity
+  -- (even though in Nix, addition technically is considered left-associative)
+  -- Case 1: LHS is absorbable term, unindent concatenations
+  -- https://github.com/NixOS/nixfmt/issues/228
+  (Operation (Term t) op@(Ann{value}) _)
+    | isAbsorbableTerm t
+        && matchFirstToken (not . hasPreTrivia) t
+        && isUpdateConcatPlus value ->
+        hardspace <> prettyOp True expr op
+  -- Case 2: LHS fits onto first line, RHS is an absorbable term
   (Operation l (LoneAnn op) (Term t))
-    | isAbsorbable t && isUpdateOrConcat op ->
-        group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
-  -- Case 2b: LHS fits onto first line, RHS is a function application
-  (Operation l (LoneAnn op) (Application f a))
-    | isUpdateOrConcat op ->
-        line <> group l <> line <> prettyApp False (pretty op <> hardspace) False f a
+    | isAbsorbable t && isUpdateConcatPlus op ->
+        nest $ group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
   -- Everything else:
   -- If it fits on one line, it fits
   -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)
   -- Otherwise, start on new line, expand fully (including the semicolon)
-  _ -> line <> group expr
+  _ -> nest $ line <> group expr
   where
-    isUpdateOrConcat TUpdate = True
-    isUpdateOrConcat TConcat = True
-    isUpdateOrConcat _ = False
+    isUpdateConcatPlus TUpdate = True
+    isUpdateConcatPlus TConcat = True
+    isUpdateConcatPlus TPlus = True
+    isUpdateConcatPlus _ = False
 
 instance Pretty Expression where
   pretty (Term t) = pretty t
@@ -712,31 +740,7 @@ instance Pretty Expression where
     | op' == TLess || op' == TGreater || op' == TLessEqual || op' == TGreaterEqual || op' == TEqual || op' == TUnequal =
         pretty a <> softline <> pretty op <> hardspace <> pretty b
   -- all other operators
-  pretty operation@(Operation _ op _) =
-    let -- Walk the operation tree and put a list of things on the same level.
-        -- We still need to keep the operators around because they might have comments attached to them.
-        -- An operator is put together with its succeeding expression. Only the first operand has none.
-        flatten :: Maybe Leaf -> Expression -> [(Maybe Leaf, Expression)]
-        flatten opL (Operation a opR b) | opR == op = flatten opL a ++ flatten (Just opR) b
-        flatten opL x = [(opL, x)]
-
-        -- Called on every operand except the first one (a.k.a. RHS)
-        absorbOperation :: Expression -> Doc
-        absorbOperation (Term t) | isAbsorbable t = hardspace <> pretty t
-        -- Force nested operations to start on a new line
-        absorbOperation x@(Operation{}) = group' RegularG $ line <> pretty x
-        -- Force applications to start on a new line if more than the last argument is multiline
-        absorbOperation (Application f a) = group $ prettyApp False line False f a
-        absorbOperation x = hardspace <> pretty x
-
-        prettyOperation :: (Maybe Leaf, Expression) -> Doc
-        -- First element
-        prettyOperation (Nothing, expr) = pretty expr
-        -- The others
-        prettyOperation (Just op', expr) =
-          line <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
-    in group' RegularG $
-        (concatMap prettyOperation . flatten Nothing) operation
+  pretty operation@(Operation _ op _) = prettyOp False operation op
   pretty (MemberCheck expr qmark sel) =
     pretty expr
       <> softline

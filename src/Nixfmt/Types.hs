@@ -34,9 +34,11 @@ module Nixfmt.Types (
   Trivium (..),
   removeLineInfo,
   hasTrivia,
+  hasPreTrivia,
   LanguageElement,
   mapFirstToken,
   mapFirstToken',
+  matchFirstToken,
   mapLastToken',
   mapAllTokens,
   operators,
@@ -95,6 +97,9 @@ pattern LoneAnn a <- Ann [] _ a Nothing
 hasTrivia :: Ann a -> Bool
 hasTrivia (LoneAnn _) = False
 hasTrivia _ = True
+
+hasPreTrivia :: Ann a -> Bool
+hasPreTrivia Ann{preTrivia} = preTrivia /= []
 
 -- | Create a new annotated value without any annotations
 ann :: Pos -> a -> Ann a
@@ -241,6 +246,10 @@ class LanguageElement a where
   -- Same as mapFirstToken, but the mapping function also yields a value that may be
   -- returned. This is useful for getting/extracting values
   mapFirstToken' :: (forall b. Ann b -> (Ann b, c)) -> a -> (a, c)
+
+  -- Convenience method. Special case of `mapFirstToken'` that takes a predicate and doesn't modify the token
+  matchFirstToken :: (forall b. Ann b -> Bool) -> a -> Bool
+  matchFirstToken f = snd . mapFirstToken' (\b -> (b, f b))
 
   -- Same as mapLastToken, but the mapping function also yields a value that may be
   -- returned. This is useful for getting/extracting values

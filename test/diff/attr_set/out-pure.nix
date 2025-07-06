@@ -131,22 +131,21 @@
           # several
           items
         ];
-    a =
-      [
-        some
-        flags # multiline
-      ]
-      ++ [ short ]
-      ++ [
-        more
-        stuff # multiline
-      ]
-      ++ (if foo then [ bar ] else [ baz ])
-      ++ [ ]
-      ++ (optionals condition [
-        more
-        items
-      ]);
+    a = [
+      some
+      flags # multiline
+    ]
+    ++ [ short ]
+    ++ [
+      more
+      stuff # multiline
+    ]
+    ++ (if foo then [ bar ] else [ baz ])
+    ++ [ ]
+    ++ (optionals condition [
+      more
+      items
+    ]);
     b = with pkgs; [
       a
       lot
@@ -276,34 +275,32 @@
           "${host_name}.lo.m-0.eu"
         ];
       }) secret-config.ssh-hosts;
-    programs.ssh.knownHosts9 =
-      {
-        multi = 1;
-        line = 2;
-      }
-      // lib.mapAttrs (
-        host_name: publicKey: {
-          inherit publicKey;
-          extraHostNames = [
-            "${host_name}.m-0.eu"
-            "${host_name}.vpn.m-0.eu"
-            "${host_name}.lo.m-0.eu"
-          ];
-        }
-      );
-    programs.ssh.knownHosts10 =
-      {
-        multi = 1;
-        line = 2;
-      }
-      // lib.mapAttrs (host_name: publicKey: {
+    programs.ssh.knownHosts9 = {
+      multi = 1;
+      line = 2;
+    }
+    // lib.mapAttrs (
+      host_name: publicKey: {
         inherit publicKey;
         extraHostNames = [
           "${host_name}.m-0.eu"
           "${host_name}.vpn.m-0.eu"
           "${host_name}.lo.m-0.eu"
         ];
-      }) secret-config.ssh-hosts;
+      }
+    );
+    programs.ssh.knownHosts10 = {
+      multi = 1;
+      line = 2;
+    }
+    // lib.mapAttrs (host_name: publicKey: {
+      inherit publicKey;
+      extraHostNames = [
+        "${host_name}.m-0.eu"
+        "${host_name}.vpn.m-0.eu"
+        "${host_name}.lo.m-0.eu"
+      ];
+    }) secret-config.ssh-hosts;
   }
 
   # Parentheses
@@ -386,5 +383,114 @@
     foo4 = [ ];
     foo5 = bar [ ];
     foo6 = bar [ ] [ ];
+  }
+  # https://github.com/NixOS/nixfmt/issues/228
+  {
+    foo =
+      aaaaaaaaaaaaaaaaaaaaaaaaa
+      + bbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      + ccccccccccccccccccccccccccccc
+      + ddddddddddddddddddddddddddddd;
+
+    boot.kernelParams = [
+      aaaaaaaaaaaaaa
+    ]
+    ++ optionals config.boot.vesa [
+      "vga=0x317"
+      "nomodeset"
+    ];
+
+    foo2 = [
+      bar
+    ]
+    ++ baz # newline!
+    ++ meow;
+
+    foo3 =
+      some function application that kinda is long # and
+        multiline
+      ++ [
+        a
+        list
+      ];
+    some.long.attribute # with a comment
+      = [ stuff ] ++ more stuff;
+    some.long.attribute1 # with a comment
+      = [
+        stuff
+        a
+        b
+        c
+      ]
+      ++ more stuff;
+
+    foo4 # nasty
+      = # comments
+      [
+        bar
+      ]
+      ++ baz # newline!
+      ++ meow;
+
+    environment.systemPackages =
+      # Include the PAM modules in the system path mostly for the manpages.
+      [ package ] ++ lib.optional config.users.ldap.enable pam_ldap;
+
+    environment.systemPackages2 =
+      # Include the PAM modules in the system path mostly for the manpages.
+      [ package ]
+      ++ lib.optional config.users.ldap.enable pam_ldap
+      ++ lib.optional config.services.kanidm.enablePam config.services.kanidm.package
+      ++ lib.optional config.services.sssd.enable pkgs.sssd
+      ++ lib.optionals config.security.pam.krb5.enable [
+        pam_krb5
+        pam_ccreds
+      ];
+
+    buildInputs1 = lib.optionals onePlatform [
+      a
+      b
+      c
+    ];
+
+    buildInputs2 =
+      lib.optionals onePlatform [
+        a
+        b
+        c
+      ]
+      ++ lib.optionals anotherPlatform [
+        d
+        e
+        f
+      ];
+
+    programs.ssh.knownHosts =
+      someStuff functionArg
+      // lib.mapAttrs (host_name: publicKey: {
+        inherit publicKey;
+        extraHostNames = [
+          "${host_name}.m-0.eu"
+          "${host_name}.vpn.m-0.eu"
+          "${host_name}.lo.m-0.eu"
+        ];
+      }) secret-config.ssh-hosts
+      // {
+        foo = "bar";
+      };
+
+    programs.ssh.knownHosts2 =
+      [ ] ++ (with expr; someStuff functionArg)
+      // lib.mapAttrs (host_name: publicKey: {
+        inherit publicKey;
+        extraHostNames = [
+          "${host_name}.m-0.eu"
+          "${host_name}.vpn.m-0.eu"
+          "${host_name}.lo.m-0.eu"
+        ];
+      }) secret-config.ssh-hosts
+      // {
+        foo = "bar";
+      };
   }
 ]

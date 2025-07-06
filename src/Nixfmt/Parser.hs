@@ -487,6 +487,16 @@ opCombiner (Op Postfix TQuestion) =
       <$> operator TQuestion
       <*> selectorPath
 opCombiner (Op Postfix _) = undefined
+-- HACK: We parse TPlus as left-associative, but convert it to right-associative in the AST
+-- This is allowed because addition is fully associative
+-- This is necessary because some downstream formatting code needs to match on the first operand,
+-- and doing that with a left-associative chain is not possible.
+-- A proper solution would be to flatten all associative operators into a list, but that would be a lot harder to do
+opCombiner (Op InfixL TPlus) = MPExpr.InfixL $ flip mkOp <$> operator TPlus
+  where
+    mkOp :: Expression -> Leaf -> Expression -> Expression
+    mkOp (Operation one op1 two) op2 three | op1 == op2 = Operation one op1 (Operation two op2 three)
+    mkOp left op right = Operation left op right
 opCombiner (Op InfixL tok) = MPExpr.InfixL $ flip Operation <$> operator tok
 opCombiner (Op InfixN tok) = MPExpr.InfixN $ flip Operation <$> operator tok
 opCombiner (Op InfixR tok) = MPExpr.InfixR $ flip Operation <$> operator tok
