@@ -129,6 +129,20 @@ null_ls.setup({
 
 ### In a project
 
+#### `nixfmt-tree`
+
+[`nixfmt-tree`](https://search.nixos.org/packages?channel=unstable&show=nixfmt-tree) provides an instance of `treefmt`, pre-configured to use nixfmt.
+
+Simply add it to your shell:
+
+```nix
+mkShell {
+  packages = [ pkgs.nixfmt-tree ];
+}
+```
+
+Then run `treefmt` from within your shell to format all nix files in your project.
+
 #### `treefmt-nix`
 
 [`treefmt-nix`](https://github.com/numtide/treefmt-nix) automatically configures the correct packages and formatters for [`treefmt`](https://github.com/numtide/treefmt) using the Nix language, and has native support for `nixfmt`:
@@ -277,7 +291,7 @@ to return back to the unmerged state.
 
 #### `nix fmt` (experimental)
 
-[nix fmt](https://nix.dev/manual/nix/latest/command-ref/new-cli/nix3-fmt) (part of the [`flakes` experimental feature](https://nix.dev/manual/nix/latest/development/experimental-features#xp-feature-flakes)) can be configured to use `nixfmt` by setting the `formatter` flake output to the respective package (assuming a `nixpkgs` flake input exists):
+[nix fmt](https://nix.dev/manual/nix/latest/command-ref/new-cli/nix3-fmt) (part of the [`flakes` experimental feature](https://nix.dev/manual/nix/latest/development/experimental-features#xp-feature-flakes)) can be configured to use `nixfmt` by setting the `formatter` flake output to `nixfmt-tree` (assuming a `nixpkgs` flake input exists):
 
 ```nix
 # flake.nix
@@ -285,7 +299,7 @@ to return back to the unmerged state.
   outputs =
     { nixpkgs, self }:
     {
-      formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-rfc-style;
+      formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-tree;
     };
 }
 ```
