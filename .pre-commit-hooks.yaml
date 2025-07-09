@@ -4,4 +4,4 @@
   language: haskell
   types:
     - nix
-  description: The official (but not yet stable) formatter for Nix code
+  description: The official formatter for Nix code

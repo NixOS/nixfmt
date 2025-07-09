@@ -1,22 +1,10 @@
-# `nixfmt`
-
-`nixfmt` is the official formatter for Nix language code, intended to easily apply a uniform style.
-
 ![Build Status](https://github.com/NixOS/nixfmt/actions/workflows/main.yml/badge.svg?branch=master)
 
-## State
+# Nixfmt
 
-`nixfmt` was originally developed by [Serokell](https://github.com/serokell).
-It was used as the basis for the official standardised Nix formatter, as established by [RFC 166](https://github.com/NixOS/rfcs/pull/166).
-
-The official standard differs considerably from the original implementation.
-Be aware of this if you track the [`master`](https://github.com/NixOS/nixfmt/tree/master) branch.
-Until the [next release](https://github.com/NixOS/nixfmt/issues/272), expect `nixfmt` to change.
-
-A recent version of `nixfmt` is available as `pkgs.nixfmt-rfc-style` in Nixpkgs.
-The original `nixfmt` is still available as `pkgs.nixfmt-classic`, but it is unmaintained and will eventually be removed.
-
-For more details, see the [RFC implementation tracking issue](https://github.com/NixOS/nixfmt/issues/153).
+Nixfmt is the official formatter for Nix language code.
+It is maintained by the [Nix formatting team](https://nixos.org/community/teams/formatting/).
+This document is the user documentation, see [CONTRIBUTING.md](./CONTRIBUTING.md) for contributor documentation.
 
 ## Installation
 
@@ -229,9 +217,6 @@ includes = ["*.nix"]
 
 6. Try to commit a badly formatted Nix file in order to make sure that everything works.
 
-> [!WARNING]
-> `nixfmt`’s integration with the `pre-commit` tool is relatively new. At the moment, none of the stable releases of `nixfmt` can be used with the `pre-commit` tool. You’ll have to use an unstable version for the time being.
-
 #### `git mergetool`
 
 `nixfmt` provides a mode usable by [`git mergetool`](https://git-scm.com/docs/git-mergetool)
@@ -304,34 +289,11 @@ to return back to the unmerged state.
 }
 ```
 
-## Development
-
-### With Nix
-
-Haskell dependencies will be built by Nix.
-
-* Enter `nix-shell`
-* Build with `cabal new-build`
-
-### Without Nix
-
-Haskell dependencies will be built by Cabal.
-
-* Build with `cabal new-build`
-
-
 ## Usage
 
 * `nixfmt < input.nix` – reads Nix code from `stdin`, formats it, and outputs to `stdout`
 * `nixfmt file.nix` – format the file in place
 
-## About Serokell
+## Acknowledgements
 
-`nixfmt` is maintained and funded with :heart: by
-[Serokell](https://serokell.io/). The names and logo for Serokell are trademark
-of Serokell OÜ.
-
-We love open source software! See
-[our other projects](https://serokell.io/community?utm_source=github) or
-[hire us](https://serokell.io/hire-us?utm_source=github) to design, develop and
-grow your idea!
+`nixfmt` was originally developed by [Serokell](https://github.com/serokell) and later donated to become an official Nix project with the acceptance of [RFC 166](https://github.com/NixOS/rfcs/pull/166).

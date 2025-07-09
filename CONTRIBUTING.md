@@ -7,6 +7,19 @@ When contributing, please try to familiarize yourself with the [Nix Format Stand
 
 You can also reach us on Matrix at `#nix-formatting:nixos.org`.
 
+## Development
+
+Enter a development shell with `nix-shell`, `nix develop` or automatically with [direnv](https://direnv.net/), after which you can:
+- Build (& run): `cabal build` (`cabal run`)
+- Debug: `cabal repl`
+- Format the codebase: `treefmt`
+- [Set up](https://haskell-language-server.readthedocs.io/en/latest/configuration.html#configuring-your-editor) your LSP-editor to use `haskell-language-server`
+
+To run (almost) all CI checks locally:
+```
+nix-build -A ci
+```
+
 ## Contributing code
 
 Most changes to the format are going to be implemented in `Pretty.hs`.
