@@ -1,9 +1,20 @@
 # Revision history for nixfmt
 
-## Unreleased
+## 1.0.0 -- 2025-07-09
 
-* Parsing fixes
-  * Quotes in inherit statements (like `inherit "or";`) are now supported.
+The [Nix Formatting Team](https://nixos.org/community/teams/formatting/) is happy to present the first stable release of the official Nix formatter! The basis for this milestone is [RFC 166](https://github.com/NixOS/rfcs/pull/166), which defined the [standard for Nix formatting](https://github.com/NixOS/nixfmt/blob/master/standard.md), established the Nix Formatting team and set the groundwork for nixfmt to become the official formatter.
+
+Given that, this release is _significantly_ different from the previous one:
+- How Nix is formatted _completely_ changed and is unrecognisable from previous versions, fixing many issues with the old formatting in the process. It would be pointless to try to list all the differences, just think of it as an entirely new formatting.
+- This project graduated from a [Serokell](https://serokell.io/) project to an official Nix project, with a [repository under the NixOS org](https://github.com/nixos/nixfmt) and a community-based Nix formatting team as maintainers.
+
+Other than the above, there are some notable UX changes:
+- Deprecate `nixfmt [dir]` for recursively formatting a directory again. Please use the new `pkgs.nixfmt-tree` wrapper instead, or <https://github.com/numtide/treefmt-nix> for more flexibility, see [the docs](https://github.com/nixos/nixfmt?tab=readme-ov-file#in-a-project) for more options.
+- More complete [usage documentation](https://github.com/nixos/nixfmt?tab=readme-ov-file#installation).
+  - A [Git mergetool mode](https://github.com/nixos/nixfmt?tab=readme-ov-file#git-mergetool) is now supported.
+- CLI changes:
+  - In stdin-mode, `--filename <path>` can now be used to specify a filename for diagnostics.
+  - Number of indendation spaces can now be configured using `--indent <number>`
 
 ## 0.6.0 -- 2023-10-31
 
