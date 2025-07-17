@@ -153,8 +153,7 @@ instance Pretty Binder where
   pretty (Assignment selectors assign expr semicolon) =
     group $
       hcat selectors
-        <> nest (hardspace <> pretty assign <> rhs)
-        <> pretty semicolon
+        <> nest (hardspace <> pretty assign <> rhs <> nest (pretty semicolon))
     where
       rhs =
         -- In most cases, the LHS of a binding is fairly short. This means that when the RHS
@@ -264,8 +263,7 @@ instance Pretty ParamAttr where
     group $
       pretty name
         <> hardspace
-        <> nest (pretty qmark <> absorbRHS def)
-        <> pretty maybeComma
+        <> nest (pretty qmark <> absorbRHS def <> nest (pretty maybeComma))
   -- `...`
   pretty (ParamEllipsis ellipsis) =
     pretty ellipsis
