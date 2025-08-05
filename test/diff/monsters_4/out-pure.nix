@@ -34,8 +34,7 @@
 }: # Foo
 stdenv.mkDerivation # Foo
   rec # Foo
-  {
-    # Foo
+  {  # Foo
     pname # Foo
       =  # Foo
         "contrast"; # Foo
@@ -45,8 +44,7 @@ stdenv.mkDerivation # Foo
     src # Foo
       =  # Foo
         # Foo
-        fetchFromGitLab {
-          # Foo
+        fetchFromGitLab { # Foo
           domain # Foo
             =  # Foo
               "gitlab.gnome.org"; # Foo
@@ -69,8 +67,7 @@ stdenv.mkDerivation # Foo
     cargoDeps # Foo
       =  # Foo
         rustPlatform.fetchCargoTarball # Foo
-          {
-            # Foo
+          {  # Foo
             inherit # Foo
               src
               ; # Foo
@@ -83,8 +80,7 @@ stdenv.mkDerivation # Foo
           }; # Foo
     nativeBuildInputs # Foo
       =  # Foo
-        [
-          # Foo
+        [  # Foo
           desktop-file-utils # Foo
           gettext # Foo
           meson # Foo
@@ -100,8 +96,7 @@ stdenv.mkDerivation # Foo
         ]; # Foo
     buildInputs # Foo
       =  # Foo
-        [
-          # Foo
+        [  # Foo
           cairo # Foo
           glib # Foo
           gtk4 # Foo
@@ -120,8 +115,7 @@ stdenv.mkDerivation # Foo
       =  # Foo
         with # Foo
           lib; # Foo
-        {
-          # Foo
+        {  # Foo
           description # Foo
             =  # Foo
               "Checks whether the contrast between two colors meet the WCAG requirements"; # Foo
@@ -135,8 +129,7 @@ stdenv.mkDerivation # Foo
             =  # Foo
               with # Foo
                 maintainers; # Foo
-              [
-                # Foo
+              [  # Foo
                 jtojnar # Foo
               ]; # Foo
           platforms # Foo

@@ -177,10 +177,10 @@ prettySet _ (krec, paropen@(LoneAnn _), Items [], parclose@Ann{preTrivia = []}) 
     sep = if sourceLine paropen /= sourceLine parclose then hardline else hardspace
 -- Singleton sets are allowed to fit onto one line,
 -- but apart from that always expand.
-prettySet wide (krec, paropen@Ann{trailComment = post}, binders, parclose) =
+prettySet wide (krec, paropen, binders, parclose) =
   pretty (fmap (,hardspace) krec)
-    <> pretty (paropen{trailComment = Nothing})
-    <> surroundWith sep (nest $ pretty post <> prettyItems binders)
+    <> pretty paropen
+    <> surroundWith sep (nest $ prettyItems binders)
     <> pretty parclose
   where
     sep =
@@ -223,9 +223,9 @@ prettyTerm (List paropen@Ann{trailComment = Nothing} (Items []) parclose@Ann{pre
     sep = if sourceLine paropen /= sourceLine parclose then hardline else hardspace
 -- General list
 -- Always expand if len > 1
-prettyTerm (List paropen@Ann{trailComment = post} items parclose) =
-  pretty (paropen{trailComment = Nothing})
-    <> surroundWith sur (nest $ pretty post <> prettyItems items)
+prettyTerm (List paropen items parclose) =
+  pretty paropen
+    <> surroundWith sur (nest $ prettyItems items)
     <> pretty parclose
   where
     -- If the brackets are on different lines, keep them like that

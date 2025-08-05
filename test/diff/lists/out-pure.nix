@@ -23,8 +23,7 @@
       foo2 = "barbar";
     }
   ]
-  {
-    # List in attrset with comment
+  {  # List in attrset with comment
 
     imports0 = [ ];
 
@@ -66,23 +65,19 @@
     b # c
     d # e
   ]
-  [
-    # a
+  [  # a
     b
     d
   ]
-  [
-    # a
+  [  # a
     b
     d # e
   ]
-  [
-    # a
+  [  # a
     b # c
     d
   ]
-  [
-    # a
+  [  # a
     b # c
     d # e
   ]
