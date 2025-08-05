@@ -45,7 +45,8 @@ printAst path unformatted = do
 -- | Pretty print the internal IR for debugging
 printIR :: FilePath -> Text -> Either String Text
 printIR filename =
-  bimap errorBundlePretty (toStrict . pShow . fixup . pretty)
+  Left
+    . either errorBundlePretty (unpack . toStrict . pShow . fixup . pretty)
     . Megaparsec.parse Parser.file filename
 
 -- Same functionality as `format`, but add sanity checks to guarantee the following properties of the formatter:
