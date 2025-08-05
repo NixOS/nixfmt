@@ -123,19 +123,19 @@ in
 
                   =
 
-                    types.unspecified
+                  types.unspecified
 
-                    //
+                  //
 
-                      {
+                    {
 
-                        merge
+                      merge
 
-                          =
+                        =
 
-                            mergeEqualOption;
+                          mergeEqualOption;
 
-                      };
+                    };
 
                 apply
 
@@ -172,16 +172,16 @@ in
 
                                       =
 
-                                        (originalArgs.kernelPatches
+                                      (originalArgs.kernelPatches
 
-                                          or
+                                        or
 
-                                          [ ]
-                                        )
+                                        [ ]
+                                      )
 
-                                        ++
+                                      ++
 
-                                          kernelPatches;
+                                        kernelPatches;
 
                                     features
 
