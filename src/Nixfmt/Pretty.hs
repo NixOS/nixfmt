@@ -650,6 +650,7 @@ absorbRHS expr = case expr of
   (Operation l (LoneAnn op) (Term t))
     | isAbsorbable t && isUpdateConcatPlus op ->
         nest $ group' RegularG $ line <> pretty l <> line <> group' Transparent (pretty op <> hardspace <> group' Priority (prettyTermWide t))
+  (Operation _ (Ann{value}) _) | isUpdateConcatPlus value -> line <> group expr
   -- Everything else:
   -- If it fits on one line, it fits
   -- If it fits on one line but with a newline after the `=`, it fits (including semicolon)

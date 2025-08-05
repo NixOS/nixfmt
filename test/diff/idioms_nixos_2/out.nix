@@ -1075,11 +1075,11 @@ in
             PATH = "/run/wrappers/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/usr/bin:/bin";
           };
           settings =
-            mapAttrs (name: mkDefault) {
-              "listen.owner" = config.services.nginx.user;
-              "listen.group" = config.services.nginx.group;
-            }
-            // cfg.poolSettings;
+          mapAttrs (name: mkDefault) {
+            "listen.owner" = config.services.nginx.user;
+            "listen.group" = config.services.nginx.group;
+          }
+          // cfg.poolSettings;
           extraConfig = cfg.poolConfig;
         };
       };
