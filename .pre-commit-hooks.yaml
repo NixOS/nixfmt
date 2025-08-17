@@ -8,7 +8,7 @@
 
 - id: &id-nix nixfmt-nix
   name: *id-nix
-  entry: nix --extra-experimental-features "flakes nix-command" run nixpkgs#nixfmt-rfc-style
+  entry: nix --extra-experimental-features "flakes nix-command" run nixpkgs#nixfmt
   language: system
   types:
     - nix
