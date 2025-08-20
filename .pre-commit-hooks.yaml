@@ -4,4 +4,12 @@
   language: haskell
   types:
     - nix
-  description: The official formatter for Nix code
+  description: &desc The official formatter for Nix code
+
+- id: &id-nix nixfmt-nix
+  name: *id-nix
+  entry: nix --extra-experimental-features "flakes nix-command" run nixpkgs#nixfmt
+  language: system
+  types:
+    - nix
+  description: *desc
