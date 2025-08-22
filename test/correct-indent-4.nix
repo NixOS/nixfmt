@@ -550,7 +550,7 @@ rec {
                         ];
                         escapeMultiline = replaceStrings [ "\${" "''" ] [ "''\${" "'''" ];
                         singlelineResult =
-                            "\"" + concatStringsSep "\\n" (map escapeSingleline lines) + "\"";
+                        "\"" + concatStringsSep "\\n" (map escapeSingleline lines) + "\"";
                         multilineResult =
                             let
                                 escapedLines = map escapeMultiline lines;
