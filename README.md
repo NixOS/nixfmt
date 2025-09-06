@@ -210,12 +210,14 @@ includes = ["*.nix"]
         - repo: https://github.com/NixOS/nixfmt
           rev: <version>
           hooks:
-                - id: nixfmt
+                - id: nixfmt-nix
     ```
 
-    If you want to use a stable version of `nixfmt`, then replace `<version>` with a tag from this repo. If you want to use an unstable version of `nixfmt`, then replace `<version>` with a commit hash from this repo.
+    Until a newer version than `1.0.0` is released, you should use a `<version>` with any commit hash from after the `1.0.0` tag (like today's), so that you get [the #311 fix](https://github.com/NixOS/nixfmt/pull/311) for the #[320 bug](https://github.com/NixOS/nixfmt/issues/320).
 
-6. Try to commit a badly formatted Nix file in order to make sure that everything works.
+    After such a release happens, if you want to use a stable version of `nixfmt`, then replace `<version>` with a tag from this repo. If you want to use an unstable version of `nixfmt`, then replace `<version>` with a commit hash from this repo.
+
+7. Try to commit a badly formatted Nix file in order to make sure that everything works.
 
 #### `git mergetool`
 
