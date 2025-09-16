@@ -1,5 +1,10 @@
 # Revision history for nixfmt
 
+## 1.0.1 -- 2025-09-16
+
+- Fix bug where `--ir` would overwrite the source file: <https://github.com/NixOS/nixfmt/pull/322>
+- Fix `pre-commit` hook so it works without cabal: <https://github.com/NixOS/nixfmt/pull/311>
+
 ## 1.0.0 -- 2025-07-09
 
 The [Nix Formatting Team](https://nixos.org/community/teams/formatting/) is happy to present the first stable release of the official Nix formatter! The basis for this milestone is [RFC 166](https://github.com/NixOS/rfcs/pull/166), which defined the [standard for Nix formatting](https://github.com/NixOS/nixfmt/blob/master/standard.md), established the Nix Formatting team and set the groundwork for nixfmt to become the official formatter.
