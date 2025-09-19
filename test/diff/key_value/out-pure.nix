@@ -9,7 +9,7 @@ rec {
 
   b = {
     a = 1 # d
-    ;
+      ;
   };
 
   c = {
@@ -19,7 +19,7 @@ rec {
   d = {
     a = # c
       1 # d
-    ;
+      ;
   };
   e = {
     a  # b
@@ -28,7 +28,7 @@ rec {
   f = {
     a  # b
       = 1 # d
-    ;
+        ;
   };
   h = {
     a  # b
@@ -39,7 +39,7 @@ rec {
     a  # b
       =  # c
         1 # d
-    ;
+        ;
   };
   j = a: { b = 1; };
   k = a: {
@@ -63,8 +63,8 @@ rec {
     =
       # c
       1
-  # d
-  ;
+      # d
+      ;
 
   p = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa { } a;
 
