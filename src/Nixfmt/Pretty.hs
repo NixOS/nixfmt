@@ -502,8 +502,12 @@ prettyApp indentFunction pre hasPost f a =
             (\fRendered -> group' RegularG $ fRendered <> line <> absorbLast a <> post)
       <> (if hasPost && not (null comment') then hardline else mempty)
 
-prettyOp :: Bool -> Expression -> Leaf -> Doc
-prettyOp forceFirstTermWide operation op =
+isPath :: Term -> Bool
+isPath (Path _) = True
+isPath _ = False
+
+prettyOp :: Bool -> Bool -> Expression -> Leaf -> Doc
+prettyOp forceFirstTermWide indentPlusOps operation op =
   let -- Walk the operation tree and put a list of things on the same level.
       -- We still need to keep the operators around because they might have comments attached to them.
       -- An operator is put together with its succeeding expression. Only the first operand has none.
@@ -526,7 +530,9 @@ prettyOp forceFirstTermWide operation op =
       prettyOperation (Nothing, expr) = pretty expr
       -- The others
       prettyOperation (Just op', expr) =
-        line <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
+        if indentPlusOps && value op' == TPlus
+          then line <> nest (pretty (moveTrailingCommentUp op') <> absorbOperation expr)
+          else line <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
   in group' RegularG $
       (concatMap prettyOperation . flatten Nothing) operation
 
@@ -645,7 +651,7 @@ absorbRHS expr = case expr of
     | isAbsorbableTerm t
         && matchFirstToken (not . hasPreTrivia) t
         && isUpdateConcatPlus value ->
-        hardspace <> prettyOp True expr op
+        hardspace <> prettyOp True (value == TPlus && isPath t) expr op
   -- Case 2: LHS fits onto first line, RHS is an absorbable term
   (Operation l (LoneAnn op) (Term t))
     | isAbsorbable t && isUpdateConcatPlus op ->
@@ -740,7 +746,7 @@ instance Pretty Expression where
     | op' == TLess || op' == TGreater || op' == TLessEqual || op' == TGreaterEqual || op' == TEqual || op' == TUnequal =
         pretty a <> softline <> pretty op <> hardspace <> pretty b
   -- all other operators
-  pretty operation@(Operation _ op _) = prettyOp False operation op
+  pretty operation@(Operation _ op _) = prettyOp False False operation op
   pretty (MemberCheck expr qmark sel) =
     pretty expr
       <> softline
