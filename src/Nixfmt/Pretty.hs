@@ -566,7 +566,7 @@ isAbsorbableExpr expr = case expr of
 isAbsorbable :: Term -> Bool
 -- Multi-line indented string
 isAbsorbable (IndentedString Ann{value = _ : _ : _}) = True
-isAbsorbable (Path _) = True
+isAbsorbable (Path _) = False
 -- Non-empty sets and lists
 isAbsorbable (Set _ _ (Items (_ : _)) _) = True
 isAbsorbable (List _ (Items (_ : _)) _) = True
