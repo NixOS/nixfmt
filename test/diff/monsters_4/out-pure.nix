@@ -37,34 +37,27 @@ stdenv.mkDerivation # Foo
   {
     # Foo
     pname # Foo
-      =  # Foo
-        "contrast"; # Foo
+      = /* Foo */ "contrast"; # Foo
     version # Foo
-      =  # Foo
-        "0.0.5"; # Foo
+      = /* Foo */ "0.0.5"; # Foo
     src # Foo
       =  # Foo
         # Foo
         fetchFromGitLab {
           # Foo
           domain # Foo
-            =  # Foo
-              "gitlab.gnome.org"; # Foo
+            = /* Foo */ "gitlab.gnome.org"; # Foo
           group # Foo
-            =  # Foo
-              "World"; # Foo
+            = /* Foo */ "World"; # Foo
           owner # Foo
-            =  # Foo
-              "design"; # Foo
+            = /* Foo */ "design"; # Foo
           repo # Foo
-            =  # Foo
-              "contrast"; # Foo
+            = /* Foo */ "contrast"; # Foo
           rev # Foo
             =  # Foo
               version; # Foo
           sha256 # Foo
-            =  # Foo
-              "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0="; # Foo
+            = /* Foo */ "cypSbqLwSmauOoWOuppWpF3hvrxiqmkLspxAWzvlUC0="; # Foo
         }; # Foo
     cargoDeps # Foo
       =  # Foo
@@ -75,11 +68,9 @@ stdenv.mkDerivation # Foo
               src
               ; # Foo
             name # Foo
-              =  # Foo
-                "${pname}-${version}"; # Foo
+              = /* Foo */ "${pname}-${version}"; # Foo
             hash # Foo
-              =  # Foo
-                "sha256-W4FyqwJpimf0isQRCq9TegpTQPQfsumx40AFQCFG5VQ="; # Foo
+              = /* Foo */ "sha256-W4FyqwJpimf0isQRCq9TegpTQPQfsumx40AFQCFG5VQ="; # Foo
           }; # Foo
     nativeBuildInputs # Foo
       =  # Foo
@@ -109,13 +100,12 @@ stdenv.mkDerivation # Foo
           pango # Foo
         ]; # Foo
     postPatch # Foo
-      =  # Foo
-        ''
-          patchShebangs build-aux/meson_post_install.py
-          # https://gitlab.gnome.org/World/design/contrast/-/merge_requests/23
-          substituteInPlace build-aux/meson_post_install.py \
-            --replace "gtk-update-icon-cache" "gtk4-update-icon-cache"
-        ''; # Foo
+      = /* Foo */ ''
+        patchShebangs build-aux/meson_post_install.py
+        # https://gitlab.gnome.org/World/design/contrast/-/merge_requests/23
+        substituteInPlace build-aux/meson_post_install.py \
+          --replace "gtk-update-icon-cache" "gtk4-update-icon-cache"
+      ''; # Foo
     meta # Foo
       =  # Foo
         with # Foo
@@ -123,11 +113,9 @@ stdenv.mkDerivation # Foo
         {
           # Foo
           description # Foo
-            =  # Foo
-              "Checks whether the contrast between two colors meet the WCAG requirements"; # Foo
+            = /* Foo */ "Checks whether the contrast between two colors meet the WCAG requirements"; # Foo
           homepage # Foo
-            =  # Foo
-              "https://gitlab.gnome.org/World/design/contrast"; # Foo
+            = /* Foo */ "https://gitlab.gnome.org/World/design/contrast"; # Foo
           license # Foo
             =  # Foo
               licenses.gpl3Plus; # Foo
