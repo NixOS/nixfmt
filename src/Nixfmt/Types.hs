@@ -72,6 +72,8 @@ data Trivium
   | -- Multi-line comments with /* or /**. Multiple # comments are treated as a list of `LineComment`.
     -- The bool indicates a doc comment (/**)
     BlockComment Bool [Text]
+  | -- | Language annotation comments like /* lua */ that should remain as block comments before strings
+    LanguageAnnotation Text
   deriving (Eq, Show)
 
 type Trivia = [Trivium]
