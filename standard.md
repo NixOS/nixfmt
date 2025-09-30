@@ -395,7 +395,11 @@ throw ''Some very long error messages containing ${
   - Specifically, the expression that the comment is attached to must be maintained by the formatter, as well as the resulting doc string.
 - Empty comments may be deleted.
   - Often their only purpose is to vertically align lines, which is not allowed.
-- Single-line `/*` comments must be converted to `#` comments.
+- Single-line `/*` comments must be converted to `#` comments, except for language annotations.
+- Language annotation comments that directly precede string literals must be preserved as block comments.
+  - A language annotation is a single-line block comment containing only a valid language identifier (alphanumeric characters, plus `-`, `+`, `.`, `_`).
+  - Language annotations must be immediately followed by a string literal (`"..."` or `''...''`) to be preserved as block comments.
+  - Language annotations not followed by strings are converted to line comments like other single-line block comments.
 - Single-line comments may be moved up or down a line to improve the layout.
 - Anything after the first `#` of single-line comments must be preserved.
   - This allows the common pattern of prefixing many lines with `#` to comment them out, without the formatter trying to change anything.
@@ -420,6 +424,27 @@ Note that these examples show *allowed* transformations, which may or may not be
 /*bar    */
 ↓
 # bar
+
+/* Language annotations are preserved when followed by strings */
+/* bash */ ''
+  echo "Hello, world!"
+''
+↓
+/* bash */ ''
+  echo "Hello, world!"
+''
+
+/* python */ "print('Hello')"
+↓
+/* python */ "print('Hello')"
+
+/* Language annotations not followed by strings are converted */
+/* bash */ { key = "value"; }
+↓
+# bash
+{
+  key = "value";
+}
 
 function call ( # trailing comment
   body
