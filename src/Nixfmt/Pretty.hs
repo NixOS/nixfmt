@@ -86,6 +86,7 @@ instance Pretty TrailingComment where
 instance Pretty Trivium where
   pretty EmptyLine = emptyline
   pretty (LineComment c) = comment ("#" <> c) <> hardline
+  pretty (LanguageAnnotation lang) = comment ("/* " <> lang <> " */") <> hardspace
   pretty (BlockComment isDoc c) =
     comment (if isDoc then "/**" else "/*")
       <> hardline
@@ -105,10 +106,23 @@ instance (Pretty a) => Pretty (Item a) where
 
 -- For lists, attribute sets and let bindings
 prettyItems :: (Pretty a) => Items a -> Doc
-prettyItems (Items items) = sepBy hardline items
+prettyItems (Items items) = go items
+  where
+    go [] = mempty
+    go [item] = pretty item
+    -- Special case: language annotation comment followed by string item
+    go (Comments [LanguageAnnotation lang] : Item stringItem : rest) =
+      pretty (LanguageAnnotation lang)
+        <> hardspace
+        <> group stringItem
+        <> if null rest then mempty else hardline <> go rest
+    go (item : rest) =
+      pretty item <> if null rest then mempty else hardline <> go rest
 
 instance Pretty [Trivium] where
   pretty [] = mempty
+  -- Special case: if trivia consists only of a single language annotation, render it inline without a preceding hardline
+  pretty [langAnnotation@(LanguageAnnotation _)] = pretty langAnnotation
   pretty trivia = hardline <> hcat trivia
 
 instance (Pretty a) => Pretty (Ann a) where

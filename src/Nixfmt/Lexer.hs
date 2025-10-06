@@ -6,11 +6,13 @@
 module Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole) where
 
 import Control.Monad.State.Strict (MonadState, evalStateT, get, modify, put)
-import Data.Char (isSpace)
+import Data.Char (isAlphaNum, isSpace)
+import Data.Functor (($>))
 import Data.List (dropWhileEnd)
 import Data.Maybe (fromMaybe)
 import Data.Text as Text (
   Text,
+  all,
   isPrefixOf,
   length,
   lines,
@@ -43,6 +45,7 @@ import Text.Megaparsec (
   chunk,
   getSourcePos,
   hidden,
+  lookAhead,
   many,
   manyTill,
   notFollowedBy,
@@ -59,6 +62,8 @@ data ParseTrivium
     PTLineComment Text Pos
   | -- Track whether it is a doc comment
     PTBlockComment Bool [Text]
+  | -- | Language annotation like /* lua */ (single line, non-doc)
+    PTLanguageAnnotation Text
   deriving (Show)
 
 preLexeme :: Parser a -> Parser a
@@ -127,6 +132,30 @@ blockComment = try $ preLexeme $ do
     commonIndentationLength :: Int -> [Text] -> Int
     commonIndentationLength = foldr (min . Text.length . Text.takeWhile (== ' '))
 
+languageAnnotation :: Parser ParseTrivium
+languageAnnotation = try $ do
+  -- Parse a block comment and extract its content
+  PTBlockComment False [content] <- blockComment
+  isStringDelimiterNext <- lookAhead isNextStringDelimiter
+
+  if isStringDelimiterNext && isValidLanguageIdentifier content
+    then return (PTLanguageAnnotation (strip content))
+    else fail "Not a language annotation"
+  where
+    -- Check if a text is a valid language identifier for language annotations
+    isValidLanguageIdentifier txt =
+      let stripped = strip txt
+      in not (Text.null stripped)
+          && Text.length stripped <= 30
+          && Text.all (\c -> isAlphaNum c || c `elem` ['-', '+', '.', '_']) stripped
+
+    -- Parser to peek at the next token to see if it's a string delimiter (" or '')
+    isNextStringDelimiter = do
+      _ <- manyP isSpace -- Skip any remaining whitespace
+      (chunk "\"" $> True)
+        <|> (chunk "''" $> True)
+        <|> pure False
+
 -- This should be called with zero or one elements, as per `span isTrailing`
 convertTrailing :: [ParseTrivium] -> Maybe TrailingComment
 convertTrailing = toMaybe . join . map toText
@@ -148,6 +177,7 @@ convertLeading =
         PTBlockComment _ [] -> []
         PTBlockComment False [c] -> [LineComment $ " " <> strip c]
         PTBlockComment isDoc cs -> [BlockComment isDoc cs]
+        PTLanguageAnnotation c -> [LanguageAnnotation c]
     )
 
 isTrailing :: ParseTrivium -> Bool
@@ -169,7 +199,7 @@ convertTrivia pts nextCol =
       _ -> (convertTrailing trailing, convertLeading leading)
 
 trivia :: Parser [ParseTrivium]
-trivia = many $ hidden $ lineComment <|> blockComment <|> newlines
+trivia = many $ hidden $ languageAnnotation <|> lineComment <|> blockComment <|> newlines
 
 -- The following primitives to interact with the state monad that stores trivia
 -- are designed to prevent trivia from being dropped or duplicated by accident.
