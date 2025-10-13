@@ -36,7 +36,7 @@ To install it on NixOS for a particular user, add it to the [`users.users.<user>
 
 #### Home Manager
 
-To install `nixfmt` in Home Manager, add it adding to the [`home.packages`](https://nix-community.github.io/home-manager/options.xhtml#opt-home.packages) configuration option:
+To install `nixfmt` in Home Manager, add it to the [`home.packages`](https://nix-community.github.io/home-manager/options.xhtml#opt-home.packages) configuration option:
 
 ```nix
 { pkgs, ... }:
