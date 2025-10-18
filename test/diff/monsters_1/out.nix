@@ -46,7 +46,7 @@
   # foo
   # foo
   wrapGAppsHook4,
-# foo
+  # foo
 }:
 # foo
 stdenv.mkDerivation
