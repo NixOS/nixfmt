@@ -116,6 +116,13 @@
   fnCall = # foo
     fnName "bar";
 
+  # Language annotation followed by line break
+  lineBreak = # python
+
+    ''
+      print("Line break after annotation")
+    '';
+
   # Language annotation with interpolated expressions
   interpolatedExpr = /* bash */ ''
     ${/* inline-comment */ "echo hello"}
