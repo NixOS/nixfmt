@@ -350,7 +350,8 @@ instance Pretty Parameter where
     group $
       pretty (moveTrailingCommentUp bopen)
         <> surroundWith sep (nest $ sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments attrs)
-        <> pretty bclose
+        <> nest (pretty (preTrivia bclose))
+        <> pretty (bclose{preTrivia = []})
     where
       -- pretty all ParamAttrs, but mark the trailing comma of the last element specially
       -- This is so that the trailing comma will only be printed in the expanded form
