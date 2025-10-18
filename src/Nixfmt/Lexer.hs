@@ -49,12 +49,13 @@ import Text.Megaparsec (
   many,
   manyTill,
   notFollowedBy,
+  optional,
   some,
   try,
   unPos,
   (<|>),
  )
-import Text.Megaparsec.Char (char, eol)
+import Text.Megaparsec.Char (char, eol, hspace)
 
 data ParseTrivium
   = PTNewlines Int
@@ -151,7 +152,9 @@ languageAnnotation = try $ do
 
     -- Parser to peek at the next token to see if it's a string delimiter (" or '')
     isNextStringDelimiter = do
-      _ <- manyP isSpace -- Skip any remaining whitespace
+      hspace -- Skip horizontal whitespace (spaces/tabs)
+      _ <- optional eol -- Optionally consume one newline
+      hspace -- Skip more horizontal whitespace
       (chunk "\"" $> True)
         <|> (chunk "''" $> True)
         <|> pure False
