@@ -9,6 +9,6 @@
     $'\t'
   ''
 
-  ''ending dollar $''
-  ''$''
+  ''"ending dollar $''
+  ''"$''
 ]

@@ -734,6 +734,7 @@ in {
 
     { assertions = [
       { assertion = cfg.database.createLocally -> cfg.config.dbtype == "mysql";
+        # single line idented strings must be reformatted to simple strings 
         message = ''services.nextcloud.config.dbtype must be set to mysql if services.nextcloud.database.createLocally is set to true.'';
       }
     ]; }

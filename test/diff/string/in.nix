@@ -92,4 +92,10 @@
   "--${
     "test"
   }"
+  ''''${pkgs.ghostscript}/bin/ps2pdf''
+  '''test''$test''
+  '''test'''quotes''
+  '''plain''
+  '' between spaces ''
+  '' !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~''
 ]
