@@ -1,5 +1,7 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData #-}
 
 module Nixfmt.Predoc (
   text,
@@ -34,7 +36,7 @@ module Nixfmt.Predoc (
 where
 
 import Control.Applicative (asum, empty, (<|>))
-import Control.Monad.Trans.State.Strict (State, StateT (..), evalState, get, mapStateT, modify, put, runState, state)
+import Control.Monad.Trans.State.Strict (State, StateT (..), evalState, get, mapStateT, modify', put, runState, state)
 import Data.Bifunctor (first, second)
 import Data.Function ((&))
 import Data.Functor (($>), (<&>))
@@ -484,8 +486,9 @@ layoutGreedy :: Int -> Int -> Doc -> Text
 layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, singleton (0, 0))
   where
     -- Simple helpers around `put` with a tuple state
-    putL = modify . first . const
-    putR = modify . second . const
+    -- NOTE: making putL strict removes the allocation for the Int
+    putL = modify' . first . const
+    putR = modify' . second . const
 
     -- Print a given text. If this is the first token on a line, it will
     -- do the appropriate calculations for indentation and print that in addition to the text.
@@ -507,13 +510,15 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
         go' = do
           (cc, (ci, _) :| _) <- get
           putL (cc + textWidth t)
-          pure $ if cc == 0 then [indent (ci + textOffset), t] else [t]
+          let !i'd = indent (ci + textOffset)
+          pure $! if cc == 0 then [i'd, t] else [t]
 
     -- Simply put text without caring about line-start indentation
     putText' :: [Text] -> State St [Text]
     putText' ts = do
       (cc, indents) <- get
-      put (cc + sum (map textWidth ts), indents)
+      let !cc' = cc + sum (map textWidth ts)
+      put (cc', indents)
       pure ts
 
     -- First argument: chunks to render

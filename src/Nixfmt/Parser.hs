@@ -1,9 +1,11 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Nixfmt.Parser where
 
-import Control.Monad (guard, liftM2)
+import Control.Monad (guard, liftM2, (<$!>))
 import Control.Monad.Combinators (sepBy)
 import qualified Control.Monad.Combinators.Expr as MPExpr (
   Operator (..),
@@ -77,7 +79,7 @@ import Prelude hiding (String)
 -- HELPER FUNCTIONS
 
 ann :: (a -> b) -> Parser a -> Parser (Ann b)
-ann f p = try $ lexeme $ f <$> p
+ann f p = try $ lexeme $ f <$!> p
 
 -- | parses a token without parsing trivia after it
 rawSymbol :: Token -> Parser Token
@@ -130,7 +132,7 @@ instance (Semigroup a) => Semigroup (Parser a) where
   fx <> fy = do
     x <- fx
     y <- fy
-    pure $ x <> y
+    pure $! x <> y
 
 envPath :: Parser (Ann Token)
 envPath =
@@ -365,7 +367,7 @@ simpleTerm =
 
 term :: Parser Term
 term = label "term" $ do
-  t <- simpleTerm
+  !t <- simpleTerm
   sel <- selectorPath'
   def <- optional (liftM2 (,) (reserved KOr) term)
   return $ case sel of
@@ -373,10 +375,10 @@ term = label "term" $ do
     _ -> Selection t sel def
 
 items :: Parser a -> Parser (Items a)
-items p = Items <$> many (item p) <> (toList <$> optional itemComment)
+items p = Items <$!> many (item p) <> (toList <$> optional itemComment)
 
 item :: Parser a -> Parser (Item a)
-item p = itemComment <|> Item <$> p
+item p = itemComment <|> Item <$!> p
 
 itemComment :: Parser (Item a)
 itemComment = do
