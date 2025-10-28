@@ -56,11 +56,14 @@ let
     );
   };
 
-  build = lib.pipe pkgs.haskellPackages.nixfmt [
+  haskellBuildPipeline = [
     haskell.lib.justStaticExecutables
     haskell.lib.dontHaddock
     (drv: lib.lazyDerivation { derivation = drv; })
   ];
+
+  build = lib.pipe pkgs.haskellPackages.nixfmt haskellBuildPipeline;
+  buildStatic = lib.pipe pkgs.pkgsStatic.haskellPackages.nixfmt haskellBuildPipeline;
 
   treefmtEval = (import sources.treefmt-nix).evalModule pkgs {
     # Used to find the project root
@@ -114,7 +117,10 @@ let
 in
 build
 // {
-  packages.nixfmt = build;
+  packages = {
+    nixfmt = build;
+    nixfmt-static = buildStatic;
+  };
 
   inherit pkgs;
 
