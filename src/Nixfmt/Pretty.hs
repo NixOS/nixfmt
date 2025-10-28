@@ -1,14 +1,18 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Nixfmt.Pretty where
 
 import Data.Char (isSpace)
-import Data.Maybe (fromJust, fromMaybe, isJust, isNothing, maybeToList)
+import Data.Maybe (fromJust, fromMaybe, isJust, isNothing)
+import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as Text (null, takeWhile)
 import Nixfmt.Predoc (
@@ -53,6 +57,7 @@ import Nixfmt.Types (
   Term (..),
   Token (..),
   TrailingComment (..),
+  Trivia,
   Trivium (..),
   Whole (..),
   ann,
@@ -74,7 +79,7 @@ toLineComment (TrailingComment c) = LineComment $ " " <> c
 moveTrailingCommentUp :: Ann a -> Ann a
 moveTrailingCommentUp a@Ann{preTrivia, trailComment = Just post} =
   a
-    { preTrivia = preTrivia ++ [toLineComment post],
+    { preTrivia = preTrivia <> [toLineComment post],
       trailComment = Nothing
     }
 moveTrailingCommentUp a = a
@@ -119,11 +124,11 @@ prettyItems (Items items) = go items
     go (item : rest) =
       pretty item <> if null rest then mempty else hardline <> go rest
 
-instance Pretty [Trivium] where
+instance Pretty Trivia where
   pretty [] = mempty
   -- Special case: if trivia consists only of a single language annotation, render it inline without a preceding hardline
   pretty [langAnnotation@(LanguageAnnotation _)] = pretty langAnnotation
-  pretty trivia = hardline <> hcat trivia
+  pretty trivia = hardline <> foldMap pretty trivia
 
 instance (Pretty a) => Pretty (Ann a) where
   pretty Ann{preTrivia, value, trailComment} =
@@ -192,10 +197,11 @@ prettySet _ (krec, paropen@(LoneAnn _), Items [], parclose@Ann{preTrivia = []}) 
 -- Singleton sets are allowed to fit onto one line,
 -- but apart from that always expand.
 prettySet wide (krec, paropen@Ann{trailComment = post}, binders, parclose) =
-  pretty (fmap (,hardspace) krec)
-    <> pretty (paropen{trailComment = Nothing})
-    <> surroundWith sep (nest $ pretty post <> prettyItems binders)
-    <> pretty parclose
+  let !surrounded = surroundWith sep (nest $ pretty post <> prettyItems binders)
+  in pretty (fmap (,hardspace) krec)
+      <> pretty (paropen{trailComment = Nothing})
+      <> surrounded
+      <> pretty parclose
   where
     sep =
       if wide && not (null (unItems binders))
@@ -319,7 +325,7 @@ moveParamsComments
       : xs
     ) =
     ParamAttr name maybeDefault (Just (comma{preTrivia = []}))
-      : moveParamsComments (ParamAttr (name'{preTrivia = trivia ++ trivia'}) maybeDefault' maybeComma' : xs)
+      : moveParamsComments (ParamAttr (name'{preTrivia = trivia <> trivia'}) maybeDefault' maybeComma' : xs)
 -- This may seem like a nonsensical case, but keep in mind that blank lines also count as comments (trivia)
 moveParamsComments
   -- , name
@@ -329,7 +335,7 @@ moveParamsComments
     ParamEllipsis ellipsis@Ann{preTrivia = trivia'}
     ] =
     [ ParamAttr name maybeDefault (Just (comma{preTrivia = []})),
-      ParamEllipsis (ellipsis{preTrivia = trivia ++ trivia'})
+      ParamEllipsis (ellipsis{preTrivia = trivia <> trivia'})
     ]
 -- Inject a trailing comma on the last element if nessecary
 moveParamsComments [ParamAttr name@Ann{sourceLine} def Nothing] = [ParamAttr name def (Just (ann sourceLine TComma))]
@@ -450,7 +456,7 @@ prettyApp indentFunction pre hasPost f a =
                 close
               )
           )
-          | isAbsorbableTerm body && not (any hasTrivia [open, name, colon]) =
+          | isAbsorbableTerm body && not (any @[] hasTrivia [open, name, colon]) =
               group' Priority $
                 nest $
                   pretty open
@@ -468,7 +474,7 @@ prettyApp indentFunction pre hasPost f a =
                 close
               )
           )
-          | isAbsorbableTerm body && not (any hasTrivia [open, ident, close]) =
+          | isAbsorbableTerm body && not (any @[] hasTrivia [open, ident, close]) =
               group' Priority $
                 nest $
                   pretty open
@@ -609,7 +615,7 @@ absorbParen open@Ann{trailComment = post'} expr close@Ann{preTrivia = pre''} =
               nest $
                 pretty
                   ( mapFirstToken
-                      (\a@Ann{preTrivia} -> a{preTrivia = maybeToList (toLineComment <$> post') ++ preTrivia})
+                      (\a@Ann{preTrivia} -> a{preTrivia = maybe Seq.empty (Seq.singleton . toLineComment) post' <> preTrivia})
                       expr
                   )
                   -- Move any leading comments on the closing parenthesis up into the nest
@@ -695,7 +701,7 @@ instance Pretty Expression where
         group $
           pretty in_
             <> hardline
-            <> pretty (preTrivia ++ convertTrailing trailComment)
+            <> pretty (preTrivia <> convertTrailing trailComment)
             <> pretty expr
   pretty (Assert assert cond semicolon expr) =
     group $
@@ -826,7 +832,7 @@ instance Pretty [StringPart] where
   -- When the interpolation is the only thing on the string line (ignoring leading whitespace),
   -- then absorb the content (i.e. don't surround with line').
   -- Only do this when there are no comments
-  pretty [Interpolation (Whole expr [])] = pretty [TextPart "", Interpolation (Whole expr [])]
+  pretty [Interpolation (Whole expr [])] = pretty @[_] [TextPart "", Interpolation (Whole expr [])]
   pretty [TextPart pre, Interpolation (Whole expr [])]
     | isSpaces pre =
         text pre <> offset (textWidth pre) (group $ text "${" <> nest inner <> text "}")

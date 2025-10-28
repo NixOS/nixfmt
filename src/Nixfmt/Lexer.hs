@@ -1,11 +1,13 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole) where
 
-import Control.Monad.State.Strict (MonadState, evalStateT, get, modify, put)
+import Control.Monad.State.Strict (MonadState, evalStateT, get, modify', put)
 import Data.Char (isAlphaNum, isSpace)
 import Data.Functor (($>))
 import Data.List (dropWhileEnd)
@@ -148,7 +150,7 @@ languageAnnotation = try $ do
       let stripped = strip txt
       in not (Text.null stripped)
           && Text.length stripped <= 30
-          && Text.all (\c -> isAlphaNum c || c `elem` ['-', '+', '.', '_']) stripped
+          && Text.all (\c -> isAlphaNum c || elem @[] c ['-', '+', '.', '_']) stripped
 
     -- Parser to peek at the next token to see if it's a string delimiter (" or '')
     isNextStringDelimiter = do
@@ -172,7 +174,7 @@ convertTrailing = toMaybe . join . map toText
 
 convertLeading :: [ParseTrivium] -> Trivia
 convertLeading =
-  concatMap
+  foldMap
     ( \case
         PTNewlines 1 -> []
         PTNewlines _ -> [EmptyLine]
@@ -211,7 +213,7 @@ takeTrivia :: (MonadState Trivia m) => m Trivia
 takeTrivia = get <* put []
 
 pushTrivia :: (MonadState Trivia m) => Trivia -> m ()
-pushTrivia t = modify (<> t)
+pushTrivia t = modify' (<> t)
 
 lexeme :: Parser a -> Parser (Ann a)
 lexeme p = do
@@ -223,7 +225,7 @@ lexeme p = do
   SourcePos{sourceColumn = col} <- getSourcePos
   let (trailing, nextLeading) = convertTrivia parsedTrivia col
   pushTrivia nextLeading
-  return $
+  pure $!
     Ann
       { preTrivia = lastLeading,
         value = token,

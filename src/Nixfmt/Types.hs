@@ -3,9 +3,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE StrictData #-}
 
 module Nixfmt.Types (
   ParseErrorBundle,
@@ -52,6 +54,7 @@ import Data.Foldable (toList)
 import Data.Function (on)
 import Data.List.NonEmpty as NonEmpty
 import Data.Maybe (maybeToList)
+import Data.Sequence
 import Data.Text (Text)
 import Data.Void (Void)
 import Text.Megaparsec (Pos)
@@ -76,7 +79,7 @@ data Trivium
     LanguageAnnotation Text
   deriving (Eq, Show)
 
-type Trivia = [Trivium]
+type Trivia = Seq Trivium
 
 newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
 
@@ -124,7 +127,7 @@ instance (Eq a) => Eq (Ann a) where
 
 data Item a
   = -- | An item
-    Item a
+    Item !a
   | -- | Trivia interleaved in items
     Comments Trivia
   deriving (Foldable, Show, Functor)
