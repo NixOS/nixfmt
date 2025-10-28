@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -478,10 +479,16 @@ operator t =
                 )
             )
 
+-- | Parse a chain of prefix operators, used for numerical and boolean negation
+chainPrefixOps :: Parser (Expression -> Expression) -> MPExpr.Operator Parser Expression
+chainPrefixOps parser = MPExpr.Prefix do
+  ops <- some parser
+  pure \expr -> foldr ($) expr ops
+
 opCombiner :: Operator -> MPExpr.Operator Parser Expression
 opCombiner Apply = MPExpr.InfixL $ return Application
-opCombiner (Op Prefix TMinus) = MPExpr.Prefix $ Negation <$> operator TMinus
-opCombiner (Op Prefix TNot) = MPExpr.Prefix $ Inversion <$> operator TNot
+opCombiner (Op Prefix TMinus) = chainPrefixOps $ Negation <$> operator TMinus
+opCombiner (Op Prefix TNot) = chainPrefixOps $ Inversion <$> operator TNot
 opCombiner (Op Prefix _) = undefined
 opCombiner (Op Postfix TQuestion) =
   MPExpr.Postfix $
