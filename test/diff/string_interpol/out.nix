@@ -2,9 +2,9 @@
   "${
     /* a */ "${/* b */ "${c}"}" # d
   }"
-  ''${
-    /* a */ ''${/* b */ ''${c}''}'' # d
-  }''
+  "${
+    /* a */ "${/* b */ "${c}"}" # d
+  }"
   {
     ExecStart = "${pkgs.openarena}/bin/oa_ded +set fs_basepath ${pkgs.openarena}/openarena-0.8.8 +set fs_homepath /var/lib/openarena ${
       concatMapStringsSep (x: x) " " cfg.extraFlags

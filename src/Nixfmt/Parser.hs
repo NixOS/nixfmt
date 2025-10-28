@@ -17,7 +17,7 @@ import Data.Char (isAlpha)
 import Data.Foldable (toList)
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
-import Data.Text (Text, pack)
+import Data.Text (Text, elem, isPrefixOf, pack)
 import qualified Data.Text as Text
 import Data.Void (Void)
 import Nixfmt.Lexer (lexeme, takeTrivia, whole)
@@ -75,7 +75,7 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char (char, digitChar)
-import Prelude hiding (String)
+import Prelude hiding (String, elem)
 
 -- HELPER FUNCTIONS
 
@@ -324,6 +324,39 @@ indentedString =
     *> fmap fixIndentedString (sepBy indentedLine (chunk "\n"))
     <* rawSymbol TDoubleSingleQuote
 
+-- | Parser for all string types (simple, URI, or indented)
+string :: Parser Term
+string =
+  (SimpleString <$> lexeme (simpleString <|> uri))
+    <|> (classifyString <$> lexeme indentedString)
+  where
+    -- Converts indented string syntax to appropriate string type.
+    -- If the content can be represented as a simple string (no newlines, quotes or backslashes),
+    -- it's reformatted as SimpleString to maintain a consistent style.
+    classifyString s
+      | shouldBeSimpleString (value s) = SimpleString (s{value = convertIndentedEscapes (value s)})
+      | otherwise = IndentedString s
+
+    shouldBeSimpleString parts =
+      not (containsNewlines parts) && not (any (any hasQuoteOrBackSlash) parts)
+
+    containsNewlines parts = length parts > 1
+
+    hasQuoteOrBackSlash (TextPart t) = '"' `elem` t || '\\' `elem` t
+    hasQuoteOrBackSlash (Interpolation _) = False
+
+    convertIndentedEscapes = map $ map convertPart
+
+    convertPart (TextPart t) = TextPart (convertEscapes t)
+    convertPart (Interpolation x) = Interpolation x
+
+    -- Converts indented string escapes to simple string escapes
+    convertEscapes t
+      | Text.null t = t
+      | "''$" `isPrefixOf` t = "\\$" <> convertEscapes (Text.drop 3 t) -- ''$ -> \$
+      | "'''" `isPrefixOf` t = "''" <> convertEscapes (Text.drop 3 t) -- ''' -> ''
+      | otherwise = Text.take 1 t <> convertEscapes (Text.drop 1 t)
+
 -- TERMS
 
 parens :: Parser Term
@@ -358,8 +391,7 @@ selectorPath' = many $ try $ selector $ Just $ symbol TDot
 -- Everything but selection
 simpleTerm :: Parser Term
 simpleTerm =
-  (SimpleString <$> lexeme (simpleString <|> uri))
-    <|> (IndentedString <$> lexeme indentedString)
+  string
     <|> (Path <$> path)
     <|> (Token <$> (envPath <|> float <|> integer <|> identifier))
     <|> parens

@@ -327,6 +327,10 @@ For list elements, attributes, and function arguments, the following applies:
 ### Strings
 
 - The kind of quotes used in strings (`"` vs `''`) must be preserved from the input.
+  - Exception: Indented strings (`''...''`) that contain no newlines, double quote characters or backslashes are automatically reformatted as simple strings (`"..."`).
+  - When converting indented strings to simple strings, escape sequences are rewritten to maintain semantic equivalence:
+    - `''$` becomes `\$` (escaped dollar sign)
+    - `'''` becomes `''` (quotes)
 - The non-interpolated string parts must be preserved from the input
   - E.g. changing `\t` to a tab character must not be done automatically
 
@@ -343,6 +347,22 @@ For list elements, attributes, and function arguments, the following applies:
 ''
   This is a really long string that would not fit within the line length limit
 ''
+
+# Indented strings with simple content get reformatted as simple strings
+''hello''        # becomes "hello"
+''hello world''  # becomes "hello world"
+
+# Escape sequences are rewritten when converting to simple strings
+''''${pkgs.ghostscript}/bin/ps2pdf''  # becomes "\${pkgs.ghostscript}/bin/ps2pdf"
+'''test''$var''                        # becomes "'test\$var"
+'''can''t'''                          # becomes "'can't"
+
+# But these stay as indented strings
+''
+  hello
+  world
+''
+''hello "quoted" text''
 ```
 
 #### Interpolations
