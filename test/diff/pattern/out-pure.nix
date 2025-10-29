@@ -646,11 +646,11 @@
       b  # a
         ?  # a
           null # c
-      , # d
+          , # d
       e  # a
         ?  # a
           null # f
-      , # g
+          , # g
       ... # h
     }:
     _
