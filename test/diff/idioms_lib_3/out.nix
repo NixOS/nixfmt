@@ -293,12 +293,7 @@ rec {
     }:
     assert builtins.isInt depthLimit;
     let
-      specialAttrs = [
-        "__functor"
-        "__functionArgs"
-        "__toString"
-        "__pretty"
-      ];
+      specialAttrs = [ "__functor" "__functionArgs" "__toString" "__pretty" ];
       stepIntoAttr =
         evalNext: name: if builtins.elem name specialAttrs then id else evalNext;
       transform =
@@ -374,11 +369,7 @@ rec {
         else if isString v then
           let
             lines = filter (v: !isList v) (builtins.split "\n" v);
-            escapeSingleline = libStr.escape [
-              "\\"
-              ''"''
-              "\${"
-            ];
+            escapeSingleline = libStr.escape [ "\\" ''"'' "\${" ];
             escapeMultiline = libStr.replaceStrings [ "\${" "''" ] [ "''\${" "'''" ];
             singlelineResult =
               ''"'' + concatStringsSep "\\n" (map escapeSingleline lines) + ''"'';
