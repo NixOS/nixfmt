@@ -272,10 +272,7 @@ buildStdenv.mkDerivation ({
   # Ignore trivial whitespace changes in patches, this fixes compatibility of
   # ./env_var_for_system_dir.patch with Firefox >=65 without having to track
   # two patches.
-  patchFlags = [
-    "-p1"
-    "-l"
-  ];
+  patchFlags = [ "-p1" "-l" ];
 
   # if not explicitly set, wrong cc from buildStdenv would be used
   HOST_CC = "${llvmPackagesBuildBuild.stdenv.cc}/bin/cc";
@@ -298,10 +295,7 @@ buildStdenv.mkDerivation ({
     which
     wrapGAppsHook
   ]
-  ++ lib.optionals crashreporterSupport [
-    dump_syms
-    patchelf
-  ]
+  ++ lib.optionals crashreporterSupport [ dump_syms patchelf ]
   ++ lib.optionals pgoSupport [ xvfb-run ]
   ++ extraNativeBuildInputs;
 
@@ -482,10 +476,7 @@ buildStdenv.mkDerivation ({
   ++ lib.optional pulseaudioSupport libpulseaudio # only headers are needed
   ++ lib.optional sndioSupport sndio
   ++ lib.optional gssSupport libkrb5
-  ++ lib.optionals waylandSupport [
-    libxkbcommon
-    libdrm
-  ]
+  ++ lib.optionals waylandSupport [ libxkbcommon libdrm ]
   ++ lib.optional jemallocSupport jemalloc
   ++ extraBuildInputs;
 

@@ -110,8 +110,8 @@ instance (Pretty a) => Pretty (Item a) where
   pretty (Item x) = group x
 
 -- For lists, attribute sets and let bindings
-prettyItems :: (Pretty a) => Items a -> Doc
-prettyItems (Items items) = go items
+prettyItemsWith :: (Pretty a) => Doc -> Items a -> Doc
+prettyItemsWith separator (Items items) = go items
   where
     go [] = mempty
     go [item] = pretty item
@@ -120,9 +120,9 @@ prettyItems (Items items) = go items
       pretty (LanguageAnnotation lang)
         <> hardspace
         <> group stringItem
-        <> if null rest then mempty else hardline <> go rest
+        <> if null rest then mempty else separator <> go rest
     go (item : rest) =
-      pretty item <> if null rest then mempty else hardline <> go rest
+      pretty item <> if null rest then mempty else separator <> go rest
 
 instance Pretty Trivia where
   pretty [] = mempty
@@ -197,7 +197,7 @@ prettySet _ (krec, paropen@(LoneAnn _), Items [], parclose@Ann{preTrivia = []}) 
 -- Singleton sets are allowed to fit onto one line,
 -- but apart from that always expand.
 prettySet wide (krec, paropen@Ann{trailComment = post}, binders, parclose) =
-  let !surrounded = surroundWith sep (nest $ pretty post <> prettyItems binders)
+  let !surrounded = surroundWith sep (nest $ pretty post <> prettyItemsWith hardline binders)
   in pretty (fmap (,hardspace) krec)
       <> pretty (paropen{trailComment = Nothing})
       <> surrounded
@@ -242,14 +242,16 @@ prettyTerm (List paropen@Ann{trailComment = Nothing} (Items []) parclose@Ann{pre
     -- If the brackets are on different lines, keep them like that
     sep = if sourceLine paropen /= sourceLine parclose then hardline else hardspace
 -- General list
--- Always expand if len > 1
 prettyTerm (List paropen@Ann{trailComment = post} items parclose) =
   pretty (paropen{trailComment = Nothing})
-    <> surroundWith sur (nest $ pretty post <> prettyItems items)
+    <> surroundWith sur (nest $ pretty post <> prettyItemsWith sur items)
     <> pretty parclose
   where
-    -- If the brackets are on different lines, keep them like that
-    sur = if sourceLine paropen /= sourceLine parclose then hardline else line
+    sur
+      | sourceLine paropen /= sourceLine parclose = hardline -- If the brackets are on different lines, keep them like that
+      | length (unItems items) > 6 = hardline -- More than 6 items: always expand
+      | length (unItems items) > 1 && not (all (isSimple . Term) items) = hardline -- More than 1 item containing non-simple items: expand
+      | otherwise = line -- Otherwise, try to fit onto one line
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose@Ann{preTrivia = closePre}) =
@@ -412,35 +414,18 @@ prettyApp indentFunction pre hasPost f a =
       -- This is very hacky, but selections shouldn't be in a priority group,
       -- because if they get expanded before anything else,
       -- only the `.`-and-after part gets to a new line, which looks very odd
-      absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG $ absorbInner a')
+      absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG $ pretty a')
       -- If two consecutive arguments are lists, treat them specially: Don't priority expand, and also
       -- if one does not fit onto the line then put both on a new line each.
       -- Note that this does not handle the case where the two last arguments are lists, as the last argument
       -- is handled elsewhere and cannot be pattern-matched here.
       absorbApp (Application (Application f' l1@(Term List{})) l2@(Term List{})) =
-        group' Transparent (group' Transparent (absorbApp f') <> nest (group' RegularG $ line <> group (absorbInner l1) <> line <> group (absorbInner l2)))
-      absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority $ absorbInner a')
+        group' Transparent (group' Transparent (absorbApp f') <> nest (group' RegularG $ line <> group (pretty l1) <> line <> group (pretty l2)))
+      absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority $ pretty a')
       -- First argument
       absorbApp expr
         | indentFunction && null comment' = nest $ group' RegularG $ line' <> pretty expr
         | otherwise = pretty expr
-
-      -- Render the inner arguments of a function call
-      absorbInner :: Expression -> Doc
-      -- If lists have only simple items, try to render them single-line instead of expanding
-      -- This is just a copy of the list rendering code, but with `sepBy line` instead of `sepBy hardline`
-      absorbInner (Term (List paropen@Ann{trailComment = post'} items parclose))
-        | length (unItems items) <= 6 && all (isSimple . Term) items =
-            pretty (paropen{trailComment = Nothing})
-              <> surroundWith sur (nest $ pretty post' <> sepBy line (unItems items))
-              <> pretty parclose
-        where
-          -- If the brackets are on different lines, keep them like that
-          sur
-            | sourceLine paropen /= sourceLine parclose = hardline
-            | null $ unItems items = hardspace
-            | otherwise = line
-      absorbInner expr = pretty expr
 
       -- Render the last argument of a function call
       absorbLast :: Expression -> Doc
@@ -512,9 +497,9 @@ prettyApp indentFunction pre hasPost f a =
           group' RegularG $
             (pre <> group' Transparent (absorbApp fWithoutCommandAndWithoutArg))
               <> line
-              <> nest (group (absorbInner l1))
+              <> nest (group (pretty l1))
               <> line
-              <> nest (group (absorbInner l2))
+              <> nest (group (pretty l2))
               <> post
         _ ->
           renderSimple
@@ -696,7 +681,7 @@ instance Pretty Expression where
       convertTrailing (Just (TrailingComment t)) = [LineComment (" " <> t)]
 
       letPart = group $ pretty let_ <> hardline <> letBody
-      letBody = nest $ prettyItems binders
+      letBody = nest $ prettyItemsWith hardline binders
       inPart =
         group $
           pretty in_

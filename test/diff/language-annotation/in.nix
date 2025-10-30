@@ -70,6 +70,18 @@
     "console.log('Script 4');"
   ];
 
+  # Language annotation in list on function argument
+  runScripts = (lib.mkSomething [
+    /* bash */ ''
+      echo "Script A"
+    ''
+  ][
+    /* python */ ''
+      print("Script B")
+    ''
+      /* ruby */ "puts 'Script C'"
+  ]);
+
   aboveString = 
     /* bash */
     "echo 'Above string'";
