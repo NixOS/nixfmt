@@ -33,11 +33,7 @@
   {
     a =
       with b; # comment
-      [
-        1
-        2
-        3
-      ];
+      [ 1 2 3 ];
   }
   {
     a =
@@ -51,16 +47,8 @@
   }
   ([ 1 ])
   (with a; [ 1 ])
-  ([
-    1
-    2
-    3
-  ])
-  (with a; [
-    1
-    2
-    3
-  ])
+  ([ 1 2 3 ])
+  (with a; [ 1 2 3 ])
   (with a; with b; with c; [ 1 ])
   (with a; with b; with c; { a = 1; })
   (
@@ -101,21 +89,13 @@
       ]);
   }
   (with a; { })
-  (with a; [
-    1
-    2
-    3
-  ])
+  (with a; [ 1 2 3 ])
   (with a; if null then true else false)
   (
     with a;
     let
     in
-    [
-      1
-      2
-      3
-    ]
+    [ 1 2 3 ]
   )
   (
     {
@@ -127,11 +107,7 @@
         with stuff;
         let
         in
-        [
-          1
-          2
-          3
-        ],
+        [ 1 2 3 ],
       things ? with a; if null then true else false,
       things ?
         with a;
