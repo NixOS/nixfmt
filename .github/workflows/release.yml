@@ -1,0 +1,102 @@
+name: Release on Version Change
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'nixfmt.cabal'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release-if-version-changed:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # need previous commit for comparison
+
+      - name: Get version from nixfmt.cabal
+        id: get_version
+        run: |
+          CABAL_FILE="nixfmt.cabal"
+
+          # Extract the version
+          VERSION=$(grep -m1 "^version:" $CABAL_FILE | awk '{print $2}')
+          echo "Version found in cabal: $VERSION"
+
+          # Get previous version from last commit
+          PREV_VERSION=$(git show HEAD~1:"$CABAL_FILE" | grep -m1 "^version:" | awk '{print $2}')
+          echo "Previous version: $PREV_VERSION"
+
+          # Export for later steps
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "prev_version=$PREV_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if version changed
+        id: compare
+        env:
+          PREV_VERSION: ${{ steps.get_version.outputs.prev_version }}
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          if [ "$PREV_VERSION" != "$VERSION" ]; then
+            echo "version_changed=true" >> $GITHUB_ENV
+            echo "::notice ::✅ Version changed from $PREV_VERSION to $VERSION"
+          else
+            echo "version_changed=false" >> $GITHUB_ENV
+            echo "::notice ::Version did not change, skipping release"
+          fi
+      - name: Extract changelog section for current version
+        if: ${{ env.version_changed == 'true' }}
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          echo "Extracting changelog section for version $VERSION"
+
+          # Extract everything after the "## <version>" header until the next "## "
+          awk -v ver="$VERSION" '
+            $0 ~ "^##[[:space:]]+" ver {found=1; next}
+            found && /^##[[:space:]]+/ {exit}
+            found
+          ' CHANGELOG.md > RELEASE_NOTES.md
+
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "::error ::⚠️ No changelog section found for version $VERSION"
+            echo "(Make sure you have a header like '## $VERSION -- YYYY-MM-DD')"
+            echo "- No notes will be attached to the release -"
+            echo "No changelog section found for version $VERSION." > RELEASE_NOTES.md
+            exit 1
+          fi
+
+          echo "---- Extracted Changelog ----"
+          cat RELEASE_NOTES.md
+          echo "--------------------------"
+
+      - name: Setup Nix
+        if: ${{ env.version_changed == 'true' }}
+        uses: cachix/install-nix-action@v26
+
+      - name: Setup Cachix cache
+        if: ${{ env.version_changed == 'true' }}
+        uses: cachix/cachix-action@v14
+        with:
+          name: nixos-nixfmt
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Build static binary
+        if: ${{ env.version_changed == 'true' }}
+        run: |
+          nix-build -A packages.nixfmt-static
+
+      - name: Create GitHub Release
+        if: ${{ env.version_changed == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: "${{ steps.get_version.outputs.version }}"
+        run:
+          gh release create v$VERSION ./result/bin/nixfmt --title "v$VERSION" --notes-file RELEASE_NOTES.md 
