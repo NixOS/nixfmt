@@ -22,6 +22,8 @@
         checks = result.checks;
 
         devShells.default = result.shell;
+
+        formatter = result.treefmt;
       }
     );
 }
