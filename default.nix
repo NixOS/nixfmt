@@ -140,4 +140,6 @@ build
   inherit checks;
 
   ci = pkgs.linkFarm "ci" checks;
+
+  treefmt = treefmtEval.config.build.wrapper;
 }
