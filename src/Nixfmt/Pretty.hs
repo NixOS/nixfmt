@@ -110,8 +110,8 @@ instance (Pretty a) => Pretty (Item a) where
   pretty (Item x) = group x
 
 -- For lists, attribute sets and let bindings
-prettyItems :: (Pretty a) => Items a -> Doc
-prettyItems (Items items) = go items
+prettyItemsWith :: (Pretty a) => Doc -> Items a -> Doc
+prettyItemsWith separator (Items items) = go items
   where
     go [] = mempty
     go [item] = pretty item
@@ -120,9 +120,9 @@ prettyItems (Items items) = go items
       pretty (LanguageAnnotation lang)
         <> hardspace
         <> group stringItem
-        <> if null rest then mempty else hardline <> go rest
+        <> if null rest then mempty else separator <> go rest
     go (item : rest) =
-      pretty item <> if null rest then mempty else hardline <> go rest
+      pretty item <> if null rest then mempty else separator <> go rest
 
 instance Pretty Trivia where
   pretty [] = mempty
@@ -197,7 +197,7 @@ prettySet _ (krec, paropen@(LoneAnn _), Items [], parclose@Ann{preTrivia = []}) 
 -- Singleton sets are allowed to fit onto one line,
 -- but apart from that always expand.
 prettySet wide (krec, paropen@Ann{trailComment = post}, binders, parclose) =
-  let !surrounded = surroundWith sep (nest $ pretty post <> prettyItems binders)
+  let !surrounded = surroundWith sep (nest $ pretty post <> prettyItemsWith hardline binders)
   in pretty (fmap (,hardspace) krec)
       <> pretty (paropen{trailComment = Nothing})
       <> surrounded
@@ -245,7 +245,7 @@ prettyTerm (List paropen@Ann{trailComment = Nothing} (Items []) parclose@Ann{pre
 -- Always expand if len > 1
 prettyTerm (List paropen@Ann{trailComment = post} items parclose) =
   pretty (paropen{trailComment = Nothing})
-    <> surroundWith sur (nest $ pretty post <> prettyItems items)
+    <> surroundWith sur (nest $ pretty post <> prettyItemsWith hardline items)
     <> pretty parclose
   where
     -- If the brackets are on different lines, keep them like that
@@ -428,11 +428,11 @@ prettyApp indentFunction pre hasPost f a =
       -- Render the inner arguments of a function call
       absorbInner :: Expression -> Doc
       -- If lists have only simple items, try to render them single-line instead of expanding
-      -- This is just a copy of the list rendering code, but with `sepBy line` instead of `sepBy hardline`
+      -- This is just a copy of the list rendering code, but with `prettyItemsWith line` instead of `prettyItemsWith hardline`
       absorbInner (Term (List paropen@Ann{trailComment = post'} items parclose))
         | length (unItems items) <= 6 && all (isSimple . Term) items =
             pretty (paropen{trailComment = Nothing})
-              <> surroundWith sur (nest $ pretty post' <> sepBy line (unItems items))
+              <> surroundWith sur (nest $ pretty post' <> prettyItemsWith line items)
               <> pretty parclose
         where
           -- If the brackets are on different lines, keep them like that
@@ -696,7 +696,7 @@ instance Pretty Expression where
       convertTrailing (Just (TrailingComment t)) = [LineComment (" " <> t)]
 
       letPart = group $ pretty let_ <> hardline <> letBody
-      letBody = nest $ prettyItems binders
+      letBody = nest $ prettyItemsWith hardline binders
       inPart =
         group $
           pretty in_
