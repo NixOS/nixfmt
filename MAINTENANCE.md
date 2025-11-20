@@ -8,4 +8,4 @@ rather than the version from the cabalfile.
 - Bump the version in the [cabal file](./nixfmt.cabal)
 - Update the [changelog](./CHANGELOG.md) with the new version
 - Create a PR with the above changes and merge it
-- Create a [new GitHub release](https://github.com/NixOS/nixfmt/releases/new) with tag matching the version and set the release notes to this versions changelog
+- After a successful build, a [new GitHub release](https://github.com/NixOS/nixfmt/releases) will automatically be created, along with a tag matching the version, via a GitHub Actions workflow. Keep an eye on the process to ensure everything runs smoothly!
