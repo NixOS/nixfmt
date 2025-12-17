@@ -124,18 +124,17 @@ renderItems separator (Items items) = go items
     go (item : rest) =
       pretty item <> if null rest then mempty else separator <> go rest
 
--- Render a list given the separator between items
-renderList :: Doc -> Ann Token -> Items Term -> Ann Token -> Doc
-renderList itemSep paropen@Ann{trailComment = post} items parclose =
+prettyList :: Ann Token -> Items Term -> Ann Token -> Doc
+prettyList paropen@Ann{trailComment = post} items parclose =
   pretty (paropen{trailComment = Nothing})
-    <> surroundWith sur (nest $ pretty post <> renderItems itemSep items)
+    <> surroundWith sur (nest $ pretty post <> renderItems sur items)
     <> pretty parclose
   where
-    -- If the brackets are on different lines, keep them like that
     sur
-      | sourceLine paropen /= sourceLine parclose = hardline
-      | null $ unItems items = hardspace
-      | otherwise = line
+      | sourceLine paropen /= sourceLine parclose = hardline -- If the brackets are on different lines, keep them like that
+      | length (unItems items) > 6 = hardline -- More than 6 items: always expand
+      | length (unItems items) > 1 && not (all (isSimple . Term) items) = hardline -- More than 1 item containing non-simple items: expand
+      | otherwise = line -- Otherwise, try to fit onto one line
 
 instance Pretty Trivia where
   pretty [] = mempty
@@ -255,9 +254,8 @@ prettyTerm (List paropen@Ann{trailComment = Nothing} (Items []) parclose@Ann{pre
     -- If the brackets are on different lines, keep them like that
     sep = if sourceLine paropen /= sourceLine parclose then hardline else hardspace
 -- General list
--- Always expand if len > 1
 prettyTerm (List paropen items parclose) =
-  renderList hardline paropen items parclose
+  prettyList paropen items parclose
 prettyTerm (Set krec paropen items parclose) = prettySet False (krec, paropen, items, parclose)
 -- Parentheses
 prettyTerm (Parenthesized paropen expr parclose@Ann{preTrivia = closePre}) =
@@ -420,27 +418,18 @@ prettyApp indentFunction pre hasPost f a =
       -- This is very hacky, but selections shouldn't be in a priority group,
       -- because if they get expanded before anything else,
       -- only the `.`-and-after part gets to a new line, which looks very odd
-      absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG $ absorbInner a')
+      absorbApp (Application f' a'@(Term Selection{})) = group' Transparent (absorbApp f') <> line <> nest (group' RegularG $ pretty a')
       -- If two consecutive arguments are lists, treat them specially: Don't priority expand, and also
       -- if one does not fit onto the line then put both on a new line each.
       -- Note that this does not handle the case where the two last arguments are lists, as the last argument
       -- is handled elsewhere and cannot be pattern-matched here.
       absorbApp (Application (Application f' l1@(Term List{})) l2@(Term List{})) =
-        group' Transparent (group' Transparent (absorbApp f') <> nest (group' RegularG $ line <> group (absorbInner l1) <> line <> group (absorbInner l2)))
-      absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority $ absorbInner a')
+        group' Transparent (group' Transparent (absorbApp f') <> nest (group' RegularG $ line <> group (pretty l1) <> line <> group (pretty l2)))
+      absorbApp (Application f' a') = group' Transparent (absorbApp f') <> line <> nest (group' Priority $ pretty a')
       -- First argument
       absorbApp expr
         | indentFunction && null comment' = nest $ group' RegularG $ line' <> pretty expr
         | otherwise = pretty expr
-
-      -- Render the inner arguments of a function call
-      absorbInner :: Expression -> Doc
-      -- If lists have only simple items, try to render them single-line instead of expanding
-      -- Uses renderList with `line` separator instead of `hardline`
-      absorbInner (Term (List paropen items parclose))
-        | length (unItems items) <= 6 && all (isSimple . Term) items =
-            renderList line paropen items parclose
-      absorbInner expr = pretty expr
 
       -- Render the last argument of a function call
       absorbLast :: Expression -> Doc
@@ -512,9 +501,9 @@ prettyApp indentFunction pre hasPost f a =
           group' RegularG $
             (pre <> group' Transparent (absorbApp fWithoutCommandAndWithoutArg))
               <> line
-              <> nest (group (absorbInner l1))
+              <> nest (group (pretty l1))
               <> line
-              <> nest (group (absorbInner l2))
+              <> nest (group (pretty l2))
               <> post
         _ ->
           renderSimple
