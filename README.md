@@ -3,7 +3,8 @@
 # Nixfmt
 
 Nixfmt is the official formatter for Nix language code.
-It is maintained by the [Nix formatting team](https://nixos.org/community/teams/formatting/).
+The standard Nix format incorporates artistic formatting and is defined in [standard.md](./standard.md).
+Nixfmt is maintained by the [Nix formatting team](https://nixos.org/community/teams/formatting/).
 This document is the user documentation, see [CONTRIBUTING.md](./CONTRIBUTING.md) for contributor documentation.
 
 ## Installation
