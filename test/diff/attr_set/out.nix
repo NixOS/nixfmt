@@ -449,6 +449,67 @@
       ++ baz # newline!
       ++ meow;
 
+    # https://github.com/NixOS/nixfmt/issues/362
+    foobar = [
+      # foobar
+    ];
+
+    foobar = [
+      # foobar
+    ];
+
+    foobar = [
+      # foobar
+    ];
+
+    foobar = [
+      # foobar
+    ];
+
+    foobar = [
+      # foobar
+    ];
+
+    foobar2 = [
+      # foobar
+
+    ];
+
+    foobar3 = [
+
+      # foobar
+    ];
+
+    foobar = {
+      # foobar
+    };
+
+    foobar = {
+      # foobar
+    };
+
+    foobar = {
+      # foobar
+    };
+
+    foobar = {
+      # foobar
+    };
+
+    foobar = {
+      # foobar
+    };
+
+    foobar2 = {
+      # foobar
+
+    };
+
+    foobar3 = {
+
+      # foobar
+    };
+
     environment.systemPackages =
       # Include the PAM modules in the system path mostly for the manpages.
       [ package ] ++ lib.optional config.users.ldap.enable pam_ldap;

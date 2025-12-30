@@ -109,6 +109,18 @@
   ]
 
   [
+    # foobar
+  ]
+
+  [
+    # foobar
+  ]
+
+  [
+    # foobar
+  ]
+
+  [
     [
       multi
       line
