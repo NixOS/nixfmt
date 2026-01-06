@@ -82,6 +82,15 @@
 
   ]
 
+  [ /* foobar */ ]
+
+  [ # foobar
+  ]
+
+  [
+    # foobar
+  ]
+
 
   [ [ multi line ] ]
   [ [ [ singleton ] ] ]

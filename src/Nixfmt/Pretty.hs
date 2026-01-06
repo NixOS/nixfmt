@@ -124,6 +124,12 @@ renderItems separator (Items items) = go items
     go (item : rest) =
       pretty item <> if null rest then mempty else separator <> go rest
 
+hasOnlyComments :: Items a -> Bool
+hasOnlyComments (Items xs) = not (null xs) && all isComment xs
+  where
+    isComment (Comments _) = True
+    isComment _ = False
+
 -- Render a list given the separator between items
 renderList :: Doc -> Ann Token -> Items Term -> Ann Token -> Doc
 renderList itemSep paropen@Ann{trailComment = post} items parclose =
@@ -131,10 +137,11 @@ renderList itemSep paropen@Ann{trailComment = post} items parclose =
     <> surroundWith sur (nest $ pretty post <> renderItems itemSep items)
     <> pretty parclose
   where
-    -- If the brackets are on different lines, keep them like that
     sur
-      | sourceLine paropen /= sourceLine parclose = hardline
-      | null $ unItems items = hardspace
+      | sourceLine paropen /= sourceLine parclose = hardline -- If the brackets are on different lines, keep them like that
+      | hasOnlyComments items = hardline -- If the list has only comments, use hardline to ensure idempotency. https://github.com/NixOS/nixfmt/issues/362
+      | hasTrivia paropen && null items = hardline -- even if the comment got associated with the opening bracket, keep the hardline
+      | null items = hardspace -- making sure we're not potentially adding extra newlines for empty lists
       | otherwise = line
 
 instance Pretty Trivia where
@@ -597,6 +604,11 @@ isAbsorbable (Set _ (Ann{sourceLine = line1}) (Items []) (Ann{sourceLine = line2
   | line1 /= line2 = True
 isAbsorbable (List (Ann{sourceLine = line1}) (Items []) (Ann{sourceLine = line2}))
   | line1 /= line2 = True
+-- Lists/sets with only comments are absorbable (https://github.com/NixOS/nixfmt/issues/362)
+isAbsorbable (List paropen items _)
+  | hasTrivia paropen || hasOnlyComments items = True
+isAbsorbable (Set _ paropen items _)
+  | hasTrivia paropen || hasOnlyComments items = True
 isAbsorbable (Parenthesized (LoneAnn _) (Term t) _) = isAbsorbable t
 isAbsorbable _ = False
 
