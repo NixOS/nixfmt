@@ -1,5 +1,19 @@
 # Revision history for nixfmt
 
+## 1.2.0 -- 2026-01-08
+- Reformat indented strings, reformatting to simple strings when appropriate: <https://github.com/NixOS/nixfmt/pull/348>
+- Added musl static build and nixfmt-static package: <https://github.com/NixOS/nixfmt/pull/349>
+- Added auto-release GitHub Actions workflow: <https://github.com/NixOS/nixfmt/pull/354>
+- Fixed empty lists/sets with comments idempotency: <https://github.com/NixOS/nixfmt/pull/363>
+- Fixed language annotations inside lists on function arguments: <https://github.com/NixOS/nixfmt/pull/355>
+- Fixed parser for chained prefix operators: <https://github.com/NixOS/nixfmt/pull/352>
+- Fixed inconsistent comment indentation in parameter lists: <https://github.com/NixOS/nixfmt/pull/346>
+- Fixed language annotations followed by multiple new lines: <https://github.com/NixOS/nixfmt/pull/347>
+- Memory optimization: don't retain thunks when appending to Trivia: <https://github.com/NixOS/nixfmt/pull/350>
+- Added a flake formatter (so nix fmt works): <https://github.com/NixOS/nixfmt/pull/357>
+- Added link to standard.md in README: <https://github.com/NixOS/nixfmt/pull/361>
+- Fixed typo in README for nixfmt installation: <https://github.com/NixOS/nixfmt/pull/345>
+
 ## 1.1.0 -- 2025-10-07
 
 - Added support for "language annotation" comments (e.g. `/* lang */ ""`), used by things like tree-sitter grammars: <https://github.com/NixOS/nixfmt/pull/343>
