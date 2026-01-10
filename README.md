@@ -292,9 +292,9 @@ to return back to the unmerged state.
 
 ## Usage
 
-* `nixfmt < input.nix` – reads Nix code from `stdin`, formats it, and outputs to `stdout`
+* `echo "{a=1;}" | nixfmt --stdin-filepath input.nix` – reads Nix code from `stdin`, formats it, and outputs to `stdout` (the filepath (`input.nix`) is only used for error messages)
 * `nixfmt file.nix` – format the file in place
 
-## Acknowledgements
+## Acknowledgments
 
 `nixfmt` was originally developed by [Serokell](https://github.com/serokell) and later donated to become an official Nix project with the acceptance of [RFC 166](https://github.com/NixOS/rfcs/pull/166).
