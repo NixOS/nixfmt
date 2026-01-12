@@ -2,10 +2,7 @@
 
 [
   (f [ ] [ rhs lhs ])
-  (lib.mkMerge [
-    false
-    false
-  ])
+  (lib.mkMerge [ false false ])
   (replaceStrings
     [ "\${" "''" ]
     #force multiline
@@ -46,30 +43,12 @@
     [ "services" "xserver" "displayManager" "sddm" "enable" ]
     [ "services" "displayManager" "sddm" "enable" ]
   )
-  (map (
-    buildAllowCommand "allow" [
-      "snapshot"
-      "mount"
-      "destroy"
-    ]
-  ))
-  (map
-    (
-      x:
-      "${x} ${
-        escapeShellArgs [
-          stateDir
-          workDir
-          logsDir
-        ]
-      }"
-    )
-    [
-      "+${unconfigureRunner}" # runs as root
-      configureRunner
-      setupWorkDir
-    ]
-  )
+  (map (buildAllowCommand "allow" [ "snapshot" "mount" "destroy" ]))
+  (map (x: "${x} ${escapeShellArgs [ stateDir workDir logsDir ]}") [
+    "+${unconfigureRunner}" # runs as root
+    configureRunner
+    setupWorkDir
+  ])
   (lib.checkListOfEnum "${pname}: theme accent"
     [ "Blue" "Flamingo" "Green" ]
     [ accent ]
@@ -82,17 +61,11 @@
     [ coq.coq-version ssreflect.version ]
     [
       {
-        cases = [
-          (lib.versions.range "8.15" "8.20")
-          lib.pred.true
-        ];
+        cases = [ (lib.versions.range "8.15" "8.20") lib.pred.true ];
         out = "2.0.4";
       }
       {
-        cases = [
-          "8.5"
-          lib.pred.true
-        ];
+        cases = [ "8.5" lib.pred.true ];
         out = "20170512";
       }
     ]

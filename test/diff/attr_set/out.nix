@@ -145,10 +145,7 @@
     ]
     ++ (if foo then [ bar ] else [ baz ])
     ++ [ ]
-    ++ (optionals condition [
-      more
-      items
-    ]);
+    ++ (optionals condition [ more items ]);
     b = with pkgs; [
       a
       lot
@@ -309,31 +306,14 @@
   # Parentheses
   {
     a = ({ });
-    b = ([
-      1
-      2
-      3
-    ]);
+    b = ([ 1 2 3 ]);
     c = (if null then true else false);
     d = (
       let
       in
-      [
-        1
-        2
-        3
-      ]
+      [ 1 2 3 ]
     );
-    e = (
-      if null then
-        true
-      else
-        [
-          1
-          2
-          3
-        ]
-    );
+    e = (if null then true else [ 1 2 3 ]);
     # FIXME: This one exposes a really weird bug in the underlying
     # pretty printing engine.
     # (It's probably the same one that causes weird indentation in
@@ -341,24 +321,13 @@
     # f = /* comment */ (if null then true else [ 1 2 3 ]);
 
     a = (with a; { });
-    b = (
-      with a;
-      [
-        1
-        2
-        3
-      ]
-    );
+    b = (with a; [ 1 2 3 ]);
     c = (with a; if null then true else false);
     d = (
       with a;
       let
       in
-      [
-        1
-        2
-        3
-      ]
+      [ 1 2 3 ]
     );
   }
 
@@ -433,13 +402,7 @@
     some.long.attribute # with a comment
       = [ stuff ] ++ more stuff;
     some.long.attribute1 # with a comment
-      = [
-        stuff
-        a
-        b
-        c
-      ]
-      ++ more stuff;
+      = [ stuff a b c ] ++ more stuff;
 
     foo4 # nasty
       = # comments

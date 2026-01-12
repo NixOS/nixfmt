@@ -148,10 +148,7 @@ in
     boot.initrd.availableKernelModules = mkOption {
       type = types.listOf types.str;
       default = [ ];
-      example = [
-        "sata_nv"
-        "ext3"
-      ];
+      example = [ "sata_nv" "ext3" ];
       description = ''
         The set of kernel modules in the initial ramdisk used during the
         boot process.  This set must include all modules necessary for
@@ -293,17 +290,11 @@ in
       boot.kernelParams = [
         "loglevel=${toString config.boot.consoleLogLevel}"
       ]
-      ++ optionals config.boot.vesa [
-        "vga=0x317"
-        "nomodeset"
-      ];
+      ++ optionals config.boot.vesa [ "vga=0x317" "nomodeset" ];
 
       boot.kernel.sysctl."kernel.printk" = mkDefault config.boot.consoleLogLevel;
 
-      boot.kernelModules = [
-        "loop"
-        "atkbd"
-      ];
+      boot.kernelModules = [ "loop" "atkbd" ];
 
       # The Linux kernel >= 2.6.27 provides firmware.
       hardware.firmware = [ kernel ];
