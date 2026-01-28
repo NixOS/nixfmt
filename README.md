@@ -22,7 +22,7 @@ To install `nixfmt` on NixOS for all users, add it to the [`environment.systemPa
 ```nix
 { pkgs, ... }:
 {
-  environment.systemPackages = [ pkgs.nixfmt-rfc-style ];
+  environment.systemPackages = [ pkgs.nixfmt ];
 }
 ```
 
@@ -31,7 +31,7 @@ To install it on NixOS for a particular user, add it to the [`users.users.<user>
 ```
 { pkgs, ... }:
 {
-  users.users.example-user-name.packages = [ pkgs.nixfmt-rfc-style ];
+  users.users.example-user-name.packages = [ pkgs.nixfmt ];
 }
 ```
 
@@ -42,7 +42,7 @@ To install `nixfmt` in Home Manager, add it to the [`home.packages`](https://nix
 ```nix
 { pkgs, ... }:
 {
-  home.packages = [ pkgs.nixfmt-rfc-style ];
+  home.packages = [ pkgs.nixfmt ];
 }
 ```
 
@@ -53,7 +53,7 @@ To make `nixfmt` available in a shell environment invoked with [`nix-shell`](htt
 ```nix
 { pkgs }:
 pkgs.mkShellNoCC {
-  packages = [ pkgs.nixfmt-rfc-style ];
+  packages = [ pkgs.nixfmt ];
 }
 ```
 
@@ -166,7 +166,7 @@ includes = ["*.nix"]
 {
   pre-commit-check = git-hooks.run {
     hooks = {
-      nixfmt-rfc-style.enable = true;
+      nixfmt.enable = true;
     };
   };
   shell = pkgs.mkShellNoCC {
