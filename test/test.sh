@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# We invoke `nixmft` in a way that makes shellcheck think we're clobbering the
+# file we're formatting as we're reading it. That's not actually happening
+# here.
+# shellcheck disable=SC2094
+
 set -euo pipefail
 
 # Simple test runner for nixfmt.
@@ -35,7 +40,7 @@ verifyCorrect() {
   shift
 
   echo "Checking $file (${*:-no options}) …"
-  if ! out=$(nixfmt --strict --verify "$@" < "$file"); then
+  if ! out=$(nixfmt --strict --verify --stdin-filepath "$file" "$@" < "$file"); then
     echo "[ERROR] failed nixfmt verification"
     exit 1
   fi
@@ -60,7 +65,7 @@ verifyCorrect test/correct-indent-4.nix --indent=4
 
 # Verify "invalid"
 for file in test/invalid/*.nix; do
-  if nixfmt < "$file" > /dev/null 2>&1; then
+  if nixfmt --stdin-filepath "test-$file" < "$file" > /dev/null 2>&1; then
     echo "[ERROR] $file should have failed nixfmt"
     exit 1
   else
@@ -71,7 +76,7 @@ done
 # Verify "diff"
 for file in test/diff/**/in.nix; do
   echo "Checking $file …"
-  out="$(nixfmt --verify < "$file")"
+  out="$(nixfmt --verify --stdin-filepath "$file" < "$file")"
   outfile="$(dirname "$file")/out.nix"
 
   if diff --color=always --unified "$outfile" <(echo "$out"); then
@@ -85,7 +90,7 @@ for file in test/diff/**/in.nix; do
   fi
 
   echo "Checking $file with --strict …"
-  out="$(nixfmt --strict --verify < "$file")"
+  out="$(nixfmt --strict --verify  --stdin-filepath "$file" < "$file")"
   outfile="$(dirname "$file")/out-pure.nix"
 
   if diff --color=always --unified "$outfile" <(echo "$out"); then

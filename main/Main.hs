@@ -15,7 +15,6 @@ import Data.ByteString.Char8 (unpack)
 import Data.Either (lefts)
 import Data.FileEmbed
 import Data.List (intersperse, isSuffixOf)
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text.IO as TextIO (getContents, hPutStr, putStr)
 import Data.Version (showVersion)
@@ -57,7 +56,7 @@ data Nixfmt = Nixfmt
     strict :: Bool,
     verify :: Bool,
     ast :: Bool,
-    filename :: Maybe FilePath,
+    stdin_filepath :: Maybe FilePath,
     ir :: Bool
   }
   deriving (Show, Data, Typeable)
@@ -89,11 +88,11 @@ options =
           False
             &= help
               "Pretty print the internal AST, only for debugging",
-        filename =
+        stdin_filepath =
           Nothing
             &= help
-              "The filename to display when the file input is given through stdin.\n\
-              \Useful for tools like editors and autoformatters that wish to use Nixfmt without providing it direct file access, while still providing context to where the file is.",
+              "Format the contents of stdin. When specified, no positional arguments are allowed.\n\
+              \The filepath is is only used for error messages.",
         ir =
           False
             &= help
@@ -153,8 +152,8 @@ checkTarget format Target{tDoRead, tPath} = do
       | formatted == contents -> Right ()
       | otherwise -> Left $ tPath ++ ": not formatted"
 
-stdioTarget :: Maybe FilePath -> Target
-stdioTarget filename = Target TextIO.getContents (fromMaybe "<stdin>" filename) (const TextIO.putStr)
+stdioTarget :: FilePath -> Target
+stdioTarget filepath = Target TextIO.getContents filepath (const TextIO.putStr)
 
 fileTarget :: FilePath -> Target
 fileTarget path = Target (readFileUtf8 path) path atomicWriteFile
@@ -169,8 +168,8 @@ checkFileTarget :: FilePath -> Target
 checkFileTarget path = Target (readFileUtf8 path) path (const $ const $ pure ())
 
 toTargets :: Nixfmt -> IO [Target]
-toTargets Nixfmt{files = [], filename} = pure [stdioTarget filename]
-toTargets Nixfmt{files = ["-"], filename} = pure [stdioTarget filename]
+toTargets Nixfmt{files = [], stdin_filepath = Just filepath} = pure [stdioTarget filepath]
+toTargets Nixfmt{files = _ : _, stdin_filepath = Just _} = error "Cannot specify both positional files and --stdin-filepath"
 toTargets Nixfmt{check = False, files = paths} = map fileTarget <$> collectAllNixFiles paths
 toTargets Nixfmt{check = True, files = paths} = map checkFileTarget <$> collectAllNixFiles paths
 
