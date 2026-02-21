@@ -275,15 +275,99 @@
   )
 
   # Experimental pipe operators
+
+  # Single pipe: stays on one line if it fits
+  (a |> b)
+  # Single pipe that doesn't fit on one line: expands
   (
-    a // b
-    |> f "very long argument should justify splitting this over multiple lines"
+    a
+    |> b c d "very long argument should justify splitting this over multiple lines"
+  )
+
+  # Chain of 2+ pipes: always expands
+  (
+    a
+    |> b
+    |> c
+  )
+
+  # Short chain that fits on one line but should still expand
+  (
+    x
+    |> f
+    |> g
+    |> h
+  )
+
+  # Long chain from the issue example
+  (
+    1
+    |> (n: n + 1)
+    |> (n: n + 1)
+    |> (n: n + 1)
+    |> (n: n + 1)
+    |> (n: n + 1)
+    |> (n: n + 1)
+    |> (n: n + 1)
+  )
+
+  # Pipes in a binding
+  {
+    pipeExample =
+      1
+      |> (n: n + 1)
+      |> (n: n + 1)
+      |> (n: n + 1);
+  }
+
+  # Pipes with function application
+  (
+    a
+    |> f x
+    |> g y z
+    |> h
+  )
+
+  # Backward pipes
+  (
+    c
+    <| b
+    <| a
+  )
+
+  # Pipes with absorbable terms (sets, lists)
+  (
+    a
+    |> f
     |> g { }
   )
 
   (
-    g { }
-    <| f "very long argument should justify splitting this over multiple lines"
-    <| a // b
+    a
+    |> f
+    |> g [
+      1
+      2
+      3
+    ]
+  )
+
+  # Pipes with comments
+  (
+    a
+    |> b # comment
+    |> c
+  )
+
+  # Pipe in let binding
+  (
+    let
+      x =
+        a
+        |> f
+        |> g
+        |> h;
+    in
+    x
   )
 ]

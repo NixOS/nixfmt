@@ -539,6 +539,12 @@ prettyOp forceFirstTermWide operation op =
       flatten opL (Operation a opR b) | opR == op = flatten opL a ++ flatten (Just opR) b
       flatten opL x = [(opL, x)]
 
+      isPipe (Ann{value = TPipeForward}) = True
+      isPipe (Ann{value = TPipeBackward}) = True
+      isPipe _ = False
+
+      sep = if isPipe op && length (flatten Nothing operation) > 2 then hardline else line
+
       -- Called on every operand except the first one (a.k.a. RHS)
       absorbOperation :: Expression -> Doc
       absorbOperation (Term t) | isAbsorbable t = hardspace <> pretty t
@@ -554,7 +560,7 @@ prettyOp forceFirstTermWide operation op =
       prettyOperation (Nothing, expr) = pretty expr
       -- The others
       prettyOperation (Just op', expr) =
-        line <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
+        sep <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
   in group' RegularG $
       (concatMap prettyOperation . flatten Nothing) operation
 
