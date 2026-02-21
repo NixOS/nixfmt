@@ -164,16 +164,10 @@ let
       # Including it then would cause needless mass rebuilds.
       #
       # TODO(@Ericson2314): Make [ "build" "host" ] always the default / resolve #87909
-      configurePlatforms ?
-        optionals
-          (
-            stdenv.hostPlatform != stdenv.buildPlatform
-            || config.configurePlatformsByDefault
-          )
-          [
-            "build"
-            "host"
-          ],
+      configurePlatforms ? optionals (
+        stdenv.hostPlatform != stdenv.buildPlatform
+        || config.configurePlatformsByDefault
+      ) [ "build" "host" ],
 
       # TODO(@Ericson2314): Make unconditional / resolve #33599
       # Check phase
@@ -648,10 +642,7 @@ let
                 ]
                 ++ computedSandboxProfile
                 ++ computedPropagatedSandboxProfile
-                ++ [
-                  propagatedSandboxProfile
-                  sandboxProfile
-                ];
+                ++ [ propagatedSandboxProfile sandboxProfile ];
                 final = concatStringsSep "\n" (filter (x: x != "") (unique profiles));
               in
               final;
@@ -664,12 +655,7 @@ let
               ++ __propagatedImpureHostDeps
               ++ __impureHostDeps
               ++ stdenv.__extraImpureHostDeps
-              ++ [
-                "/dev/zero"
-                "/dev/random"
-                "/dev/urandom"
-                "/bin/sh"
-              ];
+              ++ [ "/dev/zero" "/dev/random" "/dev/urandom" "/bin/sh" ];
             __propagatedImpureHostDeps =
               computedPropagatedImpureHostDeps ++ __propagatedImpureHostDeps;
           }

@@ -92,8 +92,27 @@
   ]
 
 
-  [ [ multi line ] ]
   [ [ [ singleton ] ] ]
   [ [ [ { } ] ] ]
-  [ [ [ { } multiline ] ] ]
+
+  [ "a" "b" "c" ]
+  [ "a"
+    "b"
+    "c"]
+  [
+    "a"
+
+    "b"
+
+    "c"
+  ]
+
+  [1 2 3 4 5 6]
+  [1 2 3 4 5 6 7]
+
+  [ "a" /*x*/ "b" /*y*/ "c" ./d {e = f;}]
+  [ "a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z" ]
+  ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" "b" "c"]
+
+  [ small /* inline comment */ should-break ]
 ]

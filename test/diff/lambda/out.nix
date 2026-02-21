@@ -124,66 +124,31 @@ in
       more ?
         let
         in
-        [
-          1
-          2
-          3
-        ],
+        [ 1 2 3 ],
       things ? if null then true else false,
       things ?
         if null then true else "loooooooooooooooooooooooooooooooooooooooooooong",
       more ? (
         let
         in
-        [
-          1
-          2
-          3
-        ]
+        [ 1 2 3 ]
       ),
-      foo ? (
-        with bar;
-        [
-          1
-          2
-          3
-        ]
-      ),
+      foo ? (with bar; [ 1 2 3 ]),
       foo ? (
         with bar;
         let
         in
-        [
-          1
-          2
-          3
-        ]
+        [ 1 2 3 ]
       ),
       things ? (if null then true else false),
       things ? (
         if null then true else "loooooooooooooooooooooooooooooooooooooooooooong"
       ),
       things ? (
-        if null then
-          [
-            1
-            2
-            3
-          ]
-        else
-          "loooooooooooooooooooooooooooooooooooooooooooong"
+        if null then [ 1 2 3 ] else "loooooooooooooooooooooooooooooooooooooooooooong"
       ),
       things ? # comment
-        (
-          if null then
-            [
-              1
-              2
-              3
-            ]
-          else
-            "loooooooooooooooooooooooooooooooooooooooooooong"
-        ),
+        (if null then [ 1 2 3 ] else "loooooooooooooooooooooooooooooooooooooooooooong"),
     }:
     { }
   )
