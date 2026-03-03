@@ -47,6 +47,7 @@ For all non-trivial decisions:
 - Ensure they are on our Matrix channels:
   - [#nix-formatting:nixos.org](https://matrix.to/#/#nix-formatting:nixos.org)
   - [Internal discussion channel](https://matrix.to/#/!kEOZRmGPKpDpKcEBim:matrix.org)
+- Give them an invitation to the Google Calendar event (if they want it)
 - Finally, add them to [Nix Formatting Team on `nixos.org`]
 
 ### Team lead
