@@ -200,12 +200,7 @@ in
       description = lib.mdDoc "Log level value between 0 (DEBUG) and 4 (FATAL).";
     };
     logType = mkOption {
-      type = types.enum [
-        "errorlog"
-        "file"
-        "syslog"
-        "systemd"
-      ];
+      type = types.enum [ "errorlog" "file" "syslog" "systemd" ];
       default = "syslog";
       description = lib.mdDoc ''
         Logging backend to use.
@@ -221,18 +216,11 @@ in
     package = mkOption {
       type = types.package;
       description = lib.mdDoc "Which package to use for the Nextcloud instance.";
-      relatedPackages = [
-        "nextcloud24"
-        "nextcloud25"
-        "nextcloud26"
-      ];
+      relatedPackages = [ "nextcloud24" "nextcloud25" "nextcloud26" ];
     };
     phpPackage = mkOption {
       type = types.package;
-      relatedPackages = [
-        "php80"
-        "php81"
-      ];
+      relatedPackages = [ "php80" "php81" ];
       defaultText = "pkgs.php";
       description = lib.mdDoc ''
         PHP package to use for Nextcloud.
@@ -304,13 +292,7 @@ in
     };
 
     poolSettings = mkOption {
-      type =
-        with types;
-        attrsOf (oneOf [
-          str
-          int
-          bool
-        ]);
+      type = with types; attrsOf (oneOf [ str int bool ]);
       default = {
         "pm" = "dynamic";
         "pm.max_children" = "32";
@@ -358,11 +340,7 @@ in
 
     config = {
       dbtype = mkOption {
-        type = types.enum [
-          "sqlite"
-          "pgsql"
-          "mysql"
-        ];
+        type = types.enum [ "sqlite" "pgsql" "mysql" ];
         default = "sqlite";
         description = lib.mdDoc "Database type.";
       };
@@ -436,12 +414,7 @@ in
       };
 
       overwriteProtocol = mkOption {
-        type = types.nullOr (
-          types.enum [
-            "http"
-            "https"
-          ]
-        );
+        type = types.nullOr (types.enum [ "http" "https" ]);
         default = null;
         example = "https";
 
@@ -1088,10 +1061,7 @@ in
         group = "nextcloud";
         isSystemUser = true;
       };
-      users.groups.nextcloud.members = [
-        "nextcloud"
-        config.services.nginx.user
-      ];
+      users.groups.nextcloud.members = [ "nextcloud" config.services.nginx.user ];
 
       environment.systemPackages = [ occ ];
 
