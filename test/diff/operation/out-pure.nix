@@ -275,15 +275,110 @@
   )
 
   # Experimental pipe operators
+
+  # Single pipe: stays on one line if it fits
+  (a |> b)
+  # Single pipe that doesn't fit on one line: expands
   (
-    a // b
-    |> f "very long argument should justify splitting this over multiple lines"
-    |> g { }
+    a
+    |> b c d "very long argument should justify splitting this over multiple lines"
   )
 
+  # Chain of 2 pipes stays on one line if it fits
+  (a |> b |> c)
+
+  # Chain of 3+ pipes always expands
   (
-    g { }
-    <| f "very long argument should justify splitting this over multiple lines"
-    <| a // b
+    x
+    |> f
+    |> g
+    |> h
+  )
+
+  # Long chain
+  (
+    1
+    |> (n: n + 1)
+    |> (n: n + 1)
+    |> (n: n + 1)
+    |> (n: n + 1)
+    |> (n: n + 1)
+    |> (n: n + 1)
+    |> (n: n + 1)
+  )
+
+  # Pipes in a binding
+  {
+    foo = a |> b;
+    bar = a |> b |> c;
+    pipeExample =
+      1
+      |> (n: n + 1)
+      |> (n: n + 1)
+      |> (n: n + 1);
+  }
+
+  # Pipes with function application
+  (
+    a
+    |> f x
+    |> g y z
+    |> h
+  )
+
+  # Backward pipes
+  (c <| b <| a)
+
+  # Pipes with absorbable terms (sets, lists)
+  (a |> f |> g { })
+
+  (
+    a
+    |> f
+    |> g [
+      1
+      2
+      3
+    ]
+  )
+
+  # Pipes with comments
+  (
+    a
+    |> b # comment
+    |> c # inline comment
+    |> d
+  )
+
+  # Pipe in let binding
+  (
+    let
+      y = a |> b;
+      z = a |> b |> c;
+      x =
+        a
+        |> f
+        |> g
+        |> h;
+    in
+    x <| y <| z
+  )
+
+  # Pipes with extra whitespace (should be normalized)
+  (a |> b)
+  (a |> b |> c)
+
+  # Pipes with comments in various positions
+  (
+    a
+    # transform first
+    |> b
+    |> c
+    |> d
+  )
+  (
+    a # the input
+    |> b
+    |> c
   )
 ]
