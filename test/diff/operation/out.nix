@@ -92,69 +92,16 @@
       execFormats.elf
   )
   (
-    [
-      aaaaaaaaaaaaa
-      aaaaaaaaaaaaa
-    ]
-    +
-      [
-        bbbbbbbbbbbbbb
-        bbbbbbbbbbbbbbb
-      ]
-      * [
-        ccccccccccccccc
-        ccccccccccccccccccc
-      ]
+    [ aaaaaaaaaaaaa aaaaaaaaaaaaa ]
+    + [ bbbbbbbbbbbbbb bbbbbbbbbbbbbbb ] * [ ccccccccccccccc ccccccccccccccccccc ]
   )
   (
-    [
-      aaaaaaaaaaaaa
-      aaaaaaaaaaaaa
-    ]
-    * [
-      bbbbbbbbbbbbbb
-      bbbbbbbbbbbbbbb
-    ]
-    + [
-      ccccccccccccccc
-      ccccccccccccccccccc
-    ]
+    [ aaaaaaaaaaaaa aaaaaaaaaaaaa ] * [ bbbbbbbbbbbbbb bbbbbbbbbbbbbbb ]
+    + [ ccccccccccccccc ccccccccccccccccccc ]
   )
 
-  (
-    [
-      1
-      2
-      3
-    ]
-    / [
-      4
-      5
-      6
-    ]
-    / [
-      7
-      8
-      9
-    ]
-  )
-  (
-    [
-      1
-      2
-      3
-    ]
-    ++ [
-      4
-      5
-      6
-    ]
-    ++ [
-      7
-      8
-      9
-    ]
-  )
+  ([ 1 2 3 ] / [ 4 5 6 ] / [ 7 8 9 ])
+  ([ 1 2 3 ] ++ [ 4 5 6 ] ++ [ 7 8 9 ])
 
   (
     [
@@ -168,10 +115,7 @@
     ]
     ++ (if foo then [ bar ] else [ baz ])
     ++ [ ]
-    ++ (optionals condition [
-      more
-      items
-    ])
+    ++ (optionals condition [ more items ])
   )
 
   # Test precedence
@@ -236,25 +180,7 @@
   )
 
   # Indentation with parenthesized multiline function call
-  (
-    [
-      1
-      2
-      3
-    ]
-    ++ (isOneOf item [
-      1
-      2
-      3
-      4
-    ])
-    ++ isOneOf item [
-      1
-      2
-      3
-      4
-    ]
-  )
+  ([ 1 2 3 ] ++ (isOneOf item [ 1 2 3 4 ]) ++ isOneOf item [ 1 2 3 4 ])
   # Interaction with function calls
   (
     g {
