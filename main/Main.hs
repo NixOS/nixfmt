@@ -169,6 +169,9 @@ checkFileTarget :: FilePath -> Target
 checkFileTarget path = Target (readFileUtf8 path) path (const $ const $ pure ())
 
 toTargets :: Nixfmt -> IO [Target]
+toTargets Nixfmt{files = [], filename = Nothing} = do
+  hPutStrLn stderr "\ESC[33mWarning: Bare invocation of nixfmt is deprecated. Use 'nixfmt -' for anonymous stdin.\ESC[0m"
+  pure [stdioTarget Nothing]
 toTargets Nixfmt{files = [], filename} = pure [stdioTarget filename]
 toTargets Nixfmt{files = ["-"], filename} = pure [stdioTarget filename]
 toTargets Nixfmt{check = False, files = paths} = map fileTarget <$> collectAllNixFiles paths
