@@ -383,18 +383,7 @@ instance Pretty Parameter where
         [pretty (ParamAttr name maybeDefault Nothing) <> trailing ","]
       handleTrailingComma (x : xs) = pretty x : handleTrailingComma xs
 
-      sep =
-        -- If the braces are on different lines, keep them like that
-        if sourceLine bopen /= sourceLine bclose
-          then hardline
-          else case attrs of
-            [ParamEllipsis _] -> line
-            -- Attributes must be without default
-            [ParamAttr _ Nothing _] -> line
-            [ParamAttr _ Nothing _, ParamEllipsis _] -> line
-            [ParamAttr _ Nothing _, ParamAttr _ Nothing _] -> line
-            [ParamAttr _ Nothing _, ParamAttr _ Nothing _, ParamEllipsis _] -> line
-            _ -> hardline
+      sep = if canFlattenAttrs bopen attrs bclose then line else hardline
   pretty (ContextParameter param1 at param2) =
     pretty param1 <> pretty at <> pretty param2
 
@@ -590,6 +579,27 @@ prettyWith _ (With with expr0 semicolon expr1) =
     <> pretty expr1
 prettyWith _ _ = error "unreachable"
 
+-- Check if a set of parameter attributes is simple enough to fit on one line:
+-- braces must be on the same source line, and up to 2 attrs without defaults,
+-- with an optional ellipsis.
+canFlattenAttrs :: Ann a -> [ParamAttr] -> Ann b -> Bool
+canFlattenAttrs bopen attrs bclose
+  | sourceLine bopen /= sourceLine bclose = False -- If the braces are on different lines, keep them like that
+  | hasTrivia bclose = False
+  | any paramHasTrivia attrs = False
+  | otherwise = case attrs of
+      [] -> True
+      [ParamEllipsis _] -> True
+      -- Attributes must be without default
+      [ParamAttr _ Nothing _] -> True
+      [ParamAttr _ Nothing _, ParamEllipsis _] -> True
+      [ParamAttr _ Nothing _, ParamAttr _ Nothing _] -> True
+      [ParamAttr _ Nothing _, ParamAttr _ Nothing _, ParamEllipsis _] -> True
+      _ -> False
+  where
+    paramHasTrivia (ParamAttr name _ comma) = hasTrivia name || maybe False hasTrivia comma
+    paramHasTrivia (ParamEllipsis dots) = hasTrivia dots
+
 isAbsorbableExpr :: Expression -> Bool
 isAbsorbableExpr expr = case expr of
   (Term t) | isAbsorbableTerm t -> True
@@ -597,6 +607,8 @@ isAbsorbableExpr expr = case expr of
   -- Absorb function declarations but only those with simple parameter(s)
   (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t -> True
   (Abstraction (IDParameter _) _ body@(Abstraction{})) -> isAbsorbableExpr body
+  -- Absorb function declarations with attribute set parameters if the attribute set is simple enough, and the body is absorbable.
+  (Abstraction (SetParameter bopen attrs bclose) _ body) | canFlattenAttrs bopen attrs bclose -> isAbsorbableExpr body
   _ -> False
 
 isAbsorbable :: Term -> Bool
@@ -768,6 +780,11 @@ instance Pretty Expression where
       absorbAbs depth x =
         (if depth <= 2 then line else hardline) <> pretty x
 
+  -- Flattenable attrset parameter with absorbable body
+  pretty (Abstraction param@(SetParameter bopen attrs bclose) colon body)
+    | isAbsorbableExpr body,
+      canFlattenAttrs bopen attrs bclose =
+        pretty param <> pretty colon <> hardspace <> group' Priority (pretty body)
   -- Attrset parameter
   pretty (Abstraction param colon (Term t))
     | isAbsorbable t =

@@ -78,12 +78,9 @@ in
     a
   )
 
-  (
-    { pkgs, ... }:
-    {
-      # Stuff
-    }
-  )
+  ({ pkgs, ... }: {
+    # Stuff
+  })
 
   (
     { pkgs, ... }:
@@ -211,23 +208,126 @@ in
         biocVersion,
       }:
       [ "mirror://bioc/${biocVersion}/data/experiment/${name}_${version}.tar.gz" ];
-    c =
-      { ... }:
-      {
-        foo = true;
-      };
+    c = { ... }: { foo = true; };
     c = { ... }: [ 1 ];
-    d =
-      { a }:
-      {
-        foo = true;
-      };
+    d = { a }: { foo = true; };
     d = { a }: [ 1 ];
-    e =
-      { a, b }:
-      {
-        foo = true;
-      };
+    e = { a, b }: { foo = true; };
     e = { a, b }: [ 1 ];
   }
+
+  ({ bar }: { baz = "foobar"; })
+  ({ bar }: [
+    1
+    2
+    3
+  ])
+  (
+    {
+      x,
+      y,
+      z,
+    }:
+    {
+      x = y + z;
+    }
+  )
+
+  # multiline attr parameters
+  (
+    {
+      a,
+      b,
+    }:
+    {
+      a = 1;
+      b = 2;
+    }
+  )
+  # multiline attr parameters with line break
+  (
+    {
+      a,
+
+      b,
+    }:
+    {
+      a = 1;
+      b = 2;
+    }
+  )
+  # empty multiline attr
+  (
+    {
+    }:
+    {
+      a = 1;
+      b = 2;
+    }
+  )
+  # empty multiline attr with line break
+  (
+    {
+
+    }:
+    {
+      a = 1;
+      b = 2;
+    }
+  )
+
+  # comment on attr parameter
+  (
+    # comment
+    {
+      a,
+    }:
+    {
+      x = 1;
+    }
+  )
+  # inline comment on attr parameter
+  (
+    # inline
+    { a }: { x = 1; })
+  # comment after attr parameter
+  (
+    {
+      a, # inline
+    }:
+    {
+      x = 1;
+    }
+  )
+  # attr parameter with default value
+  (
+    {
+      a ? 1,
+    }:
+    {
+      x = 1;
+    }
+  )
+  # attr parameter with language annotation default
+  (
+    {
+      script ? /* bash */ "echo foo",
+    }:
+    {
+      x = 1;
+    }
+  )
+  # simple attr with context parameter
+  (
+    a@{ b }:
+    {
+      x = 1;
+    }
+  )
+  (
+    { b }@a:
+    {
+      x = 1;
+    }
+  )
 ]
