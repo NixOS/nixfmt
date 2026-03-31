@@ -203,7 +203,7 @@ instance Eq Parameter where
       && cmp l2 r2
       && l3 == r3
     where
-      -- Compare two lists of paramters, but for the last argument don't compare whether or not there is a trailing comma
+      -- Compare two lists of parameters, but for the last argument don't compare whether or not there is a trailing comma
       cmp [] [] = True
       cmp [ParamAttr x1 x2 _] [ParamAttr y1 y2 _] = x1 == y1 && x2 == y2
       cmp (x : xs) (y : ys) = x == y && cmp xs ys

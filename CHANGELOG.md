@@ -38,7 +38,7 @@ Other than the above, there are some notable UX changes:
   - A [Git mergetool mode](https://github.com/nixos/nixfmt?tab=readme-ov-file#git-mergetool) is now supported.
 - CLI changes:
   - In stdin-mode, `--filename <path>` can now be used to specify a filename for diagnostics.
-  - Number of indendation spaces can now be configured using `--indent <number>`
+  - Number of indentation spaces can now be configured using `--indent <number>`
 
 ## 0.6.0 -- 2023-10-31
 
