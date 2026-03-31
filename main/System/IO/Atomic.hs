@@ -43,7 +43,7 @@ withOutputFile path act = transact begin commit rollback $ \(tpath, th) -> do
     begin :: IO (FilePath, Handle)
     begin = openTempFileWithDefaultPermissions tmpDir tmpTemplate
 
-    -- TODO: Support for non-unix platofrms.
+    -- TODO: Support for non-unix platforms.
     -- TODO: Preserve ctime?
     -- TODO: Preserve extended attributes (ACLs, ...)?
     copyAttributes :: (FilePath, Handle) -> IO ()

@@ -400,7 +400,7 @@ textWidth = Text.length
 
 -- | Attempt to fit a list of documents in a single line of a specific width.
 -- ni — next indentation. Only used for trailing comment calculations. Set this to the indentation
---      of the next line relative to the current one. So usuall 2 when the indentation level increases, 0 otherwise.
+--      of the next line relative to the current one. So usually 2 when the indentation level increases, 0 otherwise.
 -- c — allowed width
 fits :: Int -> Int -> Doc -> Maybe Text
 fits _ c _ | c < 0 = Nothing

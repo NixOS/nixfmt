@@ -1,6 +1,6 @@
 [
   (done // listToAttrs [ {
-    # multline
+    # multiline
     name = entry;
     value = 1;
   }])
