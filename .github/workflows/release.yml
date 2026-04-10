@@ -7,19 +7,29 @@ on:
     paths:
       - 'nixfmt.cabal'
 
+
 defaults:
   run:
     shell: bash
 
 jobs:
-  release-if-version-changed:
+  check-if-version-changed:
+    name: Check if version changed
+    permissions:
+      contents: read
+
     runs-on: ubuntu-latest
+    outputs:
+      prev_version: ${{ steps.get_version.outputs.prev_version }}
+      version: ${{ steps.get_version.outputs.version }}
+      version_changed: ${{ steps.get_version.outputs.version_changed }}
 
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2  # need previous commit for comparison
+          persist-credentials: false
 
       - name: Get version from nixfmt.cabal
         id: get_version
@@ -29,36 +39,84 @@ jobs:
           # Extract the version
           VERSION=$(grep -m1 "^version:" $CABAL_FILE | awk '{print $2}')
           echo "Version found in cabal: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
           # Get previous version from last commit
           PREV_VERSION=$(git show HEAD~1:"$CABAL_FILE" | grep -m1 "^version:" | awk '{print $2}')
           echo "Previous version: $PREV_VERSION"
 
-          # Export for later steps
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "prev_version=$PREV_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check if version changed
-        id: compare
-        env:
-          PREV_VERSION: ${{ steps.get_version.outputs.prev_version }}
-          VERSION: ${{ steps.get_version.outputs.version }}
-        run: |
           if [ "$PREV_VERSION" != "$VERSION" ]; then
-            echo "version_changed=true" >> $GITHUB_ENV
+            echo "version_changed=true" >> $GITHUB_OUTPUT
             echo "::notice ::✅ Version changed from $PREV_VERSION to $VERSION"
           else
-            echo "version_changed=false" >> $GITHUB_ENV
-            echo "::notice ::Version did not change, skipping release"
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+            echo "::notice ::Version did not change"
           fi
-      - name: Extract changelog section for current version
-        if: ${{ env.version_changed == 'true' }}
-        env:
-          VERSION: ${{ steps.get_version.outputs.version }}
-        run: |
-          echo "Extracting changelog section for version $VERSION"
 
-          # Extract everything after the "## <version>" header until the next "## "
+
+  release-if-version-changed:
+    needs: check-if-version-changed
+    if: needs.check-if-version-changed.outputs.version_changed == 'true'
+    name: Building ${{ needs.check-if-version-changed.outputs.version }} for ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+        - ubuntu-22.04
+        - ubuntu-22.04-arm
+        - macos-15
+        - macos-15-intel
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Haskell
+        uses: haskell-actions/setup@v2.10.4
+        with:
+          ghc-version: "9.10.3"
+
+      - name: Configure and build
+        run: |
+          cabal update
+          cabal configure \
+            --enable-executable-stripping \
+            --enable-optimization=2
+          cabal build exe:nixfmt
+
+          name="nixfmt_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)"
+
+          bin=$(cabal list-bin nixfmt)
+          cp "$bin" "${name}"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: nixfmt_${{ matrix.os }}
+          path: "nixfmt_*"
+
+  Create-GitHub-Release:
+    needs:
+      - release-if-version-changed
+      - check-if-version-changed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.check-if-version-changed.outputs.version }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Extract changelog section for current version
+        run: |
           awk -v ver="$VERSION" '
             $0 ~ "^##[[:space:]]+" ver {found=1; next}
             found && /^##[[:space:]]+/ {exit}
@@ -66,37 +124,22 @@ jobs:
           ' CHANGELOG.md > RELEASE_NOTES.md
 
           if [ ! -s RELEASE_NOTES.md ]; then
-            echo "::error ::⚠️ No changelog section found for version $VERSION"
+            echo "::error ::No changelog section found for version $VERSION"
             echo "(Make sure you have a header like '## $VERSION -- YYYY-MM-DD')"
-            echo "- No notes will be attached to the release -"
-            echo "No changelog section found for version $VERSION." > RELEASE_NOTES.md
             exit 1
           fi
 
-          echo "---- Extracted Changelog ----"
-          cat RELEASE_NOTES.md
-          echo "--------------------------"
-
-      - name: Setup Nix
-        if: ${{ env.version_changed == 'true' }}
-        uses: cachix/install-nix-action@v26
-
-      - name: Setup Cachix cache
-        if: ${{ env.version_changed == 'true' }}
-        uses: cachix/cachix-action@v14
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
         with:
-          name: nixos-nixfmt
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-
-      - name: Build static binary
-        if: ${{ env.version_changed == 'true' }}
-        run: |
-          nix-build -A packages.nixfmt-static
+          path: artifacts
+          merge-multiple: true
 
       - name: Create GitHub Release
-        if: ${{ env.version_changed == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: "${{ steps.get_version.outputs.version }}"
-        run:
-          gh release create v$VERSION ./result/bin/nixfmt --title "v$VERSION" --notes-file RELEASE_NOTES.md 
+        run: |
+          chmod +x artifacts/nixfmt_*
+          gh release create "v$VERSION" artifacts/nixfmt_* \
+            --title "v$VERSION" \
+            --notes-file RELEASE_NOTES.md
