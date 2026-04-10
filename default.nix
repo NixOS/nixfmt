@@ -53,7 +53,11 @@ let
   ];
 
   build = lib.pipe pkgs.haskellPackages.nixfmt haskellBuildPipeline;
-  buildStatic = lib.pipe pkgs.pkgsStatic.haskellPackages.nixfmt haskellBuildPipeline;
+  buildStatic =
+    if pkgs.stdenv.hostPlatform.isLinux then
+      lib.pipe pkgs.pkgsStatic.haskellPackages.nixfmt haskellBuildPipeline
+    else
+      null;
 
   treefmtEval = (import sources.treefmt-nix).evalModule pkgs {
     # Used to find the project root
@@ -109,6 +113,8 @@ build
 // {
   packages = {
     nixfmt = build;
+  }
+  // lib.optionalAttrs (buildStatic != null) {
     nixfmt-static = buildStatic;
   };
 
