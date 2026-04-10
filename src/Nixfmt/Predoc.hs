@@ -161,9 +161,11 @@ trailing t = [Text 0 0 Trailing t]
 group :: (HasCallStack) => (Pretty a) => a -> Doc
 group x =
   pure . Group RegularG $
-    if p /= [] && (isSoftSpacing (head p) || isSoftSpacing (last p))
-      then error $ "group should not start or end with whitespace, use `group'` if you are sure; " <> show p
-      else p
+    case p of
+      (first' : _)
+        | isSoftSpacing first' || isSoftSpacing (last p) ->
+            error $ "group should not start or end with whitespace, use `group'` if you are sure; " <> show p
+      _ -> p
   where
     p = pretty x
 
@@ -617,14 +619,14 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
     -- In general groups are never empty as empty groups are removed in `fixup`, however this also
     -- gets called for pre and post of priority groups, which may be empty.
     goGroup [] _ = pure []
-    goGroup grp rest = StateT $ \(cc, ci) ->
+    goGroup grp@(first' : rest') rest = StateT $ \(cc, ci) ->
       if cc == 0
         then
           let -- We know that the last printed character was a line break (cc == 0),
               -- therefore drop any leading whitespace within the group to avoid duplicate newlines
-              grp' = case head grp of
-                Spacing _ -> tail grp
-                Group ann ((Spacing _) : inner) -> Group ann inner : tail grp
+              grp' = case first' of
+                Spacing _ -> rest'
+                Group ann ((Spacing _) : inner) -> Group ann inner : rest'
                 _ -> grp
               (nl, off) = nextIndent grp'
 
