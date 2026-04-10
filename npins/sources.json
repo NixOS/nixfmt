@@ -3,8 +3,8 @@
     "nixpkgs": {
       "type": "Channel",
       "name": "nixpkgs-unstable",
-      "url": "https://releases.nixos.org/nixpkgs/nixpkgs-24.05pre596549.db001797591b/nixexprs.tar.xz",
-      "hash": "0260ylnd8kawcd3i9xkm8j295hf3bs377vjff8pm3v914jzld9v9"
+      "url": "https://releases.nixos.org/nixpkgs/nixpkgs-26.05pre996447.0a0bf409f359/nixexprs.tar.xz",
+      "hash": "10kaqzfx9v2yx9a5y1kab2dk04m3lqikcbq6rja8ll6a0iyrs6fj"
     },
     "serokell-nix": {
       "type": "Git",
@@ -14,6 +14,7 @@
         "repo": "serokell.nix"
       },
       "branch": "master",
+      "submodules": false,
       "revision": "b6bbeda170469574789f9128c9aadc3a9e91e512",
       "url": "https://github.com/serokell/serokell.nix/archive/b6bbeda170469574789f9128c9aadc3a9e91e512.tar.gz",
       "hash": "1p6gsw00sbnpm01r6dg0m975xnr31xax1ciznl5rdpxarsrkibnn"
@@ -26,10 +27,11 @@
         "repo": "treefmt-nix"
       },
       "branch": "main",
+      "submodules": false,
       "revision": "49dc4a92b02b8e68798abd99184f228243b6e3ac",
       "url": "https://github.com/numtide/treefmt-nix/archive/49dc4a92b02b8e68798abd99184f228243b6e3ac.tar.gz",
       "hash": "0qlhb0xvcc3al19irclxk7vnppd9m6b5vi3nbjb9dylphs306x1p"
     }
   },
-  "version": 3
+  "version": 5
 }
