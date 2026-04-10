@@ -104,6 +104,7 @@ jobs:
           name="nixfmt_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)"
 
           bin=$(cabal list-bin nixfmt)
+          strip "$bin"
           cp "$bin" "${name}"
 
       - name: Upload artifacts
