@@ -160,6 +160,8 @@ jobs:
           if [[ "$IS_PRERELEASE" == "true" ]]; then
             TAG="v${VERSION}-test"
             PRERELEASE_FLAG="--prerelease"
+            # Delete existing pre-release if it exists
+            gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
           else
             TAG="v${VERSION}"
             PRERELEASE_FLAG=""
