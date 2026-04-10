@@ -326,16 +326,16 @@ fixup (a@(Spacing _) : Group ann xs : ys) =
       (pre, rest) = span (\x -> isHardSpacing x || isComment x) $ fixup xs
       (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
   in if null body
-      then -- Dissolve empty group
-        fixup $ (a : pre) ++ post ++ ys
-      else fixup (a : pre) ++ [Group ann body] ++ fixup (post ++ ys)
+       then -- Dissolve empty group
+         fixup $ (a : pre) ++ post ++ ys
+       else fixup (a : pre) ++ [Group ann body] ++ fixup (post ++ ys)
 -- Handle group, almost the same thing as above
 fixup (Group ann xs : ys) =
   let (pre, rest) = span (\x -> isHardSpacing x || isComment x) $ fixup xs
       (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
   in if null body
-      then fixup $ pre ++ post ++ ys
-      else fixup pre ++ [Group ann body] ++ fixup (post ++ ys)
+       then fixup $ pre ++ post ++ ys
+       else fixup pre ++ [Group ann body] ++ fixup (post ++ ys)
 fixup (x : xs) = x : fixup xs
 
 mergeSpacings :: Spacing -> Spacing -> Spacing
@@ -538,60 +538,60 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
             putNL :: Int -> State St [Text]
             putNL n = put (0, indents) $> [newlines n]
         in case x of
-            -- Special case trailing comments. Because in cases like
-            -- [ # comment
-            --   1
-            -- ]
-            -- the comment will be parsed as associated to the inner element next time, rendering it as
-            -- [
-            --   # comment
-            --   1
-            -- ]
-            -- This breaks idempotency. To work around this, we simply shift the comment by one:
-            -- [  # comment
-            --   1
-            -- ]
-            Text _ _ TrailingComment t | cc == 2 && fst (nextIndent xs) > lineNL -> putText' [" ", t]
-              where
-                lineNL = snd $ NonEmpty.head indents
-            Text nl off _ t -> putText nl off t
-            -- This code treats whitespace as "expanded"
-            -- A new line resets the column counter and sets the target indentation as current indentation
-            Spacing sp
-              -- We know that the last printed character was a line break (cc == 0),
-              -- therefore drop any leading whitespace within the group to avoid duplicate newlines
-              | needsIndent -> pure []
-              | otherwise -> case sp of
-                  Break -> putNL 1
-                  Space -> putNL 1
-                  Hardspace -> putText' [" "]
-                  Hardline -> putNL 1
-                  Emptyline -> putNL 2
-                  (Newlines n) -> putNL n
-                  Softbreak
-                    | firstLineFits (tw - cc) tw xs ->
-                        pure []
-                    | otherwise -> putNL 1
-                  Softspace
-                    | firstLineFits (tw - cc - 1) tw xs ->
-                        putText' [" "]
-                    | otherwise -> putNL 1
-            Group ann ys ->
-              let -- fromMaybe lifted to (StateT s Maybe)
-                  fromMaybeState :: State s a -> StateT s Maybe a -> State s a
-                  fromMaybeState l r = state $ \s -> fromMaybe (runState l s) (runStateT r s)
-              in -- Try to fit the entire group first
-                 goGroup ys xs
-                  -- If that fails, check whether the group contains any priority groups within its children and try to expand them first
-                  -- Ignore transparent groups as their priority children have already been handled up in the parent (and failed)
-                  <|> ( if ann /= Transparent
-                          then -- Each priority group will be handled individually, and the priority groups are tried in reverse order
-                            asum $ map (`goPriorityGroup` xs) $ reverse $ priorityGroups ys
-                          else empty
-                      )
-                  -- Otherwise, dissolve the group by mapping its members to the target indentation
-                  -- This also implies that whitespace in there will now be rendered "expanded".
-                  & fromMaybeState (go ys xs)
+             -- Special case trailing comments. Because in cases like
+             -- [ # comment
+             --   1
+             -- ]
+             -- the comment will be parsed as associated to the inner element next time, rendering it as
+             -- [
+             --   # comment
+             --   1
+             -- ]
+             -- This breaks idempotency. To work around this, we simply shift the comment by one:
+             -- [  # comment
+             --   1
+             -- ]
+             Text _ _ TrailingComment t | cc == 2 && fst (nextIndent xs) > lineNL -> putText' [" ", t]
+               where
+                 lineNL = snd $ NonEmpty.head indents
+             Text nl off _ t -> putText nl off t
+             -- This code treats whitespace as "expanded"
+             -- A new line resets the column counter and sets the target indentation as current indentation
+             Spacing sp
+               -- We know that the last printed character was a line break (cc == 0),
+               -- therefore drop any leading whitespace within the group to avoid duplicate newlines
+               | needsIndent -> pure []
+               | otherwise -> case sp of
+                   Break -> putNL 1
+                   Space -> putNL 1
+                   Hardspace -> putText' [" "]
+                   Hardline -> putNL 1
+                   Emptyline -> putNL 2
+                   (Newlines n) -> putNL n
+                   Softbreak
+                     | firstLineFits (tw - cc) tw xs ->
+                         pure []
+                     | otherwise -> putNL 1
+                   Softspace
+                     | firstLineFits (tw - cc - 1) tw xs ->
+                         putText' [" "]
+                     | otherwise -> putNL 1
+             Group ann ys ->
+               let -- fromMaybe lifted to (StateT s Maybe)
+                   fromMaybeState :: State s a -> StateT s Maybe a -> State s a
+                   fromMaybeState l r = state $ \s -> fromMaybe (runState l s) (runStateT r s)
+               in -- Try to fit the entire group first
+                  goGroup ys xs
+                    -- If that fails, check whether the group contains any priority groups within its children and try to expand them first
+                    -- Ignore transparent groups as their priority children have already been handled up in the parent (and failed)
+                    <|> ( if ann /= Transparent
+                            then -- Each priority group will be handled individually, and the priority groups are tried in reverse order
+                              asum $ map (`goPriorityGroup` xs) $ reverse $ priorityGroups ys
+                            else empty
+                        )
+                    -- Otherwise, dissolve the group by mapping its members to the target indentation
+                    -- This also implies that whitespace in there will now be rendered "expanded".
+                    & fromMaybeState (go ys xs)
 
     goPriorityGroup :: (Doc, Doc, Doc) -> Doc -> StateT St Maybe [Text]
     goPriorityGroup (pre, prio, post) rest = do
@@ -633,10 +633,10 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
                   lastLineNL = snd $ NonEmpty.head ci
                   lineNL = lastLineNL + (if nl > lastLineNL then iw else 0)
           in fits indentWillIncrease (tw - firstLineWidth rest) grp'
-              <&> \t -> runState (putText nl off t) (cc, ci)
+               <&> \t -> runState (putText nl off t) (cc, ci)
         else
           let indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
                 where
                   lineNL = snd $ NonEmpty.head ci
           in fits (indentWillIncrease - cc) (tw - cc - firstLineWidth rest) grp
-              <&> \t -> ([t], (cc + textWidth t, ci))
+               <&> \t -> ([t], (cc + textWidth t, ci))

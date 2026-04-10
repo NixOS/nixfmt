@@ -282,8 +282,8 @@ splitLines [] = [[]]
 splitLines (TextPart t : xs) =
   let ts = map (pure . TextPart) $ Text.split (== '\n') t
   in case splitLines xs of
-      (xs' : xss) -> init ts ++ ((last ts ++ xs') : xss)
-      _ -> error "unreachable"
+       (xs' : xss) -> init ts ++ ((last ts ++ xs') : xss)
+       _ -> error "unreachable"
 splitLines (x : xs) =
   case splitLines xs of
     (xs' : xss) -> (x : xs') : xss
