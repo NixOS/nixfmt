@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - 'nixfmt.cabal'
+  workflow_dispatch:
 
 
 defaults:
@@ -23,6 +24,7 @@ jobs:
       prev_version: ${{ steps.get_version.outputs.prev_version }}
       version: ${{ steps.get_version.outputs.version }}
       version_changed: ${{ steps.get_version.outputs.version_changed }}
+      is_prerelease: ${{ steps.get_version.outputs.is_prerelease }}
 
     steps:
       - name: Checkout main
@@ -41,6 +43,14 @@ jobs:
           echo "Version found in cabal: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Manual dispatch — skipping version comparison"
+            echo "prev_version=0" >> $GITHUB_OUTPUT
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           # Get previous version from last commit
           PREV_VERSION=$(git show HEAD~1:"$CABAL_FILE" | grep -m1 "^version:" | awk '{print $2}')
           echo "Previous version: $PREV_VERSION"
@@ -49,9 +59,11 @@ jobs:
 
           if [ "$PREV_VERSION" != "$VERSION" ]; then
             echo "version_changed=true" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "::notice ::✅ Version changed from $PREV_VERSION to $VERSION"
           else
             echo "version_changed=false" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "::notice ::Version did not change"
           fi
 
@@ -109,6 +121,7 @@ jobs:
       contents: write
     env:
       VERSION: ${{ needs.check-if-version-changed.outputs.version }}
+      IS_PRERELEASE: ${{ needs.check-if-version-changed.outputs.is_prerelease }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v6
@@ -124,9 +137,13 @@ jobs:
           ' CHANGELOG.md > RELEASE_NOTES.md
 
           if [ ! -s RELEASE_NOTES.md ]; then
-            echo "::error ::No changelog section found for version $VERSION"
-            echo "(Make sure you have a header like '## $VERSION -- YYYY-MM-DD')"
-            exit 1
+            if [[ "$IS_PRERELEASE" == "true" ]]; then
+              echo "Pre-release test build from \`$(git rev-parse --short HEAD)\`." > RELEASE_NOTES.md
+            else
+              echo "::error ::No changelog section found for version $VERSION"
+              echo "(Make sure you have a header like '## $VERSION -- YYYY-MM-DD')"
+              exit 1
+            fi
           fi
 
       - name: Download build artifacts
@@ -139,7 +156,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            TAG="v${VERSION}-test"
+            PRERELEASE_FLAG="--prerelease"
+          else
+            TAG="v${VERSION}"
+            PRERELEASE_FLAG=""
+          fi
+
           chmod +x artifacts/nixfmt_*
-          gh release create "v$VERSION" artifacts/nixfmt_* \
-            --title "v$VERSION" \
-            --notes-file RELEASE_NOTES.md
+          gh release create "$TAG" artifacts/nixfmt_* \
+            --title "$TAG" \
+            --notes-file RELEASE_NOTES.md \
+            $PRERELEASE_FLAG
