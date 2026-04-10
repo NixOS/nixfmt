@@ -2,9 +2,9 @@
   "pins": {
     "nixpkgs": {
       "type": "Channel",
-      "name": "nixpkgs-unstable",
-      "url": "https://releases.nixos.org/nixpkgs/nixpkgs-24.05pre596549.db001797591b/nixexprs.tar.xz",
-      "hash": "0260ylnd8kawcd3i9xkm8j295hf3bs377vjff8pm3v914jzld9v9"
+      "name": "nixos-25.11",
+      "url": "https://releases.nixos.org/nixos/25.11/nixos-25.11.8919.d96b37bbeb98/nixexprs.tar.xz",
+      "hash": "0ixgv3ma5nswayzdv83zlcbsyki091smr0gl37gf8gwngimbbvr5"
     },
     "serokell-nix": {
       "type": "Git",
