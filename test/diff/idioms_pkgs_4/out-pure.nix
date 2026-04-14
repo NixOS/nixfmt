@@ -149,49 +149,46 @@ in
 
 [
 
-  (
-    { }:
-    rec {
-      __raw = true;
+  ({ }: rec {
+    __raw = true;
 
-      stdenv = makeStdenv {
-        cc = null;
-        fetchurl = null;
-      };
-      stdenvNoCC = stdenv;
+    stdenv = makeStdenv {
+      cc = null;
+      fetchurl = null;
+    };
+    stdenvNoCC = stdenv;
 
-      cc =
-        let
-          nativePrefix =
-            {
-              # switch
-              i686-solaris = "/usr/gnu";
-              x86_64-solaris = "/opt/local/gcc47";
-            }
-            .${system} or "/usr";
-        in
-        import ../../build-support/cc-wrapper {
-          name = "cc-native";
+    cc =
+      let
+        nativePrefix =
+          {
+            # switch
+            i686-solaris = "/usr/gnu";
+            x86_64-solaris = "/opt/local/gcc47";
+          }
+          .${system} or "/usr";
+      in
+      import ../../build-support/cc-wrapper {
+        name = "cc-native";
+        nativeTools = true;
+        nativeLibc = true;
+        inherit lib nativePrefix;
+        bintools = import ../../build-support/bintools-wrapper {
+          name = "bintools";
+          inherit lib stdenvNoCC nativePrefix;
           nativeTools = true;
           nativeLibc = true;
-          inherit lib nativePrefix;
-          bintools = import ../../build-support/bintools-wrapper {
-            name = "bintools";
-            inherit lib stdenvNoCC nativePrefix;
-            nativeTools = true;
-            nativeLibc = true;
-          };
-          inherit stdenvNoCC;
         };
-
-      fetchurl = import ../../build-support/fetchurl {
-        inherit lib stdenvNoCC;
-        # Curl should be in /usr/bin or so.
-        curl = null;
+        inherit stdenvNoCC;
       };
 
-    }
-  )
+    fetchurl = import ../../build-support/fetchurl {
+      inherit lib stdenvNoCC;
+      # Curl should be in /usr/bin or so.
+      curl = null;
+    };
+
+  })
 
   # First build a stdenv based only on tools outside the store.
   (prevStage: {
