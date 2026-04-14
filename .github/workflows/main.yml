@@ -13,30 +13,32 @@ permissions:
   pull-requests: write
   contents: read
 
+env:
+  CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        if: github.event_name != 'pull_request_target'
-
-      - uses: actions/checkout@v4
-        if: github.event_name == 'pull_request_target'
+      - uses: actions/checkout@v6
         with:
-          # To prevent running untrusted code from forks,
-          # pull_request_target will cause the base branch to be checked out, not the PR branch.
-          # In our case we check out the PR branch regardless,
-          # because we're sandboxing all untrusted code with a `nix-build`.
-          # (and the sandbox is enabled by default at least on Linux)
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request_target' && format('refs/pull/{0}/merge', github.event.pull_request.number) || '' }}
 
-      - uses: cachix/install-nix-action@v26
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: cachix/cachix-action@v14
+      - name: Setup Cachix cache
+        if: env.CACHIX_AUTH_TOKEN != ''
+        uses: cachix/cachix-action@v17
         with:
           name: nixos-nixfmt
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+      - name: Setup Magic Cache
+        if: env.CACHIX_AUTH_TOKEN == ''
+        uses: DeterminateSystems/magic-nix-cache-action@main
       - name: checks
         run: nix-build -A ci
 
@@ -49,7 +51,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Find Comment
-        uses: peter-evans/find-comment@v3
+        uses: peter-evans/find-comment@v4
         id: fc
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -57,7 +59,7 @@ jobs:
           body-includes: Nixpkgs diff
 
       - name: Create or update comment
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         id: couc
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -73,14 +75,16 @@ jobs:
       # This is exactly what we want in this case,
       # because the sync-pr.sh script cannot be run sandboxed since it needs to have side effects.
       # Instead, the script itself fetches the PR, but then runs its code within sandboxed derivations.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: cachix/install-nix-action@v26
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: cachix/cachix-action@v14
+      - uses: cachix/cachix-action@v17
         with:
           name: nixos-nixfmt
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - run: |
           ./scripts/sync-pr.sh \
@@ -89,7 +93,7 @@ jobs:
             https://${{ secrets.MACHINE_USER_PAT }}@github.com/${{ vars.MACHINE_USER }}/nixpkgs
 
       - name: Create or update comment
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           comment-id: ${{ steps.couc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}

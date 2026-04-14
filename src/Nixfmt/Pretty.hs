@@ -219,9 +219,9 @@ prettySet _ (krec, paropen@(LoneAnn _), Items [], parclose@Ann{preTrivia = []}) 
 prettySet wide (krec, paropen@Ann{trailComment = post}, binders, parclose) =
   let !surrounded = surroundWith sep (nest $ pretty post <> renderItems hardline binders)
   in pretty (fmap (,hardspace) krec)
-      <> pretty (paropen{trailComment = Nothing})
-      <> surrounded
-      <> pretty parclose
+       <> pretty (paropen{trailComment = Nothing})
+       <> surrounded
+       <> pretty parclose
   where
     sep =
       if wide && not (null (unItems binders))
@@ -506,29 +506,29 @@ prettyApp indentFunction pre hasPost f a =
         let renderedF = pre <> group' Transparent toRender
             renderedFUnexpanded = unexpandSpacing' Nothing renderedF
         in if isSimple (Application f a) && isJust renderedFUnexpanded
-            then renderIfSimple (fromJust renderedFUnexpanded)
-            else renderOtherwise renderedF
+             then renderIfSimple (fromJust renderedFUnexpanded)
+             else renderOtherwise renderedF
 
       post = if hasPost then line' else mempty
   in pretty comment'
-      <> case (fWithoutComment, a) of
-        -- When the two last arguments are lists, render these specially (same as above)
-        -- Also no need to wrap in renderSimple here, because we know that these kinds of arguments
-        -- are never "simple" by definition.
-        (Application fWithoutCommandAndWithoutArg l1@(Term List{}), l2@(Term List{})) ->
-          group' RegularG $
-            (pre <> group' Transparent (absorbApp fWithoutCommandAndWithoutArg))
-              <> line
-              <> nest (group (absorbInner l1))
-              <> line
-              <> nest (group (absorbInner l2))
-              <> post
-        _ ->
-          renderSimple
-            (absorbApp fWithoutComment)
-            (\fRendered -> group' RegularG $ fRendered <> hardspace <> absorbLast a)
-            (\fRendered -> group' RegularG $ fRendered <> line <> absorbLast a <> post)
-      <> (if hasPost && not (null comment') then hardline else mempty)
+       <> case (fWithoutComment, a) of
+         -- When the two last arguments are lists, render these specially (same as above)
+         -- Also no need to wrap in renderSimple here, because we know that these kinds of arguments
+         -- are never "simple" by definition.
+         (Application fWithoutCommandAndWithoutArg l1@(Term List{}), l2@(Term List{})) ->
+           group' RegularG $
+             (pre <> group' Transparent (absorbApp fWithoutCommandAndWithoutArg))
+               <> line
+               <> nest (group (absorbInner l1))
+               <> line
+               <> nest (group (absorbInner l2))
+               <> post
+         _ ->
+           renderSimple
+             (absorbApp fWithoutComment)
+             (\fRendered -> group' RegularG $ fRendered <> hardspace <> absorbLast a)
+             (\fRendered -> group' RegularG $ fRendered <> line <> absorbLast a <> post)
+       <> (if hasPost && not (null comment') then hardline else mempty)
 
 prettyOp :: Bool -> Expression -> Leaf -> Doc
 prettyOp forceFirstTermWide operation op =
@@ -560,7 +560,7 @@ prettyOp forceFirstTermWide operation op =
       prettyOperation (Just op', expr) =
         sep <> pretty (moveTrailingCommentUp op') <> nest (absorbOperation expr)
   in group' RegularG $
-      (concatMap prettyOperation . flatten Nothing) operation
+       (concatMap prettyOperation . flatten Nothing) operation
   where
     isPipe (Ann{value = TPipeForward}) = True
     isPipe (Ann{value = TPipeBackward}) = True
