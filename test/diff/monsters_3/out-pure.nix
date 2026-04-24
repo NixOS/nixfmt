@@ -45,13 +45,7 @@ stdenv.mkDerivation rec {
     wrapGAppsHook4
     glib # for glib-compile-resources
   ];
-  buildInputs = [
-    cairo
-    glib
-    gtk4
-    libadwaita
-    pango
-  ];
+  buildInputs = [ cairo glib gtk4 libadwaita pango ];
   postPatch = ''
     patchShebangs build-aux/meson_post_install.py
     # https://gitlab.gnome.org/World/design/contrast/-/merge_requests/23

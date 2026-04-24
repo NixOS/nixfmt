@@ -2,10 +2,7 @@
 
 [
   (f [ ] [ rhs lhs ])
-  (lib.mkMerge [
-    false
-    false
-  ])
+  (lib.mkMerge [ false false ])
   (replaceStrings
     [ "\${" "''" ]
     #force multiline
@@ -52,30 +49,12 @@
     ]
     [ "services" "displayManager" "sddm" "enable" ]
   )
-  (map (
-    buildAllowCommand "allow" [
-      "snapshot"
-      "mount"
-      "destroy"
-    ]
-  ))
-  (map
-    (
-      x:
-      "${x} ${
-        escapeShellArgs [
-          stateDir
-          workDir
-          logsDir
-        ]
-      }"
-    )
-    [
-      "+${unconfigureRunner}" # runs as root
-      configureRunner
-      setupWorkDir
-    ]
-  )
+  (map (buildAllowCommand "allow" [ "snapshot" "mount" "destroy" ]))
+  (map (x: "${x} ${escapeShellArgs [ stateDir workDir logsDir ]}") [
+    "+${unconfigureRunner}" # runs as root
+    configureRunner
+    setupWorkDir
+  ])
   (lib.checkListOfEnum "${pname}: theme accent"
     [
       "Blue"

@@ -106,73 +106,35 @@ in
 
   (
     {
-      gst_plugins ? [
-        gst-plugins-good
-        gst-plugins-ugly
-      ],
+      gst_plugins ? [ gst-plugins-good gst-plugins-ugly ],
       more ?
         let
         in
-        [
-          1
-          2
-          3
-        ],
+        [ 1 2 3 ],
       things ? if null then true else false,
       things ?
         if null then true else "loooooooooooooooooooooooooooooooooooooooooooong",
       more ? (
         let
         in
-        [
-          1
-          2
-          3
-        ]
+        [ 1 2 3 ]
       ),
-      foo ? (
-        with bar;
-        [
-          1
-          2
-          3
-        ]
-      ),
+      foo ? (with bar; [ 1 2 3 ]),
       foo ? (
         with bar;
         let
         in
-        [
-          1
-          2
-          3
-        ]
+        [ 1 2 3 ]
       ),
       things ? (if null then true else false),
       things ? (
         if null then true else "loooooooooooooooooooooooooooooooooooooooooooong"
       ),
       things ? (
-        if null then
-          [
-            1
-            2
-            3
-          ]
-        else
-          "loooooooooooooooooooooooooooooooooooooooooooong"
+        if null then [ 1 2 3 ] else "loooooooooooooooooooooooooooooooooooooooooooong"
       ),
       things ? # comment
-        (
-          if null then
-            [
-              1
-              2
-              3
-            ]
-          else
-            "loooooooooooooooooooooooooooooooooooooooooooong"
-        ),
+        (if null then [ 1 2 3 ] else "loooooooooooooooooooooooooooooooooooooooooooong"),
     }:
     { }
   )
@@ -184,15 +146,8 @@ in
     a' = name: ''
       --nodaemon --syslog --prefix=${name} --pidfile /run/${name}/${name}.pid ${name}
     '';
-    b =
-      p: with p; [
-        ConfigIniFiles
-        FileSlurp
-      ];
-    b' = p: [
-      ConfigIniFiles
-      FileSlurp
-    ];
+    b = p: with p; [ ConfigIniFiles FileSlurp ];
+    b' = p: [ ConfigIniFiles FileSlurp ];
     mkUrls =
       {
         name,
