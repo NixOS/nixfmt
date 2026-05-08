@@ -7,6 +7,7 @@
 
 module Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole) where
 
+import Control.Monad (guard)
 import Control.Monad.State.Strict (MonadState, evalStateT, get, modify', put)
 import Data.Char (isAlphaNum, isSpace)
 import Data.Functor (($>))
@@ -67,6 +68,8 @@ data ParseTrivium
     PTBlockComment Bool [Text]
   | -- | Language annotation like /* lua */ (single line, non-doc)
     PTLanguageAnnotation Text
+  | -- | Format directive: /*nixfmt:disable*/ (True) or /*nixfmt:enable*/ (False)
+    PTFormatDirective Bool
   deriving (Show)
 
 preLexeme :: Parser a -> Parser a
@@ -74,6 +77,17 @@ preLexeme p = p <* manyP (\x -> isSpace x && x /= '\n' && x /= '\r')
 
 newlines :: Parser ParseTrivium
 newlines = PTNewlines . Prelude.length <$> some (preLexeme eol)
+
+-- | Parse /*nixfmt:disable*/ or /*nixfmt:enable*/ directives.
+-- Ensures nothing else follows on the line.
+formatDirective :: Parser ParseTrivium
+formatDirective = preLexeme $ try $ do
+  _ <- chunk "/*nixfmt:"
+  isDisable <- (True <$ chunk "disable") <|> (False <$ chunk "enable")
+  _ <- chunk "*/"
+  rest <- manyP (\x -> x /= '\n' && x /= '\r')
+  guard $ Text.all (\x -> x == ' ' || x == '\t') rest
+  return (PTFormatDirective isDisable)
 
 lineComment :: Parser ParseTrivium
 lineComment = preLexeme $ do
@@ -167,6 +181,8 @@ convertTrailing = toMaybe . join . map toText
   where
     toText (PTLineComment c _) = strip c
     toText (PTBlockComment False [c]) = strip c
+    toText (PTFormatDirective True) = "nixfmt:disable"
+    toText (PTFormatDirective False) = "nixfmt:enable"
     toText _ = ""
     join = Text.unwords . filter (/= "")
     toMaybe "" = Nothing
@@ -183,12 +199,14 @@ convertLeading =
         PTBlockComment False [c] -> [LineComment $ " " <> strip c]
         PTBlockComment isDoc cs -> [BlockComment isDoc cs]
         PTLanguageAnnotation c -> [LanguageAnnotation c]
+        PTFormatDirective isDisable -> [FormatDirective isDisable]
     )
 
 isTrailing :: ParseTrivium -> Bool
 isTrailing (PTLineComment _ _) = True
 isTrailing (PTBlockComment False []) = True
 isTrailing (PTBlockComment False [_]) = True
+isTrailing (PTFormatDirective _) = True
 isTrailing _ = False
 
 convertTrivia :: [ParseTrivium] -> Pos -> (Maybe TrailingComment, Trivia)
@@ -204,7 +222,7 @@ convertTrivia pts nextCol =
       _ -> (convertTrailing trailing, convertLeading leading)
 
 trivia :: Parser [ParseTrivium]
-trivia = many $ hidden $ languageAnnotation <|> lineComment <|> blockComment <|> newlines
+trivia = many $ hidden $ languageAnnotation <|> formatDirective <|> lineComment <|> blockComment <|> newlines
 
 -- The following primitives to interact with the state monad that stores trivia
 -- are designed to prevent trivia from being dropped or duplicated by accident.

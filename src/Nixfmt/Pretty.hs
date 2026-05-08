@@ -96,6 +96,8 @@ instance Pretty Trivium where
   pretty EmptyLine = emptyline
   pretty (LineComment c) = comment ("#" <> c) <> hardline
   pretty (LanguageAnnotation lang) = comment ("/* " <> lang <> " */") <> hardspace
+  pretty (FormatDirective True) = comment "/*nixfmt:disable*/" <> hardline
+  pretty (FormatDirective False) = comment "/*nixfmt:enable*/" <> hardline
   pretty (BlockComment isDoc c) =
     comment (if isDoc then "/**" else "/*")
       <> hardline
