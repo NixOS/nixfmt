@@ -52,18 +52,18 @@ executable nixfmt
   build-depends:
       base             >= 4.12.0
     , bytestring
-    , cmdargs          >= 0.10.20 && < 0.11
+    , cmdargs          >= 0.10.20
     , file-embed
     , nixfmt
-    , unix             >= 2.7.2 && < 2.9
-    , text             >= 1.2.3 && < 2.2
+    , unix             >= 2.7.2
+    , text             >= 1.2.3
     , transformers
     , process
 
     -- for System.IO.Atomic
-    , directory        >= 1.3.3 && < 1.4
-    , filepath         >= 1.4.2 && < 1.5
-    , safe-exceptions  >= 0.1.7 && < 0.2
+    , directory        >= 1.3.3
+    , filepath         >= 1.4.2
+    , safe-exceptions  >= 0.1.7
   default-language:    Haskell2010
   ghc-options:
     -threaded
@@ -98,11 +98,11 @@ library
   build-depends:
       base             >= 4.12.0
     , containers
-    , megaparsec       >= 9.0.1 && < 9.6
+    , megaparsec       >= 9.0.1
     , mtl
-    , parser-combinators >= 1.0.3 && < 1.4
-    , scientific       >= 0.3.0 && < 0.4.0
-    , text             >= 1.2.3 && < 2.2
+    , parser-combinators >= 1.0.3
+    , scientific       >= 0.3.0
+    , text             >= 1.2.3
     , transformers
     , pretty-simple
   default-language:    Haskell2010
