@@ -466,12 +466,7 @@ rec {
         }:
         assert isInt depthLimit;
         let
-            specialAttrs = [
-                "__functor"
-                "__functionArgs"
-                "__toString"
-                "__pretty"
-            ];
+            specialAttrs = [ "__functor" "__functionArgs" "__toString" "__pretty" ];
             stepIntoAttr = evalNext: name: if elem name specialAttrs then id else evalNext;
             transform =
                 depth:
@@ -543,11 +538,7 @@ rec {
                 else if isString v then
                     let
                         lines = filter (v: !isList v) (split "\n" v);
-                        escapeSingleline = escape [
-                            "\\"
-                            "\""
-                            "\${"
-                        ];
+                        escapeSingleline = escape [ "\\" "\"" "\${" ];
                         escapeMultiline = replaceStrings [ "\${" "''" ] [ "''\${" "'''" ];
                         singlelineResult =
                             "\"" + concatStringsSep "\\n" (map escapeSingleline lines) + "\"";

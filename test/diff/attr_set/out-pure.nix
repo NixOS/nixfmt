@@ -142,16 +142,8 @@
     ]
     ++ (if foo then [ bar ] else [ baz ])
     ++ [ ]
-    ++ (optionals condition [
-      more
-      items
-    ]);
-    b = with pkgs; [
-      a
-      lot
-      of
-      packages
-    ];
+    ++ (optionals condition [ more items ]);
+    b = with pkgs; [ a lot of packages ];
   }
   {
     systemd.initrdBi = lib.mkIf config.boot.initrd.services.lvm.enable [ pkgs.vdo ];
@@ -306,31 +298,14 @@
   # Parentheses
   {
     a = ({ });
-    b = ([
-      1
-      2
-      3
-    ]);
+    b = ([ 1 2 3 ]);
     c = (if null then true else false);
     d = (
       let
       in
-      [
-        1
-        2
-        3
-      ]
+      [ 1 2 3 ]
     );
-    e = (
-      if null then
-        true
-      else
-        [
-          1
-          2
-          3
-        ]
-    );
+    e = (if null then true else [ 1 2 3 ]);
     # FIXME: This one exposes a really weird bug in the underlying
     # pretty printing engine.
     # (It's probably the same one that causes weird indentation in
@@ -338,24 +313,13 @@
     # f = /* comment */ (if null then true else [ 1 2 3 ]);
 
     a = (with a; { });
-    b = (
-      with a;
-      [
-        1
-        2
-        3
-      ]
-    );
+    b = (with a; [ 1 2 3 ]);
     c = (with a; if null then true else false);
     d = (
       with a;
       let
       in
-      [
-        1
-        2
-        3
-      ]
+      [ 1 2 3 ]
     );
   }
 
@@ -370,10 +334,7 @@
       # Sans) than that horror.  But we do need the Adobe fonts for some
       # old non-fontconfig applications.  (Possibly this could be done
       # better using a fontconfig rule.)
-      [
-        pkgs.xorg.fontadobe100dpi
-        pkgs.xorg.fontadobe75dpi
-      ];
+      [ pkgs.xorg.fontadobe100dpi pkgs.xorg.fontadobe75dpi ];
   }
   # Regression https://github.com/NixOS/nixfmt/issues/253
   {
@@ -395,10 +356,7 @@
     boot.kernelParams = [
       aaaaaaaaaaaaaa
     ]
-    ++ optionals config.boot.vesa [
-      "vga=0x317"
-      "nomodeset"
-    ];
+    ++ optionals config.boot.vesa [ "vga=0x317" "nomodeset" ];
 
     foo2 = [
       bar
@@ -409,20 +367,11 @@
     foo3 =
       some function application that kinda is long # and
         multiline
-      ++ [
-        a
-        list
-      ];
+      ++ [ a list ];
     some.long.attribute # with a comment
       = [ stuff ] ++ more stuff;
     some.long.attribute1 # with a comment
-      = [
-        stuff
-        a
-        b
-        c
-      ]
-      ++ more stuff;
+      = [ stuff a b c ] ++ more stuff;
 
     foo4 # nasty
       = # comments
@@ -503,28 +452,12 @@
       ++ lib.optional config.users.ldap.enable pam_ldap
       ++ lib.optional config.services.kanidm.enablePam config.services.kanidm.package
       ++ lib.optional config.services.sssd.enable pkgs.sssd
-      ++ lib.optionals config.security.pam.krb5.enable [
-        pam_krb5
-        pam_ccreds
-      ];
+      ++ lib.optionals config.security.pam.krb5.enable [ pam_krb5 pam_ccreds ];
 
-    buildInputs1 = lib.optionals onePlatform [
-      a
-      b
-      c
-    ];
+    buildInputs1 = lib.optionals onePlatform [ a b c ];
 
     buildInputs2 =
-      lib.optionals onePlatform [
-        a
-        b
-        c
-      ]
-      ++ lib.optionals anotherPlatform [
-        d
-        e
-        f
-      ];
+      lib.optionals onePlatform [ a b c ] ++ lib.optionals anotherPlatform [ d e f ];
 
     programs.ssh.knownHosts =
       someStuff functionArg

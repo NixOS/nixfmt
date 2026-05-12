@@ -22,11 +22,7 @@ let
     (lib.optionals (system == "i686-solaris") [ "/usr/gnu" ])
     ++ (lib.optionals (system == "i686-netbsd") [ "/usr/pkg" ])
     ++ (lib.optionals (system == "x86_64-solaris") [ "/opt/local/gnu" ])
-    ++ [
-      "/"
-      "/usr"
-      "/usr/local"
-    ];
+    ++ [ "/" "/usr" "/usr/local" ];
 
   prehookBase = ''
     # Disable purity tests; it's allowed (even needed) to link to
