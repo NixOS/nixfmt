@@ -33,7 +33,7 @@ in
           nixfmt
         ];
         treefmtConfig = ''
-          [formatter.nixfmt-rfc-style]
+          [formatter.nixfmt]
           command = "nixfmt"
           options = [ "--verify" ]
           includes = [ "*.nix" ]
