@@ -67,10 +67,10 @@ formatVerify layout path unformatted = do
       Left $
         let minimized = minimize unformattedParsed' (\e -> parse (layout e) == Right (Whole e []))
         in pleaseReport "Parses differently after formatting."
-            <> "\n\nBefore formatting:\n"
-            <> show minimized
-            <> "\n\nAfter formatting:\n"
-            <> show (fromRight (error "TODO") $ parse (layout minimized))
+             <> "\n\nBefore formatting:\n"
+             <> show minimized
+             <> "\n\nAfter formatting:\n"
+             <> show (fromRight (error "TODO") $ parse (layout minimized))
     else
       if formattedOnce /= formattedTwice
         then
@@ -80,10 +80,10 @@ formatVerify layout path unformatted = do
                     unformattedParsed'
                     (\e -> layout e == layout (fromRight (error "TODO") $ parse $ layout e))
             in pleaseReport "Nixfmt is not idempotent."
-                <> "\n\nAfter one formatting:\n"
-                <> unpack (layout minimized)
-                <> "\n\nAfter two:\n"
-                <> unpack (layout (fromRight (error "TODO") $ parse $ layout minimized))
+                 <> "\n\nAfter one formatting:\n"
+                 <> unpack (layout minimized)
+                 <> "\n\nAfter two:\n"
+                 <> unpack (layout (fromRight (error "TODO") $ parse $ layout minimized))
         else Right formattedOnce
   where
     parse = first errorBundlePretty . Megaparsec.parse Parser.file path
