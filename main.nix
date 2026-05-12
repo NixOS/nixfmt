@@ -62,9 +62,9 @@ let
 
     # This uses the version from Nixpkgs instead of the local one,
     # which would require building the package to get a development shell
-    programs.nixfmt-rfc-style.enable = true;
+    programs.nixfmt.enable = true;
     # We don't want to format the files we use to test the formatter!
-    settings.formatter.nixfmt-rfc-style.excludes = [ "test/*" ];
+    settings.formatter.nixfmt.excludes = [ "test/*" ];
 
     # Haskell formatter
     programs.fourmolu.enable = true;
