@@ -1,4 +1,4 @@
-cabal-version:       2.0
+cabal-version:       3.8
 name:                nixfmt
 version:             1.2.0
 synopsis:            Official formatter for Nix code
@@ -19,7 +19,27 @@ source-repository head
   type:     git
   location: git://github.com/NixOS/nixfmt.git
 
+flag werror
+  description: Treat warnings as errors
+  default: False
+  manual: True
+
+common warnings
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wredundant-constraints
+    -Wno-orphans
+
+  if flag(werror)
+    ghc-options:
+      -Werror
+
 executable nixfmt
+  import: warnings
+
   main-is:             Main.hs
   other-modules:
     Paths_nixfmt
@@ -46,14 +66,11 @@ executable nixfmt
     , safe-exceptions  >= 0.1.7 && < 0.2
   default-language:    Haskell2010
   ghc-options:
-    -Wall
-    -Wcompat
-    -Wincomplete-record-updates
-    -Wincomplete-uni-patterns
-    -Wredundant-constraints
     -threaded
 
 library
+  import: warnings
+
   exposed-modules:
     Nixfmt
     Nixfmt.Lexer
@@ -89,10 +106,3 @@ library
     , transformers
     , pretty-simple
   default-language:    Haskell2010
-  ghc-options:
-    -Wall
-    -Wcompat
-    -Wincomplete-record-updates
-    -Wincomplete-uni-patterns
-    -Wredundant-constraints
-    -Wno-orphans
