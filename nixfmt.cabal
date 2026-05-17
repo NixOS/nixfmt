@@ -9,15 +9,17 @@ homepage:            https://github.com/NixOS/nixfmt
 bug-reports:         https://github.com/NixOS/nixfmt/issues
 license:             MPL-2.0
 license-file:        LICENSE
-author:              Serokell <hi@serokell.io> and nixfmt contributors
-copyright:           Serokell <hi@serokell.io> and nixfmt contributors
+author:              Serokell <hi@serokell.io> and Nix Formatting Team
+copyright:           Serokell <hi@serokell.io> and Nix Formatting Team
+maintainer:          Nix Formatting Team
 category:            Development
 build-type:          Simple
-extra-source-files:  README.md, CHANGELOG.md
+extra-source-files:  README.md
+extra-doc-files:     CHANGELOG.md
 
 source-repository head
   type:     git
-  location: git://github.com/NixOS/nixfmt.git
+  location: https://github.com/NixOS/nixfmt.git
 
 flag werror
   description: Treat warnings as errors
