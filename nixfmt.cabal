@@ -1,4 +1,4 @@
-cabal-version:       2.0
+cabal-version:       3.8
 name:                nixfmt
 version:             1.2.0
 synopsis:            Official formatter for Nix code
@@ -9,17 +9,39 @@ homepage:            https://github.com/NixOS/nixfmt
 bug-reports:         https://github.com/NixOS/nixfmt/issues
 license:             MPL-2.0
 license-file:        LICENSE
-author:              Serokell <hi@serokell.io> and nixfmt contributors
-copyright:           Serokell <hi@serokell.io> and nixfmt contributors
+author:              Serokell <hi@serokell.io> and Nix Formatting Team
+copyright:           Serokell <hi@serokell.io> and Nix Formatting Team
+maintainer:          Nix Formatting Team
 category:            Development
 build-type:          Simple
-extra-source-files:  README.md, CHANGELOG.md
+extra-source-files:  README.md
+extra-doc-files:     CHANGELOG.md
 
 source-repository head
   type:     git
-  location: git://github.com/NixOS/nixfmt.git
+  location: https://github.com/NixOS/nixfmt.git
+
+flag werror
+  description: Treat warnings as errors
+  default: False
+  manual: True
+
+common warnings
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wredundant-constraints
+    -Wno-orphans
+
+  if flag(werror)
+    ghc-options:
+      -Werror
 
 executable nixfmt
+  import: warnings
+
   main-is:             Main.hs
   other-modules:
     Paths_nixfmt
@@ -32,28 +54,25 @@ executable nixfmt
   build-depends:
       base             >= 4.12.0
     , bytestring
-    , cmdargs          >= 0.10.20 && < 0.11
+    , cmdargs          >= 0.10.20
     , file-embed
     , nixfmt
-    , unix             >= 2.7.2 && < 2.9
-    , text             >= 1.2.3 && < 2.2
+    , unix             >= 2.7.2
+    , text             >= 1.2.3
     , transformers
     , process
 
     -- for System.IO.Atomic
-    , directory        >= 1.3.3 && < 1.4
-    , filepath         >= 1.4.2 && < 1.5
-    , safe-exceptions  >= 0.1.7 && < 0.2
+    , directory        >= 1.3.3
+    , filepath         >= 1.4.2
+    , safe-exceptions  >= 0.1.7
   default-language:    Haskell2010
   ghc-options:
-    -Wall
-    -Wcompat
-    -Wincomplete-record-updates
-    -Wincomplete-uni-patterns
-    -Wredundant-constraints
     -threaded
 
 library
+  import: warnings
+
   exposed-modules:
     Nixfmt
     Nixfmt.Lexer
@@ -81,18 +100,11 @@ library
   build-depends:
       base             >= 4.12.0
     , containers
-    , megaparsec       >= 9.0.1 && < 9.6
+    , megaparsec       >= 9.0.1
     , mtl
-    , parser-combinators >= 1.0.3 && < 1.4
-    , scientific       >= 0.3.0 && < 0.4.0
-    , text             >= 1.2.3 && < 2.2
+    , parser-combinators >= 1.0.3
+    , scientific       >= 0.3.0
+    , text             >= 1.2.3
     , transformers
     , pretty-simple
   default-language:    Haskell2010
-  ghc-options:
-    -Wall
-    -Wcompat
-    -Wincomplete-record-updates
-    -Wincomplete-uni-patterns
-    -Wredundant-constraints
-    -Wno-orphans

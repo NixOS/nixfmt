@@ -11,16 +11,6 @@ let
     haskell = super.haskell // {
       packageOverrides = self: super: { nixfmt = self.callCabal2nix "nixfmt" haskellSource { }; };
     };
-
-    treefmt = super.treefmt.overrideAttrs (old: {
-      patches = [
-        # Makes it work in parallel: https://github.com/numtide/treefmt/pull/282
-        (self.fetchpatch {
-          url = "https://github.com/numtide/treefmt/commit/f596795cd24b50f048cc395866bb90a89d99152d.patch";
-          hash = "sha256-EPn+JAT3aZLSWmpdi9ULZ8o8RvrX+UFp0cQWfBcQgVg=";
-        })
-      ];
-    });
   };
 
   pkgs = import nixpkgs {
@@ -59,6 +49,7 @@ let
   haskellBuildPipeline = [
     haskell.lib.justStaticExecutables
     haskell.lib.dontHaddock
+    (haskell.lib.compose.enableCabalFlag "werror")
     (drv: lib.lazyDerivation { derivation = drv; })
   ];
 
@@ -71,9 +62,9 @@ let
 
     # This uses the version from Nixpkgs instead of the local one,
     # which would require building the package to get a development shell
-    programs.nixfmt-rfc-style.enable = true;
+    programs.nixfmt.enable = true;
     # We don't want to format the files we use to test the formatter!
-    settings.formatter.nixfmt-rfc-style.excludes = [ "test/*" ];
+    settings.formatter.nixfmt.excludes = [ "test/*" ];
 
     # Haskell formatter
     programs.fourmolu.enable = true;
@@ -81,6 +72,25 @@ let
 
   checks = {
     inherit build;
+    cabal-check = pkgs.stdenvNoCC.mkDerivation {
+      name = "nixfmt-cabal-check";
+      src = source;
+      nativeBuildInputs = with pkgs; [
+        cabal-install
+      ];
+      buildPhase = lib.escapeShellArgs [
+        "cabal"
+        "check"
+        # Ignore some warnings about missing dependency bounds. We don't bother
+        # specifying upper bounds, as we're not a Haskell
+        # library for others to consume. We get reproducibility by virtue of
+        # using the nixpkgs Haskell package set. When we update nixpkgs, we
+        # rely upon our tests to tell us if anything broke.
+        "--ignore=missing-upper-bounds"
+        "--ignore=missing-bounds-important"
+      ];
+      installPhase = "touch $out";
+    };
     hlint = pkgs.build.haskell.hlint haskellSource;
     reuse = pkgs.stdenvNoCC.mkDerivation {
       name = "nixfmt-reuse";

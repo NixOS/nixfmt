@@ -372,28 +372,30 @@ instance LanguageElement Term where
 
   walkSubprograms = \case
     -- Map each item to a singleton list, then handle that
-    (List _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
-      (Item item) -> [Term item]
-      (Comments _) -> []
-    (List open items close) ->
-      unItems items >>= \case
-        Item item ->
-          [Term (List (stripTrivia open) (Items [Item item]) (stripTrivia close))]
-        Comments c ->
-          [Term (List (stripTrivia open) (Items [Comments c]) (stripTrivia close))]
-    (Set _ _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
-      (Item (Inherit _ from sels _)) ->
-        (Term <$> maybeToList from) ++ concatMap walkSubprograms sels
-      (Item (Assignment sels _ expr _)) ->
-        expr : concatMap walkSubprograms sels
-      (Comments _) -> []
-    (Set _ open items close) ->
-      unItems items >>= \case
-        -- Map each binding to a singleton set
-        (Item item) ->
-          [Term (Set Nothing (stripTrivia open) (Items [Item item]) (stripTrivia close))]
-        (Comments c) ->
-          [Term (Set Nothing (stripTrivia open) (Items [Comments c]) (stripTrivia close))]
+    (List open items close) -> case unItems items of
+      (headItem : _) -> case headItem of
+        (Item item) -> [Term item]
+        (Comments _) -> []
+      multipleItems ->
+        multipleItems >>= \case
+          Item item ->
+            [Term (List (stripTrivia open) (Items [Item item]) (stripTrivia close))]
+          Comments c ->
+            [Term (List (stripTrivia open) (Items [Comments c]) (stripTrivia close))]
+    (Set _ open items close) -> case unItems items of
+      (headItem : _) -> case headItem of
+        (Item (Inherit _ from sels _)) ->
+          (Term <$> maybeToList from) ++ concatMap walkSubprograms sels
+        (Item (Assignment sels _ expr _)) ->
+          expr : concatMap walkSubprograms sels
+        (Comments _) -> []
+      multipleItems ->
+        multipleItems >>= \case
+          -- Map each binding to a singleton set
+          (Item item) ->
+            [Term (Set Nothing (stripTrivia open) (Items [Item item]) (stripTrivia close))]
+          (Comments c) ->
+            [Term (Set Nothing (stripTrivia open) (Items [Comments c]) (stripTrivia close))]
     (Selection term sels Nothing) -> Term term : (sels >>= walkSubprograms)
     (Selection term sels (Just (_, def))) -> Term term : (sels >>= walkSubprograms) ++ [Term def]
     (Parenthesized _ expr _) -> [expr]
