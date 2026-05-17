@@ -72,6 +72,28 @@ let
 
   checks = {
     inherit build;
+    cabal-check = pkgs.stdenvNoCC.mkDerivation {
+      name = "nixfmt-cabal-check";
+      src = source;
+      nativeBuildInputs = with pkgs; [
+        cabal-install
+      ];
+      buildPhase = lib.escapeShellArgs [
+        "cabal"
+        "check"
+        # Ignore some warnings about missing dependency bounds. We don't bother
+        # specifying upper bounds, as we're not a Haskell
+        # library for others to consume. We get reproducibility by virtue of
+        # using the nixpkgs Haskell package set. When we update nixpkgs, we
+        # rely upon our tests to tell us if anything broke.
+        "--ignore=missing-upper-bounds"
+        "--ignore=missing-bounds-important"
+        # We enable `werror` by default. This is OK because we only support one
+        # version of GHC at a time.
+        "--ignore=werror"
+      ];
+      installPhase = "touch $out";
+    };
     hlint = pkgs.build.haskell.hlint haskellSource;
     reuse = pkgs.stdenvNoCC.mkDerivation {
       name = "nixfmt-reuse";
