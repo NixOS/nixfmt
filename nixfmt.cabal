@@ -19,6 +19,11 @@ source-repository head
   type:     git
   location: git://github.com/NixOS/nixfmt.git
 
+flag werror
+  description: Treat warnings as errors
+  default: False
+  manual: True
+
 common warnings
   ghc-options:
     -Wall
@@ -27,6 +32,10 @@ common warnings
     -Wincomplete-uni-patterns
     -Wredundant-constraints
     -Wno-orphans
+
+  if flag(werror)
+    ghc-options:
+      -Werror
 
 executable nixfmt
   import: warnings
