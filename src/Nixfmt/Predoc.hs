@@ -166,9 +166,11 @@ trailing t = [Text 0 0 Trailing t]
 group :: (HasCallStack) => (Pretty a) => a -> Doc
 group x =
   pure . Group RegularG $
-    if p /= [] && (isSoftSpacing (head p) || isSoftSpacing (last p))
-      then error $ "group should not start or end with whitespace, use `group'` if you are sure; " <> show p
-      else p
+    case p of
+      (headP : _)
+        | isSoftSpacing headP || isSoftSpacing (last p) ->
+            error $ "group should not start or end with whitespace, use `group'` if you are sure; " <> show p
+      _ -> p
   where
     p = pretty x
 
@@ -631,9 +633,10 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
         then
           let -- We know that the last printed character was a line break (cc == 0),
               -- therefore drop any leading whitespace within the group to avoid duplicate newlines
-              grp' = case head grp of
-                Spacing _ -> tail grp
-                Group ann ((Spacing _) : inner) -> Group ann inner : tail grp
+              headEl : tailEls = grp
+              grp' = case headEl of
+                Spacing _ -> tailEls
+                Group ann ((Spacing _) : inner) -> Group ann inner : tailEls
                 _ -> grp
               (nl, off) = nextIndent grp'
 
