@@ -372,7 +372,7 @@ instance LanguageElement Term where
 
   walkSubprograms = \case
     -- Map each item to a singleton list, then handle that
-    (List _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
+    (List _ (Items [singleItem]) _) -> case singleItem of
       (Item item) -> [Term item]
       (Comments _) -> []
     (List open items close) ->
@@ -381,7 +381,7 @@ instance LanguageElement Term where
           [Term (List (stripTrivia open) (Items [Item item]) (stripTrivia close))]
         Comments c ->
           [Term (List (stripTrivia open) (Items [Comments c]) (stripTrivia close))]
-    (Set _ _ items _) | Prelude.length (unItems items) == 1 -> case Prelude.head (unItems items) of
+    (Set _ _ (Items [singleItem]) _) -> case singleItem of
       (Item (Inherit _ from sels _)) ->
         (Term <$> maybeToList from) ++ concatMap walkSubprograms sels
       (Item (Assignment sels _ expr _)) ->
