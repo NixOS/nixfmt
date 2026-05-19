@@ -4,6 +4,8 @@ on:
   # because we need repository secrets for that, which pull_request doesn't allow from forks.
   # However, it's very important that we don't run code from forks without sandboxing it,
   # because that way anybody could potentially extract repository secrets!
+  # We must ensure that no secrets are in any environment variables when running untrusted code, and that no secrets are persisted to disk and accessible to `readFile`
+  # when evaluating Nix code
   pull_request_target:
   push:
     branches:
@@ -27,14 +29,14 @@ jobs:
           # To prevent running untrusted code from forks,
           # pull_request_target will cause the base branch to be checked out, not the PR branch.
           # In our case we check out the PR branch regardless,
-          # because we're sandboxing all untrusted code with a `nix-build`.
-          # (and the sandbox is enabled by default at least on Linux)
+          # as we do not expose secrets when calling untrusted code
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           persist-credentials: false
 
       - uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
 
       - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
+        if: github.event_name != 'pull_request_target'
         with:
           name: nixos-nixfmt
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -77,17 +79,12 @@ jobs:
       # pull_request_target will cause the base branch to be checked out, not the PR branch.
       # This is exactly what we want in this case,
       # because the sync-pr.sh script cannot be run sandboxed since it needs to have side effects.
-      # Instead, the script itself fetches the PR, but then runs its code within sandboxed derivations.
+      # Make sure you do not expose secrets in the environment or persist them to disk
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
-
-      - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
-        with:
-          name: nixos-nixfmt
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       - run: |
           ./scripts/sync-pr.sh \
