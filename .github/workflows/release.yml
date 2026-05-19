@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 2  # need previous commit for comparison
           persist-credentials: false
@@ -80,11 +80,11 @@ jobs:
 
       - name: Setup Nix
         if: ${{ env.version_changed == 'true' }}
-        uses: cachix/install-nix-action@v26
+        uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
 
       - name: Setup Cachix cache
         if: ${{ env.version_changed == 'true' }}
-        uses: cachix/cachix-action@v14
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
         with:
           name: nixos-nixfmt
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'

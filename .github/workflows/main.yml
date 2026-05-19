@@ -17,12 +17,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         if: github.event_name != 'pull_request_target'
         with:
           persist-credentials: false
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         if: github.event_name == 'pull_request_target'
         with:
           # To prevent running untrusted code from forks,
@@ -33,9 +33,9 @@ jobs:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@v26
+      - uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
 
-      - uses: cachix/cachix-action@v14
+      - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
         with:
           name: nixos-nixfmt
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -52,7 +52,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Find Comment
-        uses: peter-evans/find-comment@v3
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
         id: fc
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -60,7 +60,7 @@ jobs:
           body-includes: Nixpkgs diff
 
       - name: Create or update comment
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         id: couc
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -76,13 +76,13 @@ jobs:
       # This is exactly what we want in this case,
       # because the sync-pr.sh script cannot be run sandboxed since it needs to have side effects.
       # Instead, the script itself fetches the PR, but then runs its code within sandboxed derivations.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
-      - uses: cachix/install-nix-action@v26
+      - uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
 
-      - uses: cachix/cachix-action@v14
+      - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
         with:
           name: nixos-nixfmt
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -94,7 +94,7 @@ jobs:
             https://${{ secrets.MACHINE_USER_PAT }}@github.com/${{ vars.MACHINE_USER }}/nixpkgs
 
       - name: Create or update comment
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         with:
           comment-id: ${{ steps.couc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
