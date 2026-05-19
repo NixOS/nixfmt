@@ -19,6 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         if: github.event_name != 'pull_request_target'
+        with:
+          persist-credentials: false
 
       - uses: actions/checkout@v4
         if: github.event_name == 'pull_request_target'
@@ -29,6 +31,7 @@ jobs:
           # because we're sandboxing all untrusted code with a `nix-build`.
           # (and the sandbox is enabled by default at least on Linux)
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
 
       - uses: cachix/install-nix-action@v26
 
@@ -74,6 +77,8 @@ jobs:
       # because the sync-pr.sh script cannot be run sandboxed since it needs to have side effects.
       # Instead, the script itself fetches the PR, but then runs its code within sandboxed derivations.
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: cachix/install-nix-action@v26
 
