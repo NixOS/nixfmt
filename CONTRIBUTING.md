@@ -11,6 +11,8 @@ You can also reach us on Matrix at `#nix-formatting:nixos.org`.
 
 Enter a development shell with `nix-shell`, `nix develop` or automatically with [direnv](https://direnv.net/), after which you can:
 - Build (& run): `cabal build` (`cabal run`)
+- Build and ignore warnings: `cabal build --flag -werror`. This is useful when
+  hacking locally, but code must be free of warnings before merging.
 - Debug: `cabal repl`
 - Format the codebase: `treefmt`
 - [Set up](https://haskell-language-server.readthedocs.io/en/latest/configuration.html#configuring-your-editor) your LSP-editor to use `haskell-language-server`
