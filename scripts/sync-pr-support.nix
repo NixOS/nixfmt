@@ -28,8 +28,8 @@ in
     in
     pkgs.runCommand "formatted"
       {
-        nativeBuildInputs = with pkgs; [
-          treefmt
+        nativeBuildInputs = [
+          pkgs.treefmt
           nixfmt
         ];
         treefmtConfig = ''
