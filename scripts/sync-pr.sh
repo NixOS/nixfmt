@@ -221,7 +221,7 @@ git -C nixpkgs checkout base
 # Since they never change, it would be wasteful to import them multiple times for each nixfmt run.
 # So instead we just import them once and reuse that result throughout
 step "Importing Nix files from base commit into the Nix store"
-baseStorePath=$(nix-instantiate --eval --read-write-mode "$SCRIPT_DIR/sync-pr-support.nix" -A repoNixFiles.outPath --arg repo "$PWD/nixpkgs" | tr -d '"')
+baseStorePath=$(nix-instantiate --eval --read-write-mode --raw "$SCRIPT_DIR/sync-pr-support.nix" -A repoNixFiles.outPath --arg repo "$PWD/nixpkgs")
 echo "$baseStorePath"
 
 step "Fetching contents of the starting commit and updating the mirror branch"
