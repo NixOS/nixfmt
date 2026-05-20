@@ -21,7 +21,7 @@ source-repository head
 
 flag werror
   description: Treat warnings as errors
-  default: False
+  default: True
   manual: True
 
 common warnings

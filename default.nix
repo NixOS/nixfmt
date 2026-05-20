@@ -59,7 +59,6 @@ let
   haskellBuildPipeline = [
     haskell.lib.justStaticExecutables
     haskell.lib.dontHaddock
-    (haskell.lib.compose.enableCabalFlag "werror")
     (drv: lib.lazyDerivation { derivation = drv; })
   ];
 
