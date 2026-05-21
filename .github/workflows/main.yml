@@ -6,7 +6,7 @@ on:
   # because that way anybody could potentially extract repository secrets!
   # We must ensure that no secrets are in any environment variables when running untrusted code, and that no secrets are persisted to disk and accessible to `readFile`
   # when evaluating Nix code
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
   push:
     branches:
       - master
@@ -90,7 +90,9 @@ jobs:
           ./scripts/sync-pr.sh \
             https://github.com/${{ github.repository }} \
             ${{ github.event.pull_request.number }} \
-            https://${{ secrets.MACHINE_USER_PAT }}@github.com/${{ vars.MACHINE_USER }}/nixpkgs
+            https://${{ secrets.MACHINE_USER_PAT }}@github.com/${MACHINE_USER}/nixpkgs
+        env:
+          MACHINE_USER: ${{ vars.MACHINE_USER }}
 
       - name: Create or update comment
         uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0

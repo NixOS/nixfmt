@@ -11,9 +11,14 @@ defaults:
   run:
     shell: bash
 
+permissions: {}
+
 jobs:
   release-if-version-changed:
     runs-on: ubuntu-latest
+    permissions:
+      # Needed to create the release
+      contents: write
 
     steps:
       - name: Checkout main
