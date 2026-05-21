@@ -57,6 +57,8 @@ For all non-trivial decisions:
 - GitHub:
   - Make them a maintainer of the [@NixOS/nix-formatting] GitHub team
   - Make them an admin on `NixOS/nixfmt`: <https://github.com/NixOS/nixfmt/settings/access>
+- Reach out to [Cachix](https://www.cachix.org/) support to transfer ownership
+  of [the Cachix cache](https://app.cachix.org/cache/nixos-nixfmt#pull).
 - Update their role on [Nix Formatting Team on `nixos.org`]
 - Later, revoke the old team lead's permissions (as appropriate)
 
