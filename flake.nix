@@ -1,4 +1,6 @@
 {
+  description = "The official formatter for Nix language code";
+
   inputs.systems = {
     type = "github";
     owner = "nix-systems";
