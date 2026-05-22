@@ -96,7 +96,7 @@ jobs:
           ./scripts/sync-pr.sh \
             https://github.com/${{ github.repository }} \
             ${{ github.event.pull_request.number }} \
-            https://${{ secrets.MACHINE_USER_PAT }}@github.com/${MACHINE_USER}/nixpkgs
+            "https://${{ secrets.MACHINE_USER_PAT }}@github.com/${MACHINE_USER}/nixpkgs"
         env:
           MACHINE_USER: ${{ vars.MACHINE_USER }}
 

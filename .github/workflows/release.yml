@@ -41,8 +41,8 @@ jobs:
           echo "Previous version: $PREV_VERSION"
 
           # Export for later steps
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "prev_version=$PREV_VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prev_version=$PREV_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Check if version changed
         id: compare
@@ -51,10 +51,10 @@ jobs:
           VERSION: ${{ steps.get_version.outputs.version }}
         run: |
           if [ "$PREV_VERSION" != "$VERSION" ]; then
-            echo "version_changed=true" >> $GITHUB_ENV
+            echo "version_changed=true" >> "$GITHUB_ENV"
             echo "::notice ::✅ Version changed from $PREV_VERSION to $VERSION"
           else
-            echo "version_changed=false" >> $GITHUB_ENV
+            echo "version_changed=false" >> "$GITHUB_ENV"
             echo "::notice ::Version did not change, skipping release"
           fi
       - name: Extract changelog section for current version
@@ -105,4 +105,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: "${{ steps.get_version.outputs.version }}"
         run:
-          gh release create v$VERSION ./result/bin/nixfmt --title "v$VERSION" --notes-file RELEASE_NOTES.md 
+          gh release create "v$VERSION" ./result/bin/nixfmt --title "v$VERSION" --notes-file RELEASE_NOTES.md
