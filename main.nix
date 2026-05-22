@@ -66,6 +66,9 @@ let
 
     # Haskell formatter
     programs.fourmolu.enable = true;
+
+    # GitHub Actions linter
+    programs.zizmor.enable = true;
   };
 
   checks = {
