@@ -5,7 +5,7 @@
   This way we don't need to rely on this internal file being stable.
 */
 let
-  pkgs = (import ../default.nix { }).pkgs;
+  inherit (import ../main.nix { }) pkgs;
   inherit (pkgs) lib;
 in
 {

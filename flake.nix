@@ -24,7 +24,7 @@
 
       perSystem = genAttrs systems;
 
-      results = perSystem (system: import ./. { inherit system; });
+      results = perSystem (system: import ./main.nix { inherit system; });
       mapResults = fn: builtins.mapAttrs (_: fn) results;
     in
     {
