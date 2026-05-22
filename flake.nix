@@ -1,29 +1,44 @@
 {
-
-  inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.systems = {
+    type = "github";
+    owner = "nix-systems";
+    repo = "default";
+    flake = false;
+  };
 
   outputs =
-    { flake-utils, self }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        result = import ./default.nix { inherit system; };
-      in
-      {
-        packages = result.packages // {
-          default = result;
-        };
+    inputs:
+    let
+      systems = import inputs.systems;
 
-        apps.default = {
-          type = "app";
-          program = "${result}/bin/nixfmt";
-        };
+      genAttrs =
+        names: fn:
+        builtins.listToAttrs (
+          map (name: {
+            inherit name;
+            value = fn name;
+          }) names
+        );
 
-        checks = result.checks;
+      perSystem = genAttrs systems;
 
-        devShells.default = result.shell;
+      results = perSystem (system: import ./. { inherit system; });
+      mapResults = fn: builtins.mapAttrs (_: fn) results;
+    in
+    {
+      packages = mapResults (result: result.packages // { default = result; });
 
-        formatter = result.treefmt;
-      }
-    );
+      apps = mapResults (result: {
+        default.type = "app";
+        default.program = "${result}/bin/nixfmt";
+      });
+
+      checks = mapResults (result: result.checks);
+
+      devShells = mapResults (result: {
+        default = result.shell;
+      });
+
+      formatter = mapResults (result: result.treefmt);
+    };
 }
