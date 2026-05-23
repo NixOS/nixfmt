@@ -549,15 +549,7 @@ let
         let
           hasOutput = out: builtins.elem out outputs;
         in
-        [
-          (lib.findFirst hasOutput null (
-            [
-              "bin"
-              "out"
-            ]
-            ++ outputs
-          ))
-        ]
+        [ (lib.findFirst hasOutput null ([ "bin" "out" ] ++ outputs)) ]
         ++ lib.optional (hasOutput "man") "man";
     }
     // attrs.meta or { }
