@@ -28,11 +28,6 @@
     {
       packages = mapResults (result: result.packages // { default = result; });
 
-      apps = mapResults (result: {
-        default.type = "app";
-        default.program = "${result}/bin/nixfmt";
-      });
-
       checks = mapResults (result: result.checks);
 
       devShells = mapResults (result: {
