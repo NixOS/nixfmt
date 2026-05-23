@@ -28,7 +28,7 @@
       mapResults = fn: builtins.mapAttrs (_: fn) results;
     in
     {
-      packages = mapResults (result: result.packages // { default = result; });
+      packages = mapResults (result: result.packages // { default = result.packages.nixfmt; });
 
       checks = mapResults (result: result.checks);
 

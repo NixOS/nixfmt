@@ -1,6 +1,7 @@
 let
   sources = import ./npins;
 in
+# NOTE: update mirrored args in `default.nix` when modifying
 {
   system ? builtins.currentSystem,
   nixpkgs ? sources.nixpkgs,
@@ -115,8 +116,7 @@ let
     treefmt = treefmtEval.config.build.check source;
   };
 in
-build
-// {
+{
   packages = {
     nixfmt = build;
     nixfmt-static = buildStatic;
