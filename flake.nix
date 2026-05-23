@@ -1,4 +1,6 @@
 {
+  description = "The official formatter for Nix language code";
+
   inputs.systems = {
     type = "github";
     owner = "nix-systems";
@@ -27,11 +29,6 @@
     in
     {
       packages = mapResults (result: result.packages // { default = result; });
-
-      apps = mapResults (result: {
-        default.type = "app";
-        default.program = "${result}/bin/nixfmt";
-      });
 
       checks = mapResults (result: result.checks);
 
