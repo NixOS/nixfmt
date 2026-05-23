@@ -122,7 +122,7 @@ in
     nixfmt-static = buildStatic;
   };
 
-  inherit pkgs;
+  inherit pkgs lib;
 
   shell = pkgs.haskellPackages.shellFor {
     packages = p: [ p.nixfmt ];

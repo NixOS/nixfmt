@@ -5,8 +5,7 @@
   This way we don't need to rely on this internal file being stable.
 */
 let
-  inherit (import ../main.nix { }) pkgs;
-  inherit (pkgs) lib;
+  inherit (import ../main.nix { }) pkgs lib;
 in
 {
   # Filters a repo into a store path only containing its Git-tracked Nix files
