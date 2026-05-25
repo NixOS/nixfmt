@@ -72,35 +72,35 @@ options =
       addDefaultHint value message =
         message ++ "\n[default: " ++ show value ++ "]"
   in Nixfmt
-      { files = [] &= args &= typ "FILES",
-        width =
-          defaultWidth
-            &= help (addDefaultHint defaultWidth "Maximum width in characters"),
-        indent = defaultIndent &= help (addDefaultHint defaultIndent "Number of spaces to use for indentation"),
-        check = False &= help "Check whether files are formatted without modifying them",
-        mergetool = False &= help "Whether to run in git mergetool mode, see https://github.com/NixOS/nixfmt?tab=readme-ov-file#git-mergetool for more info",
-        quiet = False &= help "Do not report errors",
-        strict = False &= help "Enable a stricter formatting mode that isn't influenced as much by how the input is formatted",
-        verify =
-          False
-            &= help
-              "Apply sanity checks on the output after formatting",
-        ast =
-          False
-            &= help
-              "Pretty print the internal AST, only for debugging",
-        filename =
-          Nothing
-            &= help
-              "The filename to display when the file input is given through stdin.\n\
-              \Useful for tools like editors and autoformatters that wish to use Nixfmt without providing it direct file access, while still providing context to where the file is.",
-        ir =
-          False
-            &= help
-              "Pretty print the internal intermediate representation, only for debugging"
-      }
-      &= summary ("nixfmt " ++ versionFromFile)
-      &= help "Format Nix source code"
+       { files = [] &= args &= typ "FILES",
+         width =
+           defaultWidth
+             &= help (addDefaultHint defaultWidth "Maximum width in characters"),
+         indent = defaultIndent &= help (addDefaultHint defaultIndent "Number of spaces to use for indentation"),
+         check = False &= help "Check whether files are formatted without modifying them",
+         mergetool = False &= help "Whether to run in git mergetool mode, see https://github.com/NixOS/nixfmt?tab=readme-ov-file#git-mergetool for more info",
+         quiet = False &= help "Do not report errors",
+         strict = False &= help "Enable a stricter formatting mode that isn't influenced as much by how the input is formatted",
+         verify =
+           False
+             &= help
+               "Apply sanity checks on the output after formatting",
+         ast =
+           False
+             &= help
+               "Pretty print the internal AST, only for debugging",
+         filename =
+           Nothing
+             &= help
+               "The filename to display when the file input is given through stdin.\n\
+               \Useful for tools like editors and autoformatters that wish to use Nixfmt without providing it direct file access, while still providing context to where the file is.",
+         ir =
+           False
+             &= help
+               "Pretty print the internal intermediate representation, only for debugging"
+       }
+       &= summary ("nixfmt " ++ versionFromFile)
+       &= help "Format Nix source code"
 
 data Target = Target
   { tDoRead :: IO Text,

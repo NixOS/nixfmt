@@ -149,7 +149,7 @@ treefmt-nix.mkWrapper pkgs {
 
 ```toml
 # treefmt.toml
-[formatter.nixfmt-rfc-style]
+[formatter.nixfmt]
 command = "nixfmt"
 includes = ["*.nix"]
 ```

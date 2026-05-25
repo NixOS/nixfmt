@@ -149,8 +149,8 @@ languageAnnotation = try $ do
     isValidLanguageIdentifier txt =
       let stripped = strip txt
       in not (Text.null stripped)
-          && Text.length stripped <= 30
-          && Text.all (\c -> isAlphaNum c || elem @[] c ['-', '+', '.', '_']) stripped
+           && Text.length stripped <= 30
+           && Text.all (\c -> isAlphaNum c || elem @[] c ['-', '+', '.', '_']) stripped
 
     -- Parser to peek at the next token to see if it's a string delimiter (" or '')
     isNextStringDelimiter = do
@@ -195,13 +195,13 @@ convertTrivia :: [ParseTrivium] -> Pos -> (Maybe TrailingComment, Trivia)
 convertTrivia pts nextCol =
   let (trailing, leading) = span isTrailing pts
   in case (trailing, leading) of
-      -- Special case: if the trailing comment visually forms a block with the start of the following line,
-      -- then treat it like part of those comments instead of a distinct trailing comment.
-      -- This happens especially often after `{` or `[` tokens, where the comment of the first item
-      -- starts on the same line ase the opening token.
-      ([PTLineComment _ pos], (PTNewlines 1) : (PTLineComment _ pos') : _) | pos == pos' -> (Nothing, convertLeading pts)
-      ([PTLineComment _ pos], [PTNewlines 1]) | pos == nextCol -> (Nothing, convertLeading pts)
-      _ -> (convertTrailing trailing, convertLeading leading)
+       -- Special case: if the trailing comment visually forms a block with the start of the following line,
+       -- then treat it like part of those comments instead of a distinct trailing comment.
+       -- This happens especially often after `{` or `[` tokens, where the comment of the first item
+       -- starts on the same line ase the opening token.
+       ([PTLineComment _ pos], (PTNewlines 1) : (PTLineComment _ pos') : _) | pos == pos' -> (Nothing, convertLeading pts)
+       ([PTLineComment _ pos], [PTNewlines 1]) | pos == nextCol -> (Nothing, convertLeading pts)
+       _ -> (convertTrailing trailing, convertLeading leading)
 
 trivia :: Parser [ParseTrivium]
 trivia = many $ hidden $ languageAnnotation <|> lineComment <|> blockComment <|> newlines
