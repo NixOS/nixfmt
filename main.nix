@@ -5,7 +5,6 @@ in
 {
   system ? builtins.currentSystem,
   nixpkgs ? sources.nixpkgs,
-  serokell-nix ? sources.serokell-nix,
 }:
 let
   overlay = self: super: {
@@ -18,7 +17,6 @@ let
     inherit system;
     overlays = [
       overlay
-      (import (serokell-nix + "/overlay"))
     ];
     config = { };
   };
@@ -94,7 +92,16 @@ let
       ];
       installPhase = "touch $out";
     };
-    hlint = pkgs.build.haskell.hlint haskellSource;
+    hlint =
+      pkgs.runCommand "hlint"
+        {
+          nativeBuildInputs = [ pkgs.haskellPackages.hlint ];
+        }
+        ''
+          cd ${haskellSource}
+          hlint .
+          touch $out
+        '';
     reuse = pkgs.stdenvNoCC.mkDerivation {
       name = "nixfmt-reuse";
       src = source;

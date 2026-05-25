@@ -2,7 +2,6 @@
 {
   system ? null,
   nixpkgs ? null,
-  serokell-nix ? null,
 }@args:
 let
   result = import ./main.nix args;

@@ -6,19 +6,6 @@
       "url": "https://releases.nixos.org/nixpkgs/nixpkgs-26.05pre996447.0a0bf409f359/nixexprs.tar.xz",
       "hash": "sha256-0hmdfQTKUIqUzAYvNiOmoxIwm1hqBl9U6l7s1N3HaoI="
     },
-    "serokell-nix": {
-      "type": "Git",
-      "repository": {
-        "type": "GitHub",
-        "owner": "serokell",
-        "repo": "serokell.nix"
-      },
-      "branch": "master",
-      "submodules": false,
-      "revision": "b6bbeda170469574789f9128c9aadc3a9e91e512",
-      "url": "https://github.com/serokell/serokell.nix/archive/b6bbeda170469574789f9128c9aadc3a9e91e512.tar.gz",
-      "hash": "sha256-1q44s86q35YLtT+y0FUPI9teTqrgNZMDqNcuDQDXz9w="
-    },
     "treefmt-nix": {
       "type": "Git",
       "repository": {
