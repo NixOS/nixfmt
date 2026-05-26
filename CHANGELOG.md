@@ -1,5 +1,27 @@
 # Revision history for nixfmt
 
+## 1.3.0 -- 2026-05-26
+- Updated our dependencies: <https://github.com/NixOS/nixfmt/pull/389>
+- Replaced references to `nixfmt-rfc-style` with `nixfmt`: <https://github.com/NixOS/nixfmt/pull/369>, <https://github.com/NixOS/nixfmt/pull/389>
+- Format pipe operator chains on multiple lines: <https://github.com/NixOS/nixfmt/pull/372>
+- Deprecated formatting stdin without a `-` command line argument: <https://github.com/NixOS/nixfmt/pull/376>
+- Fixed idempotency regressions discovered by [nixfmt-rs]: <https://github.com/NixOS/nixfmt/pull/387>
+  - Only parse the `or` default clause when selectors are present, preventing silent discard of `or` used as a bare identifier.
+  - Insert space before `.` in integer/float selections to prevent `1 .a` from becoming `1.a` (re-lexed as float).
+  - Add leading hardspace in absorbOperation for Application, preventing `/` and `/*` from merging into `//*` when a language annotation comment follows a division operator.
+  - Language annotation after other trivia splits from string.
+  - Parenthesis-trailing comment idempotency in assignment right-hand-side.
+  - `let`-`in` trailing comment idempotency.
+  - Leading blank lines causing non-idempotent formatting.
+- Absorb single-line destructured params into parenthesized functions: <https://github.com/NixOS/nixfmt/pull/377>
+- Enforce that there are no warnings in our haskell code: <https://github.com/NixOS/nixfmt/pull/390>
+- Minor cleanup to our flake:
+  - Dropped flake-utils dependency: <https://github.com/NixOS/nixfmt/pull/401>
+  - Added flake description: <https://github.com/NixOS/nixfmt/pull/404>
+  - Removed top-level IFD: <https://github.com/NixOS/nixfmt/pull/403>
+
+[nixfmt-rs]: https://github.com/Mic92/nixfmt-rs
+
 ## 1.2.0 -- 2026-01-08
 - Reformat indented strings, reformatting to simple strings when appropriate: <https://github.com/NixOS/nixfmt/pull/348>
 - Added musl static build and nixfmt-static package: <https://github.com/NixOS/nixfmt/pull/349>
