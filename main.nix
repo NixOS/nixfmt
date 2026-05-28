@@ -73,7 +73,7 @@ let
   };
 
   checks = {
-    inherit build;
+    inherit build buildStatic;
     cabal-check = pkgs.stdenvNoCC.mkDerivation {
       name = "nixfmt-cabal-check";
       src = source;
