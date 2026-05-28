@@ -25,7 +25,6 @@ import Nixfmt.Predoc (layout)
 import Paths_nixfmt (version)
 import System.Console.CmdArgs (
   Data,
-  Typeable,
   args,
   cmdArgs,
   help,
@@ -60,7 +59,7 @@ data Nixfmt = Nixfmt
     filename :: Maybe FilePath,
     ir :: Bool
   }
-  deriving (Show, Data, Typeable)
+  deriving (Show, Data)
 
 versionFromFile :: String
 versionFromFile = maybe (showVersion version) unpack $(embedFileIfExists ".version")
