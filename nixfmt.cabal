@@ -38,6 +38,12 @@ common warnings
     ghc-options:
       -Werror
 
+  -- the executable name nixfmt and the library namespace Nixfmt can collide on
+  -- darwin due to case insentivity on APFS
+  if os(darwin)
+    ghc-options:
+      -optP-Wno-nonportable-include-path
+
 executable nixfmt
   import: warnings
 
