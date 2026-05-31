@@ -138,6 +138,12 @@ let
     };
     treefmt = treefmtEval.config.build.check source;
   };
+
+  skippedChecks = lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+    # static pretty-simple fails to build on darwin
+    # https://github.com/NixOS/nixfmt/issues/411
+    "buildStatic"
+  ];
 in
 {
   packages = {
@@ -162,7 +168,7 @@ in
 
   inherit checks;
 
-  ci = pkgs.linkFarm "ci" checks;
+  ci = pkgs.linkFarm "ci" (removeAttrs checks skippedChecks);
 
   treefmt = treefmtEval.config.build.wrapper;
 }
