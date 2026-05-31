@@ -16,7 +16,18 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    name: check ${{ matrix.system }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - system: aarch64-darwin
+            runner: macos-latest
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+          - system: x86_64-linux
+            runner: ubuntu-latest
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         if: github.event_name != 'pull_request_target'
@@ -42,7 +53,7 @@ jobs:
           skipPush: ${{ github.event_name != 'push' }}
 
       - name: checks
-        run: nix-build -A ci
+        run: nix-build -A ci --argstr system "${{ matrix.system }}"
 
   nixpkgs-diff:
     runs-on: ubuntu-latest
