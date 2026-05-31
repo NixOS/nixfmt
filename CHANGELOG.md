@@ -1,5 +1,9 @@
 # Revision history for nixfmt
 
+## 1.3.1 -- 2026-05-31
+- Fixed aarch64-darwin build: <https://github.com/NixOS/nixfmt/pull/409>
+- Added aarch64-linux and aarch64-darwin builds to CI: <https://github.com/NixOS/nixfmt/pull/409>
+
 ## 1.3.0 -- 2026-05-26
 - Updated our dependencies: <https://github.com/NixOS/nixfmt/pull/389>
 - Replaced references to `nixfmt-rfc-style` with `nixfmt`: <https://github.com/NixOS/nixfmt/pull/369>, <https://github.com/NixOS/nixfmt/pull/389>

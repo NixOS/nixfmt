@@ -1,6 +1,6 @@
 cabal-version:       3.8
 name:                nixfmt
-version:             1.3.0
+version:             1.3.1
 synopsis:            Official formatter for Nix code
 description:
   Nixfmt is the official formatter for Nix language code.
