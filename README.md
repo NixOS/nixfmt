@@ -62,13 +62,14 @@ pkgs.mkShellNoCC {
 #### neovim + nixd
 
 ```lua
-vim.lsp.config['nixd'] = {
-    settings ={
+vim.lsp.config('nixd', = {
+    settings = {
         formatting = {
-            command = { "nixfmt" },
+            command = { 'nixfmt' },
         },
     },
-},
+})
+vim.lsp.enable('nixd')
 ```
 
 > [!NOTE]
@@ -77,13 +78,14 @@ vim.lsp.config['nixd'] = {
 #### neovim + nil
 
 ```lua
-vim.lsp.config['nil'] = {
-    settings ={
+vim.lsp.config('nil', = {
+    settings = {
         formatting = {
-            command = { "nixfmt" },
+            command = { 'nixfmt' },
         },
     },
-},
+})
+vim.lsp.enable('nil')
 ```
 
 > [!NOTE]
