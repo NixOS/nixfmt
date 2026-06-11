@@ -32,24 +32,21 @@
   outputs =
     inputs:
     let
+      inherit (inputs.nixpkgs) lib;
+
+      call =
+        f:
+        let
+          fn = if lib.isPath f then import f else f;
+          autoArgs = lib.intersectAttrs (lib.functionArgs fn) inputs;
+        in
+        args: fn (autoArgs // args);
+
       systems = import inputs.systems;
+      perSystem = lib.genAttrs systems;
 
-      genAttrs =
-        names: fn:
-        builtins.listToAttrs (
-          map (name: {
-            inherit name;
-            value = fn name;
-          }) names
-        );
-
-      perSystem = genAttrs systems;
-
-      results = perSystem (system: import ./main.nix {
-        inherit system;
-        inherit (inputs) nixpkgs treefmt-nix;
-      });
-      mapResults = fn: builtins.mapAttrs (_: fn) results;
+      results = perSystem (system: call ./main.nix { inherit system; });
+      mapResults = fn: lib.mapAttrs (_: fn) results;
     in
     {
       packages = mapResults (result: result.packages // { default = result.packages.nixfmt; });
