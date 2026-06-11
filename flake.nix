@@ -8,6 +8,20 @@
     flake = false;
   };
 
+  inputs.nixpkgs = {
+    type = "github";
+    owner = "NixOS";
+    repo = "nixpkgs";
+    ref = "nixpkgs-unstable";
+  };
+
+  inputs.treefmt-nix = {
+    type = "github";
+    owner = "numtide";
+    repo = "treefmt-nix";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
   inputs.flake-compat = {
     type = "github";
     owner = "NixOS";
@@ -31,7 +45,10 @@
 
       perSystem = genAttrs systems;
 
-      results = perSystem (system: import ./main.nix { inherit system; });
+      results = perSystem (system: import ./main.nix {
+        inherit system;
+        inherit (inputs) nixpkgs treefmt-nix;
+      });
       mapResults = fn: builtins.mapAttrs (_: fn) results;
     in
     {

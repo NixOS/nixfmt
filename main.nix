@@ -1,10 +1,9 @@
-let
-  sources = import ./npins;
-in
-# NOTE: update mirrored args in `default.nix` when modifying
+# NOTE: update mirrored args in `default.nix` when modifying public inputs
 {
+  self ? import ./flake-compat.nix,
   system ? builtins.currentSystem,
-  nixpkgs ? sources.nixpkgs,
+  nixpkgs ? self.inputs.nixpkgs,
+  treefmt-nix ? self.inputs.treefmt-nix,
 }:
 let
   overlay = self: super: {
@@ -54,7 +53,7 @@ let
   build = lib.pipe pkgs.haskellPackages.nixfmt haskellBuildPipeline;
   buildStatic = lib.pipe pkgs.pkgsStatic.haskellPackages.nixfmt haskellBuildPipeline;
 
-  treefmtEval = (import sources.treefmt-nix).evalModule pkgs {
+  treefmtEval = (import treefmt-nix).evalModule pkgs {
     # Used to find the project root
     projectRootFile = ".git/config";
 
@@ -160,7 +159,6 @@ in
       stylish-haskell
       haskellPackages.haskell-language-server
       shellcheck
-      npins
       hlint
       treefmtEval.config.build.wrapper
     ];
