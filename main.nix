@@ -4,6 +4,7 @@
   system ? builtins.currentSystem,
   nixpkgs ? self.inputs.nixpkgs,
   treefmt-nix ? self.inputs.treefmt-nix,
+  lib ? nixpkgs.lib or (import (nixpkgs + "/lib")),
 }:
 let
   overlay = finalPkgs: prevPkgs: {
@@ -22,7 +23,7 @@ let
     config = { };
   };
 
-  inherit (pkgs) haskell lib;
+  inherit (pkgs) haskell;
   fs = lib.fileset;
 
   allFiles = fs.gitTracked ./.;
