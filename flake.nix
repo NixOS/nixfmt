@@ -8,6 +8,13 @@
     flake = false;
   };
 
+  inputs.flake-compat = {
+    type = "github";
+    owner = "NixOS";
+    repo = "flake-compat";
+    flake = false;
+  };
+
   outputs =
     inputs:
     let
