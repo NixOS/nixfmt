@@ -6,9 +6,11 @@
   treefmt-nix ? self.inputs.treefmt-nix,
 }:
 let
-  overlay = self: super: {
-    haskell = super.haskell // {
-      packageOverrides = self: super: { nixfmt = self.callCabal2nix "nixfmt" haskellSource { }; };
+  overlay = finalPkgs: prevPkgs: {
+    haskell = prevPkgs.haskell // {
+      packageOverrides = final: prev: {
+        nixfmt = final.callCabal2nix "nixfmt" haskellSource { };
+      };
     };
   };
 
