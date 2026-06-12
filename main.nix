@@ -1,15 +1,17 @@
-let
-  sources = import ./npins;
-in
-# NOTE: update mirrored args in `default.nix` when modifying
+# NOTE: update mirrored args in `default.nix` when modifying public inputs
 {
+  self ? import ./flake-compat.nix,
   system ? builtins.currentSystem,
-  nixpkgs ? sources.nixpkgs,
+  nixpkgs ? self.inputs.nixpkgs,
+  treefmt-nix ? self.inputs.treefmt-nix,
+  lib ? nixpkgs.lib or (import (nixpkgs + "/lib")),
 }:
 let
-  overlay = self: super: {
-    haskell = super.haskell // {
-      packageOverrides = self: super: { nixfmt = self.callCabal2nix "nixfmt" haskellSource { }; };
+  overlay = finalPkgs: prevPkgs: {
+    haskell = prevPkgs.haskell // {
+      packageOverrides = final: prev: {
+        nixfmt = final.callCabal2nix "nixfmt" haskellSource { };
+      };
     };
   };
 
@@ -21,7 +23,7 @@ let
     config = { };
   };
 
-  inherit (pkgs) haskell lib;
+  inherit (pkgs) haskell;
   fs = lib.fileset;
 
   allFiles = fs.gitTracked ./.;
@@ -54,7 +56,7 @@ let
   build = lib.pipe pkgs.haskellPackages.nixfmt haskellBuildPipeline;
   buildStatic = lib.pipe pkgs.pkgsStatic.haskellPackages.nixfmt haskellBuildPipeline;
 
-  treefmtEval = (import sources.treefmt-nix).evalModule pkgs {
+  treefmtEval = (import treefmt-nix).evalModule pkgs {
     # Used to find the project root
     projectRootFile = ".git/config";
 
@@ -160,7 +162,6 @@ in
       stylish-haskell
       haskellPackages.haskell-language-server
       shellcheck
-      npins
       hlint
       treefmtEval.config.build.wrapper
     ];

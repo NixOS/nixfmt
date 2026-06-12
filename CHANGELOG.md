@@ -1,5 +1,10 @@
 # Revision history for nixfmt
 
+## Unreleased
+
+- More small cleanups to our flake:
+  - `nixpkgs` and `treefmt-nix` are now flake inputs that can "follow" downstream flake inputs.
+
 ## 1.3.1 -- 2026-05-31
 - Fixed aarch64-darwin build: <https://github.com/NixOS/nixfmt/pull/409>
 - Added aarch64-linux and aarch64-darwin builds to CI: <https://github.com/NixOS/nixfmt/pull/409>
