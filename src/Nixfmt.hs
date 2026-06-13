@@ -12,11 +12,12 @@ module Nixfmt (
 )
 where
 
-import Data.Bifunctor (bimap, first)
+import Data.Bifunctor (first)
 import Data.Either (fromRight)
 import Data.Text (Text, unpack)
 import Data.Text.Lazy (toStrict)
 import qualified Nixfmt.Parser as Parser
+import Nixfmt.Postprocess (applyDirectives)
 import Nixfmt.Predoc (Pretty, fixup, pretty)
 import Nixfmt.Pretty ()
 import Nixfmt.Types (Expression, LanguageElement, ParseErrorBundle, Whole (..), walkSubprograms)
@@ -33,9 +34,9 @@ type Layouter = forall a. (Pretty a, LanguageElement a) => a -> Text
 -- failure in @filename@ or a formatted version of @source@ with a maximum width
 -- of @w@ columns where possible.
 format :: Layouter -> FilePath -> Text -> Either String Text
-format layout filename =
-  bimap errorBundlePretty layout
-    . Megaparsec.parse Parser.file filename
+format layout filename source =
+  applyDirectives source . layout
+    <$> first errorBundlePretty (Megaparsec.parse Parser.file filename source)
 
 -- | Pretty print the internal AST for debugging
 printAst :: FilePath -> Text -> Either String Text
@@ -59,9 +60,9 @@ printIR filename =
 formatVerify :: Layouter -> FilePath -> Text -> Either String Text
 formatVerify layout path unformatted = do
   unformattedParsed@(Whole unformattedParsed' _) <- parse unformatted
-  let formattedOnce = layout unformattedParsed
+  let formattedOnce = applyDirectives unformatted $ layout unformattedParsed
   formattedOnceParsed <- first (\x -> pleaseReport "Fails to parse after formatting.\n" <> x <> "\n\nAfter Formatting:\n" <> unpack formattedOnce) (parse formattedOnce)
-  let formattedTwice = layout formattedOnceParsed
+  let formattedTwice = applyDirectives formattedOnce $ layout formattedOnceParsed
   if formattedOnceParsed /= unformattedParsed
     then
       Left $

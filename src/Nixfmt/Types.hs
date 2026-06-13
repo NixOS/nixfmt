@@ -77,6 +77,9 @@ data Trivium
     BlockComment Bool [Text]
   | -- | Language annotation comments like /* lua */ that should remain as block comments before strings
     LanguageAnnotation Text
+  | -- | Format directives: /*nixfmt:disable*/ (True) and /*nixfmt:enable*/ (False).
+    -- Recognized as a distinct variant so they are never lifted or converted to trailing comments.
+    FormatDirective Bool
   deriving (Eq, Show)
 
 type Trivia = Seq Trivium
