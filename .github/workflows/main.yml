@@ -29,12 +29,12 @@ jobs:
             runner: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         if: github.event_name != 'pull_request_target'
         with:
           persist-credentials: false
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         if: github.event_name == 'pull_request_target'
         with:
           # To prevent running untrusted code from forks,
@@ -91,7 +91,7 @@ jobs:
       # This is exactly what we want in this case,
       # because the sync-pr.sh script cannot be run sandboxed since it needs to have side effects.
       # Make sure you do not expose secrets in the environment or persist them to disk
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
