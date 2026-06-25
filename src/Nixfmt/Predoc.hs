@@ -47,11 +47,11 @@ import Data.Function ((&))
 import Data.Functor (($>), (<&>))
 import Data.Functor.Identity (runIdentity)
 import Data.List (intersperse)
-import Data.List.NonEmpty (NonEmpty (..), singleton, (<|))
+import Data.List.NonEmpty (NonEmpty (..), (<|))
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Maybe (fromMaybe)
 import qualified Data.Sequence as Seq
-import Data.Text as Text (Text, concat, length, replicate, strip, stripStart, takeWhileEnd)
+import Data.Text as Text (Text, concat, length, replicate, singleton, strip, stripStart, takeWhileEnd)
 import GHC.Stack (HasCallStack)
 import Nixfmt.Types (
   Ann (..),
@@ -421,8 +421,8 @@ mergeSpacings Hardspace (Newlines x) = Newlines x
 mergeSpacings _ (Newlines x) = Newlines (x + 1)
 mergeSpacings _ y = y
 
-layout :: (Pretty a, LanguageElement a) => Int -> Int -> Bool -> a -> Text
-layout width indentWidth strict a = finalize $ layoutGreedy width indentWidth doc
+layout :: (Pretty a, LanguageElement a) => Int -> Int -> Char -> Bool -> a -> Text
+layout width indentWidth indentChar strict a = finalize $ layoutGreedy width indentWidth indentChar doc
   where
     doc =
       fixup
@@ -568,9 +568,9 @@ nextIndent _ = (0, 0)
 newlines :: Int -> Text
 newlines n = Text.replicate n "\n"
 
--- | Create `n` spaces
-indent :: Int -> Text
-indent n = Text.replicate n " "
+-- | Create `n` indention characters
+indent :: Char -> Int -> Text
+indent c n = Text.replicate n (Text.singleton c)
 
 -- All state is (cc, indents, suppress)
 -- cc: current column (within the current line, *not including indentation*)
@@ -583,8 +583,9 @@ indent n = Text.replicate n " "
 type St = (Int, NonEmpty (Int, Int), Bool)
 
 -- tw   Target Width
-layoutGreedy :: Int -> Int -> Doc -> Text
-layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, singleton (0, 0), False)
+layoutGreedy :: Int -> Int -> Char -> Doc -> Text
+layoutGreedy tw iw ic doc =
+  Text.concat $ evalState (go [Group RegularG doc] []) (0, NonEmpty.singleton (0, 0), False)
   where
     -- Simple helpers around `put` with a tuple state
     -- NOTE: making putL strict removes the allocation for the Int
@@ -624,7 +625,7 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
         go' = do
           (cc, (ci, _) :| _, _) <- get
           putL (if withIndent then cc + textWidth t else max 1 (cc + textWidth t))
-          let !i'd = indent (ci + textOffset)
+          let !i'd = indent ic (ci + textOffset)
           emit $! if cc == 0 && withIndent then [i'd, t] else [t]
 
     -- Simply put text without caring about line-start indentation

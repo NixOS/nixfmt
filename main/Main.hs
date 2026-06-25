@@ -50,6 +50,7 @@ data Nixfmt = Nixfmt
   { files :: [FilePath],
     width :: Width,
     indent :: Int,
+    tabs :: Bool,
     check :: Bool,
     mergetool :: Bool,
     quiet :: Bool,
@@ -76,6 +77,7 @@ options =
            defaultWidth
              &= help (addDefaultHint defaultWidth "Maximum width in characters"),
          indent = defaultIndent &= help (addDefaultHint defaultIndent "Number of spaces to use for indentation"),
+         tabs = False &= help "Use tabs for indentation instead of spaces (WARNING: NixCpp has gotchas with indented string syntax — especially if trying to mix tabs & spaces)",
          check = False &= help "Check whether files are formatted without modifying them",
          mergetool = False &= help "Whether to run in git mergetool mode, see https://github.com/NixOS/nixfmt?tab=readme-ov-file#git-mergetool for more info",
          quiet = False &= help "Do not report errors",
@@ -181,8 +183,10 @@ type Formatter = FilePath -> Text -> Either String Text
 toFormatter :: Nixfmt -> Formatter
 toFormatter Nixfmt{ast = True} = Nixfmt.printAst
 toFormatter Nixfmt{ir = True} = Nixfmt.printIR
-toFormatter Nixfmt{width, indent, verify = True, strict} = Nixfmt.formatVerify (layout width indent strict)
-toFormatter Nixfmt{width, indent, verify = False, strict} = Nixfmt.format (layout width indent strict)
+toFormatter Nixfmt{width, indent, tabs, verify = True, strict} =
+  Nixfmt.formatVerify (layout width (if tabs then 1 else indent) (if tabs then '\t' else ' ') strict)
+toFormatter Nixfmt{width, indent, tabs, verify = False, strict} =
+  Nixfmt.format (layout width (if tabs then 1 else indent) (if tabs then '\t' else ' ') strict)
 
 type Operation = Formatter -> Target -> IO Result
 
