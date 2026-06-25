@@ -69,12 +69,15 @@ commonPrefix a b =
     Nothing -> empty
     Just (prefix, _, _) -> prefix
 
+isIndentChar :: Char -> Bool
+isIndentChar c = c == ' ' || c == '\t'
+
 -- | The longest common prefix consisting of only whitespace. The longest common
 -- prefix of zero texts is infinite, represented as Nothing.
 commonIndentation :: [Text] -> Maybe Text
 commonIndentation [] = Nothing
-commonIndentation [x] = Just $ Text.takeWhile (== ' ') x
+commonIndentation [x] = Just $ Text.takeWhile isIndentChar x
 commonIndentation (x : y : xs) = commonIndentation (commonPrefix x y : xs)
 
 isSpaces :: Text -> Bool
-isSpaces = Text.all (== ' ')
+isSpaces = Text.all isIndentChar
