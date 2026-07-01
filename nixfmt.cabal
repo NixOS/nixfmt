@@ -83,6 +83,7 @@ library
     Nixfmt.Lexer
     Nixfmt.Parser
     Nixfmt.Parser.Float
+    Nixfmt.Postprocess
     Nixfmt.Predoc
     Nixfmt.Pretty
     Nixfmt.Types
