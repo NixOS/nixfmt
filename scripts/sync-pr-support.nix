@@ -22,27 +22,24 @@ in
   # but with all Nix files formatted with the given nixfmt
   formattedGitRepo =
     { storePath, nixfmtPath }:
-    let
-      nixfmt = (import nixfmtPath { }).packages.nixfmt;
-    in
     pkgs.runCommand "formatted"
       {
         nativeBuildInputs = [
           pkgs.treefmt
-          nixfmt
         ];
-        treefmtConfig = ''
-          [formatter.nixfmt]
-          command = "nixfmt"
-          options = [ "--verify" ]
-          includes = [ "*.nix" ]
-        '';
-        passAsFile = [ "treefmtConfig" ];
+
+        treefmtConfig = pkgs.writers.writeTOML "treefmt.toml" {
+          formatter.nixfmt = {
+            command = builtins.storePath nixfmtPath;
+            options = [ "--verify" ];
+            includes = [ "*.nix" ];
+          };
+        };
       }
       ''
         cp -r --no-preserve=mode ${builtins.storePath storePath} $out
         treefmt \
-          --config-file "$treefmtConfigPath" \
+          --config-file "$treefmtConfig" \
           --tree-root "$out" \
           --no-cache
       '';
