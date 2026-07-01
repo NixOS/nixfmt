@@ -263,6 +263,11 @@ next() {
 
   update "$index"
 
+  # Build this PR commit's nixfmt package
+  step "Build Nixfmt for commit $index (${prCommits[$index]})"
+  nix --extra-experimental-features "nix-command flakes" build "$PWD/nixfmt"
+  exe=$(realpath result/bin/nixfmt)
+
   step "Checking out Nixpkgs at the base commit"
   git -C nixpkgs checkout base -- .
 
@@ -270,7 +275,7 @@ next() {
 
   # This uses always the same sync-pr-support.nix file from the same nixfmt branch that this script is in,
   # but doesn't use anything else from that nixfmt branch. Instead the nixfmtPath is used for the formatting.
-  if ! nix-build "$SCRIPT_DIR/sync-pr-support.nix" -A formattedGitRepo --arg storePath "$baseStorePath" --arg nixfmtPath "$PWD/nixfmt"; then
+  if ! nix-build "$SCRIPT_DIR/sync-pr-support.nix" -A formattedGitRepo --arg storePath "$baseStorePath" --arg nixfmtPath "$exe"; then
     echo -e "\e[31mFailed to run nixfmt on some files\e[0m"
     exit 1
   fi
