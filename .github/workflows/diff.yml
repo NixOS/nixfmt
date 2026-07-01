@@ -1,63 +1,18 @@
-name: CI
+name: Diff
 on:
-  # We use pull_request_target such that Nixpkgs diff processing also works,
-  # because we need repository secrets for that, which pull_request doesn't allow from forks.
-  # However, it's very important that we don't run code from forks without sandboxing it,
+  # Note: it's very important that we don't run code from forks without sandboxing it,
   # because that way anybody could potentially extract repository secrets!
   # We must ensure that no secrets are in any environment variables when running untrusted code, and that no secrets are persisted to disk and accessible to `readFile`
   # when evaluating Nix code
   pull_request_target: # zizmor: ignore[dangerous-triggers]
-  push:
-    branches:
-      - master
 
 permissions:
   contents: read
 
 jobs:
-  check:
-    name: check ${{ matrix.system }}
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      matrix:
-        include:
-          - system: aarch64-darwin
-            runner: macos-latest
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
-          - system: x86_64-linux
-            runner: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        if: github.event_name != 'pull_request_target'
-        with:
-          persist-credentials: false
-
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        if: github.event_name == 'pull_request_target'
-        with:
-          # To prevent running untrusted code from forks,
-          # pull_request_target will cause the base branch to be checked out, not the PR branch.
-          # In our case we check out the PR branch regardless,
-          # as we do not expose secrets when calling untrusted code
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
-          persist-credentials: false
-
-      - uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
-
-      - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
-        with:
-          name: nixos-nixfmt
-          authToken: ${{ github.event_name == 'push' && secrets.CACHIX_AUTH_TOKEN || '' }}
-          skipPush: ${{ github.event_name != 'push' }}
-
-      - name: checks
-        run: nix-build -A ci --argstr system "${{ matrix.system }}"
-
-  nixpkgs-diff:
+  nixpkgs:
+    name: Nixpkgs
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request_target'
     # Ensures that we don't run two comment-posting workflows at the same time
     concurrency:
       group: ${{ github.workflow_ref }}-${{ github.event.pull_request.number }}
@@ -119,3 +74,4 @@ jobs:
           edit-mode: replace
           body: |
             [Nixpkgs diff](https://github.com/${{ vars.MACHINE_USER }}/nixpkgs/commits/nixfmt-${{ github.event.pull_request.number }})
+
