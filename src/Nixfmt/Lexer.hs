@@ -1,13 +1,15 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole) where
+module Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole, wholeInner) where
 
-import Control.Monad.State.Strict (MonadState, evalStateT, get, modify', put)
+import Control.Monad (guard)
+import Control.Monad.State.Strict (evalStateT, get, gets, modify', state)
 import Data.Char (isAlphaNum, isSpace)
 import Data.Functor (($>))
 import Data.List (dropWhileEnd)
@@ -15,6 +17,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text as Text (
   Text,
   all,
+  drop,
   isPrefixOf,
   length,
   lines,
@@ -26,13 +29,17 @@ import Data.Text as Text (
   stripEnd,
   stripPrefix,
   stripStart,
+  take,
   takeWhile,
+  takeWhileEnd,
   unwords,
  )
 import Data.Void (Void)
 import Nixfmt.Types (
   Ann (..),
+  Directive (..),
   Parser,
+  ParserState (..),
   TrailingComment (..),
   Trivia,
   Trivium (..),
@@ -45,6 +52,8 @@ import Text.Megaparsec (
   SourcePos (..),
   anySingle,
   chunk,
+  getInput,
+  getOffset,
   getSourcePos,
   hidden,
   lookAhead,
@@ -67,13 +76,33 @@ data ParseTrivium
     PTBlockComment Bool [Text]
   | -- | Language annotation like /* lua */ (single line, non-doc)
     PTLanguageAnnotation Text
+  | -- | /*nixfmt:disable*/ (True) or /*nixfmt:enable*/ (False), with its
+    -- (start, end) input offsets; the end includes trailing whitespace on the line.
+    PTFormatDirective Bool (Int, Int)
   deriving (Show)
 
+-- | Horizontal whitespace: whitespace that does not end the line.
+isHSpace :: Char -> Bool
+isHSpace x = isSpace x && x /= '\n' && x /= '\r'
+
 preLexeme :: Parser a -> Parser a
-preLexeme p = p <* manyP (\x -> isSpace x && x /= '\n' && x /= '\r')
+preLexeme p = p <* manyP isHSpace
 
 newlines :: Parser ParseTrivium
 newlines = PTNewlines . Prelude.length <$> some (preLexeme eol)
+
+-- | Parse a /*nixfmt:disable*/ or /*nixfmt:enable*/ directive with nothing
+-- else following on its line.
+formatDirective :: Parser ParseTrivium
+formatDirective = try $ do
+  start <- getOffset
+  _ <- chunk "/*nixfmt:"
+  isDisable <- (True <$ chunk "disable") <|> (False <$ chunk "enable")
+  _ <- chunk "*/"
+  rest <- manyP (\x -> x /= '\n' && x /= '\r')
+  guard $ Text.all isHSpace rest
+  end <- getOffset
+  return (PTFormatDirective isDisable (start, end))
 
 lineComment :: Parser ParseTrivium
 lineComment = preLexeme $ do
@@ -167,31 +196,59 @@ convertTrailing = toMaybe . join . map toText
   where
     toText (PTLineComment c _) = strip c
     toText (PTBlockComment False [c]) = strip c
+    toText (PTFormatDirective True _) = "nixfmt:disable"
+    toText (PTFormatDirective False _) = "nixfmt:enable"
     toText _ = ""
     join = Text.unwords . filter (/= "")
     toMaybe "" = Nothing
     toMaybe c = Just $ TrailingComment c
 
-convertLeading :: [ParseTrivium] -> Trivia
-convertLeading =
-  foldMap
-    ( \case
-        PTNewlines 1 -> []
-        PTNewlines _ -> [EmptyLine]
-        PTLineComment c _ -> [LineComment c]
-        PTBlockComment _ [] -> []
-        PTBlockComment False [c] -> [LineComment $ " " <> strip c]
-        PTBlockComment isDoc cs -> [BlockComment isDoc cs]
-        PTLanguageAnnotation c -> [LanguageAnnotation c]
-    )
+-- | Resolve a format directive against the currently open disabled region.
+-- Directives sharing their line with other tokens are demoted to plain
+-- comments; closing a region captures its raw source text (whole lines,
+-- both directives included).
+resolveDirective :: Bool -> (Int, Int) -> Parser Trivium
+resolveDirective isDisable (start, end) = do
+  ParserState{source, pendingDisable} <- get
+  let linePrefix = Text.takeWhileEnd (/= '\n') (Text.take start source)
+  if not (Text.all isHSpace linePrefix)
+    then pure $ LineComment $ " nixfmt:" <> (if isDisable then "disable" else "enable")
+    else do
+      let lineStart = start - Text.length linePrefix
+      fmap FormatDirective $ case (isDisable, pendingDisable) of
+        (True, Nothing) -> Disable <$ modify' (\s -> s{pendingDisable = Just lineStart})
+        -- A disable inside an already disabled region is inert
+        (True, Just _) -> pure Disable
+        (False, Just regionStart) ->
+          Enable (Just (sliceSource regionStart end source))
+            <$ modify' (\s -> s{pendingDisable = Nothing})
+        (False, Nothing) -> pure $ Enable Nothing
+
+sliceSource :: Int -> Int -> Text -> Text
+sliceSource start end = Text.take (end - start) . Text.drop start
+
+convertLeadingM :: [ParseTrivium] -> Parser Trivia
+convertLeadingM = fmap mconcat . traverse convert
+  where
+    convert :: ParseTrivium -> Parser Trivia
+    convert = \case
+      PTNewlines 1 -> pure []
+      PTNewlines _ -> pure [EmptyLine]
+      PTLineComment c _ -> pure [LineComment c]
+      PTBlockComment _ [] -> pure []
+      PTBlockComment False [c] -> pure [LineComment $ " " <> strip c]
+      PTBlockComment isDoc cs -> pure [BlockComment isDoc cs]
+      PTLanguageAnnotation c -> pure [LanguageAnnotation c]
+      PTFormatDirective isDisable offsets -> pure <$> resolveDirective isDisable offsets
 
 isTrailing :: ParseTrivium -> Bool
 isTrailing (PTLineComment _ _) = True
 isTrailing (PTBlockComment False []) = True
 isTrailing (PTBlockComment False [_]) = True
+isTrailing (PTFormatDirective _ _) = True
 isTrailing _ = False
 
-convertTrivia :: [ParseTrivium] -> Pos -> (Maybe TrailingComment, Trivia)
+convertTrivia :: [ParseTrivium] -> Pos -> Parser (Maybe TrailingComment, Trivia)
 convertTrivia pts nextCol =
   let (trailing, leading) = span isTrailing pts
   in case (trailing, leading) of
@@ -199,21 +256,21 @@ convertTrivia pts nextCol =
        -- then treat it like part of those comments instead of a distinct trailing comment.
        -- This happens especially often after `{` or `[` tokens, where the comment of the first item
        -- starts on the same line ase the opening token.
-       ([PTLineComment _ pos], (PTNewlines 1) : (PTLineComment _ pos') : _) | pos == pos' -> (Nothing, convertLeading pts)
-       ([PTLineComment _ pos], [PTNewlines 1]) | pos == nextCol -> (Nothing, convertLeading pts)
-       _ -> (convertTrailing trailing, convertLeading leading)
+       ([PTLineComment _ pos], (PTNewlines 1) : (PTLineComment _ pos') : _) | pos == pos' -> (,) Nothing <$> convertLeadingM pts
+       ([PTLineComment _ pos], [PTNewlines 1]) | pos == nextCol -> (,) Nothing <$> convertLeadingM pts
+       _ -> (,) (convertTrailing trailing) <$> convertLeadingM leading
 
 trivia :: Parser [ParseTrivium]
-trivia = many $ hidden $ languageAnnotation <|> lineComment <|> blockComment <|> newlines
+trivia = many $ hidden $ languageAnnotation <|> formatDirective <|> lineComment <|> blockComment <|> newlines
 
 -- The following primitives to interact with the state monad that stores trivia
 -- are designed to prevent trivia from being dropped or duplicated by accident.
 
-takeTrivia :: (MonadState Trivia m) => m Trivia
-takeTrivia = get <* put []
+takeTrivia :: Parser Trivia
+takeTrivia = state $ \s -> (pendingTrivia s, s{pendingTrivia = []})
 
-pushTrivia :: (MonadState Trivia m) => Trivia -> m ()
-pushTrivia t = modify' (<> t)
+pushTrivia :: Trivia -> Parser ()
+pushTrivia t = modify' (\s -> s{pendingTrivia = pendingTrivia s <> t})
 
 lexeme :: Parser a -> Parser (Ann a)
 lexeme p = do
@@ -223,7 +280,7 @@ lexeme p = do
   parsedTrivia <- trivia
   -- This is the position of the next lexeme after the currently parsed one
   SourcePos{sourceColumn = col} <- getSourcePos
-  let (trailing, nextLeading) = convertTrivia parsedTrivia col
+  (trailing, nextLeading) <- convertTrivia parsedTrivia col
   pushTrivia nextLeading
   pure $!
     Ann
@@ -236,8 +293,43 @@ lexeme p = do
 -- | Tokens normally have only leading trivia and one trailing comment on the same
 -- line. A whole x also parses and stores final trivia after the x. A whole also
 -- does not interact with the trivia state of its surroundings.
+--
+-- The top-level entry point: initializes the parser state and closes any
+-- disabled region left unclosed at the end of the file.
 whole :: Parser a -> Parsec Void Text (Whole a)
-whole pa = flip evalStateT [] do
+whole pa = do
+  src <- getInput
+  let initialState =
+        ParserState
+          { pendingTrivia = [],
+            source = src,
+            pendingDisable = Nothing,
+            cutInterpolations = 0
+          }
+  evalStateT (closeUnclosedRegion =<< wholeInner pa) initialState
+
+-- | An unclosed /*nixfmt:disable*/ extends to the end of the file.
+closeUnclosedRegion :: Whole a -> Parser (Whole a)
+closeUnclosedRegion (Whole a finalTrivia) = do
+  ParserState{source, pendingDisable} <- get
+  pure $ case pendingDisable of
+    Nothing -> Whole a finalTrivia
+    Just regionStart -> Whole a $ finalTrivia <> [FormatDirective $ DisabledToEof (Text.drop regionStart source)]
+
+-- | Like 'whole', but running within an enclosing parse (used for
+-- interpolations): isolates the surrounding pending trivia while the
+-- directive state keeps flowing through in source order.
+wholeInner :: Parser a -> Parser (Whole a)
+wholeInner pa = do
+  saved <- takeTrivia
+  ParserState{pendingDisable = before, cutInterpolations = outerCuts} <- get
   preLexeme $ pure ()
-  pushTrivia . convertLeading =<< trivia
-  Whole <$> pa <*> takeTrivia
+  pushTrivia =<< convertLeadingM =<< trivia
+  result <- Whole <$> pa <*> takeTrivia
+  after <- gets pendingDisable
+  -- A disabled region with exactly one end inside this interpolation cuts it.
+  -- Set rather than incremented: cuts of interpolations nested deeper inside
+  -- were already observed by their enclosing string and must not leak out.
+  modify' $ \s -> s{cutInterpolations = outerCuts + (if before == after then 0 else 1)}
+  pushTrivia saved
+  pure result

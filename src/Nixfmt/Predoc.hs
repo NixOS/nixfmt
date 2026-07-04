@@ -9,6 +9,10 @@ module Nixfmt.Predoc (
   comment,
   trailingComment,
   trailing,
+  disableMarker,
+  verbatim,
+  verbatimToEof,
+  rawText,
   sepBy,
   surroundWith,
   hcat,
@@ -38,7 +42,7 @@ where
 
 import Control.Applicative (asum, empty, (<|>))
 import Control.Monad.Trans.State.Strict (State, StateT (..), evalState, get, mapStateT, modify', put, runState, state)
-import Data.Bifunctor (first, second)
+import Data.Bifunctor (second)
 import Data.Function ((&))
 import Data.Functor (($>), (<&>))
 import Data.Functor.Identity (runIdentity)
@@ -47,7 +51,7 @@ import Data.List.NonEmpty (NonEmpty (..), singleton, (<|))
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Maybe (fromMaybe)
 import qualified Data.Sequence as Seq
-import Data.Text as Text (Text, concat, length, replicate, strip)
+import Data.Text as Text (Text, concat, length, replicate, strip, stripStart, takeWhileEnd)
 import GHC.Stack (HasCallStack)
 import Nixfmt.Types (
   Ann (..),
@@ -112,7 +116,11 @@ data GroupAnn
 -- Trailing comments are like comments, but marked differently for special treatment further down the line
 -- (The difference is that trailing comments are guaranteed to be single "# text" tokens, while all other comments
 -- may be composite and multi-line)
-data TextAnn = RegularT | Comment | TrailingComment | Trailing
+-- DisableMarker and Verbatim delimit a format-disabled region: the renderer
+-- suppresses everything between them and prints the Verbatim raw text as-is.
+-- The Bool of Verbatim marks a region extending to the end of the file.
+-- RawText also renders as-is (no indentation), but has no region-delimiting meaning.
+data TextAnn = RegularT | Comment | TrailingComment | Trailing | DisableMarker | Verbatim Bool | RawText
   deriving (Show, Eq)
 
 -- | Single document element. Documents are modeled as lists of these elements
@@ -159,6 +167,25 @@ trailingComment t = [Text 0 0 TrailingComment t]
 trailing :: Text -> Doc
 trailing "" = []
 trailing t = [Text 0 0 Trailing t]
+
+-- | Marks the start of a format-disabled region; renders as nothing. The
+-- region's raw text lives in the following 'verbatim' node.
+disableMarker :: Doc
+disableMarker = [Text 0 0 DisableMarker ""]
+
+-- | Raw source text of a format-disabled region, reproduced exactly as-is.
+verbatim :: Text -> Doc
+verbatim t = [Text 0 0 (Verbatim False) t]
+
+-- | Like 'verbatim', for a region that extends to the end of the file.
+verbatimToEof :: Text -> Doc
+verbatimToEof t = [Text 0 0 (Verbatim True) t]
+
+-- | Text rendered exactly as-is, with no indentation prepended. Even when
+-- empty it claims the start of the line, so the following text receives no
+-- indentation either.
+rawText :: Text -> Doc
+rawText t = [Text 0 0 RawText t]
 
 -- | Group document elements together (see Node Group documentation)
 -- Must not contain non-hard whitespace (e.g. line, softline' etc.) at the start of the end.
@@ -271,6 +298,11 @@ isComment (Text _ _ TrailingComment _) = True
 isComment (Group _ inner) = all (\x -> isComment x || isHardSpacing x) inner
 isComment _ = False
 
+-- Check if an element is verbatim disabled-region text.
+isVerbatim :: DocE -> Bool
+isVerbatim (Text _ _ (Verbatim _) _) = True
+isVerbatim _ = False
+
 --- Manually force a group to its compact layout, by replacing all relevant whitespace.
 --- Does not recurse into inner groups.
 unexpandSpacing :: Doc -> Doc
@@ -292,6 +324,10 @@ spanEnd p = fmap reverse . span p . reverse
 unexpandSpacing' :: Maybe Int -> Doc -> Maybe Doc
 unexpandSpacing' (Just n) _ | n < 0 = Nothing
 unexpandSpacing' _ [] = Just []
+-- Disabled regions and raw lines of cut strings can never be compacted onto one line
+unexpandSpacing' _ (Text _ _ DisableMarker _ : _) = Nothing
+unexpandSpacing' _ (Text _ _ (Verbatim _) _ : _) = Nothing
+unexpandSpacing' _ (Text _ _ RawText _ : _) = Nothing
 unexpandSpacing' n (txt@(Text _ _ _ t) : xs) = (txt :) <$> unexpandSpacing' (n <&> subtract (textWidth t)) xs
 unexpandSpacing' n (Spacing Hardspace : xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> subtract 1) xs
 unexpandSpacing' n (Spacing Space : xs) = (Spacing Hardspace :) <$> unexpandSpacing' (n <&> subtract 1) xs
@@ -330,7 +366,7 @@ fixup (a@(Spacing _) : Group ann xs : ys) =
   let -- Recurse onto xs, split out leading and trailing whitespace into pre and post.
       -- For the leading side, also move out comments out of groups, they are kinda the same thing
       -- (We could move out trailing comments too but it would make no difference)
-      (pre, rest) = span (\x -> isHardSpacing x || isComment x) $ fixup xs
+      (pre, rest) = span (\x -> isHardSpacing x || isComment x || isVerbatim x) $ fixup xs
       (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
   in if null body
        then -- Dissolve empty group
@@ -338,12 +374,41 @@ fixup (a@(Spacing _) : Group ann xs : ys) =
        else fixup (a : pre) ++ [Group ann body] ++ fixup (post ++ ys)
 -- Handle group, almost the same thing as above
 fixup (Group ann xs : ys) =
-  let (pre, rest) = span (\x -> isHardSpacing x || isComment x) $ fixup xs
+  let (pre, rest) = span (\x -> isHardSpacing x || isComment x || isVerbatim x) $ fixup xs
       (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
   in if null body
        then fixup $ pre ++ post ++ ys
        else fixup pre ++ [Group ann body] ++ fixup (post ++ ys)
 fixup (x : xs) = x : fixup xs
+
+-- | Turn DisableMarkers with no Verbatim after them into plain comments, so
+-- they do not suppress anything. Such markers cannot result from a full parse
+-- (unclosed regions are closed at end of file), but may appear in minimized
+-- fragments produced by `walkSubprograms`.
+removeDisabled :: Doc -> Doc
+removeDisabled doc = evalState (go doc) (countVerbatims doc)
+  where
+    countVerbatims :: Doc -> Int
+    countVerbatims = sum . map countE
+      where
+        countE (Text _ _ (Verbatim _) _) = 1
+        countE (Group _ inner) = countVerbatims inner
+        countE _ = 0
+
+    -- State: Verbatim nodes not yet passed
+    go :: Doc -> State Int Doc
+    go = fmap Prelude.concat . traverse goE
+
+    goE :: DocE -> State Int Doc
+    goE m@(Text i o DisableMarker _) = do
+      left <- get
+      pure $
+        if left > 0
+          then [m]
+          else [Text i o Comment "/*nixfmt:disable*/", Spacing Hardline]
+    goE v@(Text _ _ (Verbatim _) _) = modify' (subtract 1) $> [v]
+    goE (Group ann inner) = pure . Group ann <$> go inner
+    goE e = pure [e]
 
 mergeSpacings :: Spacing -> Spacing -> Spacing
 mergeSpacings x y | x > y = mergeSpacings y x
@@ -357,18 +422,33 @@ mergeSpacings _ (Newlines x) = Newlines (x + 1)
 mergeSpacings _ y = y
 
 layout :: (Pretty a, LanguageElement a) => Int -> Int -> Bool -> a -> Text
-layout width indentWidth strict =
-  (<> "\n")
-    . Text.strip
-    . layoutGreedy width indentWidth
-    . fixup
-    . pretty
-    -- Strip leading empty lines so they don't affect layout decisions.
-    -- They are removed from the final output by Text.strip anyway, but if
-    -- left in the Doc they can cause non-idempotent formatting.
-    . mapFirstToken (\a@Ann{preTrivia} -> a{preTrivia = Seq.dropWhileL (== EmptyLine) preTrivia})
-    -- In strict mode, set the line number of all tokens to zero
-    . (if strict then mapAllTokens removeLineInfo else id)
+layout width indentWidth strict a = finalize $ layoutGreedy width indentWidth doc
+  where
+    doc =
+      fixup
+        . removeDisabled
+        . pretty
+        -- Strip leading empty lines so they don't affect layout decisions.
+        -- They are removed from the final output anyway, but if
+        -- left in the Doc they can cause non-idempotent formatting.
+        . mapFirstToken (\a'@Ann{preTrivia} -> a'{preTrivia = Seq.dropWhileL (== EmptyLine) preTrivia})
+        -- In strict mode, set the line number of all tokens to zero
+        . (if strict then mapAllTokens removeLineInfo else id)
+        $ a
+
+    -- The output always ends with exactly one newline, except when a
+    -- disabled region extends to the end of the file, which reproduces the
+    -- input byte-exactly, including any (or no) final newline.
+    finalize
+      | endsWithEofRegion doc = Text.stripStart
+      | otherwise = (<> "\n") . Text.strip
+
+    endsWithEofRegion = go . reverse
+      where
+        go (Spacing _ : xs) = go xs
+        go (Text _ _ (Verbatim True) _ : _) = True
+        go (Group _ inner : _) = go (reverse inner)
+        go _ = False
 
 -- 1. Move and merge Spacings.
 -- 2. Convert Softlines to Grouped Lines and Hardspaces to Texts.
@@ -426,6 +506,11 @@ fits ni c (x : xs) = case x of
     | ni == 0 -> ((" " <> t) <>) <$> fits ni c xs
     | otherwise -> (t <>) <$> fits ni c xs
   Text _ _ Trailing _ -> fits ni c xs
+  -- Disabled regions are always multi-line
+  Text _ _ DisableMarker _ -> Nothing
+  Text _ _ (Verbatim _) _ -> Nothing
+  -- Raw lines of a cut string must not be compacted
+  Text _ _ RawText _ -> Nothing
   Spacing Softbreak -> fits ni c xs
   Spacing Break -> fits ni c xs
   Spacing Softspace -> (" " <>) <$> fits (ni - 1) (c - 1) xs
@@ -458,6 +543,8 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
     go c _ | c < 0 = False
     go c [] = maxWidth - c <= targetWidth
     go c (Text _ _ RegularT t : xs) = go (c - textWidth t) xs
+    -- A disabled region ends the line, like a line break
+    go c (Text _ _ (Verbatim _) _ : _) = maxWidth - c <= targetWidth
     go c (Text{} : xs) = go c xs
     -- This case is impossible in the input thanks to fixup, but may happen
     -- due to our recursion on groups below
@@ -485,52 +572,68 @@ newlines n = Text.replicate n "\n"
 indent :: Int -> Text
 indent n = Text.replicate n " "
 
--- All state is (cc, indents)
+-- All state is (cc, indents, suppress)
 -- cc: current column (within the current line, *not including indentation*)
 -- indents:
 --   A stack of tuples (currentIndent, nestingLevel)
 --   This is guaranteed to never be empty, as we start with [(0, 0)] and never go below that.
-type St = (Int, NonEmpty (Int, Int))
+-- suppress: whether we are inside a format-disabled region: content is still
+--   rendered (cc and indents evolve as usual) but nothing is emitted, until
+--   the region's Verbatim node emits the raw text and clears the flag.
+type St = (Int, NonEmpty (Int, Int), Bool)
 
 -- tw   Target Width
 layoutGreedy :: Int -> Int -> Doc -> Text
-layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, singleton (0, 0))
+layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, singleton (0, 0), False)
   where
     -- Simple helpers around `put` with a tuple state
     -- NOTE: making putL strict removes the allocation for the Int
-    putL = modify' . first . const
-    putR = modify' . second . const
+    putL v = modify' (\(_, indents, suppress) -> (v, indents, suppress))
+    putR v = modify' (\(cc, _, suppress) -> (cc, v, suppress))
+
+    -- Emit the given texts, unless we are inside a format-disabled region
+    emit :: [Text] -> State St [Text]
+    emit ts = get <&> \(_, _, suppress) -> if suppress then [] else ts
 
     -- Print a given text. If this is the first token on a line, it will
     -- do the appropriate calculations for indentation and print that in addition to the text.
     putText :: Int -> Int -> Text -> State St [Text]
-    putText textNL textOffset t =
+    putText = putTextWith True
+
+    -- Like `putText`, but print the text exactly as-is, without indentation
+    -- (the indentation stack is still maintained as usual). The cursor advances
+    -- at least one column so that even an empty text claims the start of its line.
+    putRawText :: Int -> Int -> Text -> State St [Text]
+    putRawText = putTextWith False
+
+    putTextWith :: Bool -> Int -> Int -> Text -> State St [Text]
+    putTextWith withIndent textNL textOffset t =
       get
-        >>= \(cc, indents@((ci, nl) :| indents')) ->
+        >>= \(cc, indents@((ci, nl) :| indents'), _) ->
           case textNL `compare` nl of
             -- Push the textNL onto the stack, but only increase the actual indentation (`ci`)
             -- if this is the first one of a line. All subsequent nestings within the line effectively get "swallowed"
             GT -> putR ((if cc == 0 then ci + iw else ci, textNL) <| indents) >> go'
             -- Need to go down one or more levels
             -- Just pop from the stack and recurse until the indent matches again
-            LT -> putR (NonEmpty.fromList indents') >> putText textNL textOffset t
+            LT -> putR (NonEmpty.fromList indents') >> putTextWith withIndent textNL textOffset t
             EQ -> go'
       where
         -- Put the text and advance the `cc` cursor. Add the appropriate amount of indentation if this is
         -- the first token on a line
         go' = do
-          (cc, (ci, _) :| _) <- get
-          putL (cc + textWidth t)
+          (cc, (ci, _) :| _, _) <- get
+          putL (if withIndent then cc + textWidth t else max 1 (cc + textWidth t))
           let !i'd = indent (ci + textOffset)
-          pure $! if cc == 0 then [i'd, t] else [t]
+          emit $! if cc == 0 && withIndent then [i'd, t] else [t]
 
     -- Simply put text without caring about line-start indentation
     putText' :: [Text] -> State St [Text]
     putText' ts = do
-      (cc, indents) <- get
+      (cc, indents, suppress) <- get
       let !cc' = cc + sum (map textWidth ts)
-      put (cc', indents)
-      pure ts
+      put (cc', indents, suppress)
+      emit ts
 
     -- First argument: chunks to render
     -- Second argument: lookahead of following chunks, not rendered
@@ -542,12 +645,12 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
     -- Second argument: lookahead of following chunks
     goOne :: DocE -> Doc -> State St [Text]
     goOne x xs =
-      get >>= \(cc, indents) ->
+      get >>= \(cc, indents, suppress) ->
         let -- The last printed character was a line break
             needsIndent = (cc == 0)
 
             putNL :: Int -> State St [Text]
-            putNL n = put (0, indents) $> [newlines n]
+            putNL n = put (0, indents, suppress) *> emit [newlines n]
         in case x of
              -- Special case trailing comments. Because in cases like
              -- [ # comment
@@ -565,6 +668,19 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
              Text _ _ TrailingComment t | cc == 2 && fst (nextIndent xs) > lineNL -> putText' [" ", t]
                where
                  lineNL = snd $ NonEmpty.head indents
+             -- Start of a format-disabled region: suppress output from here on.
+             -- The region's content is still rendered to keep the state exact.
+             Text _ _ DisableMarker _ -> put (cc, indents, True) $> []
+             -- Raw line prefix of a cut string: emit as-is, without any indentation
+             Text nl off RawText t -> putRawText nl off t
+             -- Raw text of a disabled region: emit as-is and stop suppressing.
+             -- Under suppression the last emitted output was the hardline before
+             -- the region's marker, so we are at a line start regardless of the
+             -- simulated cursor. The cursor is set to the raw text's last-line
+             -- width so the following hardline behaves.
+             Text _ _ (Verbatim _) t ->
+               put (textWidth (Text.takeWhileEnd (/= '\n') t), indents, False)
+                 $> (if needsIndent || suppress then [t] else ["\n", t])
              Text nl off _ t -> putText nl off t
              -- This code treats whitespace as "expanded"
              -- A new line resets the column counter and sets the target indentation as current indentation
@@ -628,7 +744,7 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
     -- In general groups are never empty as empty groups are removed in `fixup`, however this also
     -- gets called for pre and post of priority groups, which may be empty.
     goGroup [] _ = pure []
-    goGroup grp rest = StateT $ \(cc, ci) ->
+    goGroup grp rest = StateT $ \(cc, ci, suppress) ->
       if cc == 0
         then
           let -- We know that the last printed character was a line break (cc == 0),
@@ -644,10 +760,10 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
                   lastLineNL = snd $ NonEmpty.head ci
                   lineNL = lastLineNL + (if nl > lastLineNL then iw else 0)
           in fits indentWillIncrease (tw - firstLineWidth rest) grp'
-               <&> \t -> runState (putText nl off t) (cc, ci)
+               <&> \t -> runState (putText nl off t) (cc, ci, suppress)
         else
           let indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
                 where
                   lineNL = snd $ NonEmpty.head ci
           in fits (indentWillIncrease - cc) (tw - cc - firstLineWidth rest) grp
-               <&> \t -> ([t], (cc + textWidth t, ci))
+               <&> \t -> ([t | not suppress], (cc + textWidth t, ci, suppress))
