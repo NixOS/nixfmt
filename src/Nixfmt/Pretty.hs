@@ -90,6 +90,10 @@ moveTrailingCommentUp a = a
 prependTrivia :: Trivia -> Ann a -> Ann a
 prependTrivia extra a@Ann{preTrivia} = a{preTrivia = extra <> preTrivia}
 
+isLangAnnotation :: Trivium -> Bool
+isLangAnnotation (LanguageAnnotation _) = True
+isLangAnnotation _ = False
+
 -- | Get the source line of the first token in a language element
 firstTokenLine :: (LanguageElement a) => a -> Pos
 firstTokenLine = snd . mapFirstToken' (\a -> (a, sourceLine a))
@@ -509,11 +513,16 @@ prettyApp indentFunction pre hasPost f a =
         absorbParen open expr close
       absorbLast arg = group' RegularG $ nest $ pretty arg
 
-      -- Extract comment before the first function and move it out, to prevent functions being force-expanded
+      -- Extract comment before the first function and move it out, to prevent functions being force-expanded.
+      -- Language annotations must stay attached to their token.
       (fWithoutComment, comment') =
         mapFirstToken'
-          ((\a'@Ann{preTrivia} -> (a'{preTrivia = []}, preTrivia)) . moveTrailingCommentUp)
+          (hoistNonAnnotationTrivia . moveTrailingCommentUp)
           f
+        where
+          hoistNonAnnotationTrivia a'@Ann{preTrivia} =
+            let (annots, hoisted) = Seq.partition isLangAnnotation preTrivia
+            in (a'{preTrivia = annots}, hoisted)
 
       -- renderSimple will take a document to render, and call one of two callbacks depending on whether
       -- it can take a simplified layout (with removed line breaks) or not.
@@ -665,9 +674,6 @@ isAbsorbable (Set _ paropen items _)
 -- except for language annotations (/* lua */, etc.) which can stay compact.
 isAbsorbable (Parenthesized (LoneAnn _) (Term t) _) =
   matchFirstToken (all isLangAnnotation . preTrivia) t && isAbsorbable t
-  where
-    isLangAnnotation (LanguageAnnotation _) = True
-    isLangAnnotation _ = False
 isAbsorbable _ = False
 
 isAbsorbableTerm :: Term -> Bool
