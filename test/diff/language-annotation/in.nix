@@ -160,4 +160,17 @@
   annotationAfterTrivia = [ # x
     /* sh */ "ls"
   ];
+
+  # Trailing comment between annotated string and application argument;
+  # the hoisted comment must not land between the annotation and its string
+  # (string application is semantically invalid but syntactically legal)
+  trailingCommentApp = /*bash*/''echo lang annotation with trail comment'' # trailing comment
+    A;
+
+  # Same shape with a block comment instead of a line comment
+  trailingBlockCommentApp = /*bash*/''echo hi'' /* trailing comment */  A;
+
+  # Same shape with the annotated string as a middle argument must stay stable
+  trailingCommentArg = runCommand /*bash*/''echo hi'' # trailing comment
+    A;
 }
