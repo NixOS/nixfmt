@@ -1,9 +1,13 @@
 # Revision history for nixfmt
 
-## Unreleased
+## 1.4.0 -- 2026-07-07
 
+- Added `/*nixfmt:disable*/` and `/*nixfmt:enable*/` comment directives to exclude regions of code from formatting: <https://github.com/NixOS/nixfmt/pull/388>
+- Fixed language annotations being detached from their string when comments are hoisted out of function applications: <https://github.com/NixOS/nixfmt/pull/425>
 - More small cleanups to our flake:
+  - Migrated the development setup from npins to flakes and added flake-compat: <https://github.com/NixOS/nixfmt/pull/416>
   - `nixpkgs` and `treefmt-nix` are now flake inputs that can "follow" downstream flake inputs.
+- Improved the Neovim setup instructions in the README: <https://github.com/NixOS/nixfmt/pull/414>, <https://github.com/NixOS/nixfmt/pull/415>
 
 ## 1.3.1 -- 2026-05-31
 - Fixed aarch64-darwin build: <https://github.com/NixOS/nixfmt/pull/409>
