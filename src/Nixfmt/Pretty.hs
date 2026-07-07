@@ -14,12 +14,13 @@ import Data.Char (isSpace)
 import Data.Maybe (fromJust, fromMaybe, isJust, isNothing)
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
-import qualified Data.Text as Text (null, takeWhile)
+import qualified Data.Text as Text (null, span, takeWhile)
 import Nixfmt.Predoc (
   Doc,
   GroupAnn (..),
   Pretty,
   comment,
+  disableMarker,
   emptyline,
   group,
   group',
@@ -32,6 +33,7 @@ import Nixfmt.Predoc (
   newline,
   offset,
   pretty,
+  rawText,
   sepBy,
   softline,
   softline',
@@ -41,10 +43,13 @@ import Nixfmt.Predoc (
   trailing,
   trailingComment,
   unexpandSpacing',
+  verbatim,
+  verbatimToEof,
  )
 import Nixfmt.Types (
   Ann (..),
   Binder (..),
+  Directive (..),
   Expression (..),
   Item (..),
   Items (..),
@@ -106,6 +111,15 @@ instance Pretty Trivium where
   pretty EmptyLine = emptyline
   pretty (LineComment c) = comment ("#" <> c) <> hardline
   pretty (LanguageAnnotation lang) = comment ("/* " <> lang <> " */") <> hardspace
+  pretty (FormatDirective directive) = case directive of
+    -- The disable directive itself is part of the raw region text captured
+    -- where the region closes, so only a marker is emitted here
+    Disable -> disableMarker
+    -- No hardline: the raw text is the byte-exact end of the file
+    DisabledToEof raw -> verbatimToEof raw
+    Enable (Just raw) -> verbatim raw <> hardline
+    -- A lone /*nixfmt:enable*/ without a matching disable is inert
+    Enable Nothing -> comment "/*nixfmt:enable*/" <> hardline
   pretty (BlockComment isDoc c) =
     comment (if isDoc then "/**" else "/*")
       <> hardline
@@ -263,7 +277,7 @@ prettyTermWide t = prettyTerm t
 prettyTerm :: Term -> Doc
 prettyTerm (Token t) = pretty t
 prettyTerm (SimpleString Ann{preTrivia, value, trailComment}) = pretty preTrivia <> prettySimpleString value <> pretty trailComment
-prettyTerm (IndentedString Ann{preTrivia, value, trailComment}) = pretty preTrivia <> prettyIndentedString value <> pretty trailComment
+prettyTerm (IndentedString cut Ann{preTrivia, value, trailComment}) = pretty preTrivia <> prettyIndentedString cut value <> pretty trailComment
 prettyTerm (Path p) = pretty p
 prettyTerm (Selection term selectors rest) =
   pretty term
@@ -366,9 +380,10 @@ moveParamsComments
   ( (ParamAttr name maybeDefault (Just comma@Ann{preTrivia = trivia, trailComment = Nothing}))
       : (ParamAttr name'@Ann{preTrivia = trivia'} maybeDefault' maybeComma')
       : xs
-    ) =
-    ParamAttr name maybeDefault (Just (comma{preTrivia = []}))
-      : moveParamsComments (ParamAttr (name'{preTrivia = trivia <> trivia'}) maybeDefault' maybeComma' : xs)
+    )
+    | not (containsDirective trivia) =
+        ParamAttr name maybeDefault (Just (comma{preTrivia = []}))
+          : moveParamsComments (ParamAttr (name'{preTrivia = trivia <> trivia'}) maybeDefault' maybeComma' : xs)
 -- This may seem like a nonsensical case, but keep in mind that blank lines also count as comments (trivia)
 moveParamsComments
   -- , name
@@ -376,14 +391,21 @@ moveParamsComments
   -- ellipsis
   [ ParamAttr name maybeDefault (Just comma@Ann{preTrivia = trivia, trailComment = Nothing}),
     ParamEllipsis ellipsis@Ann{preTrivia = trivia'}
-    ] =
-    [ ParamAttr name maybeDefault (Just (comma{preTrivia = []})),
-      ParamEllipsis (ellipsis{preTrivia = trivia <> trivia'})
     ]
+    | not (containsDirective trivia) =
+        [ ParamAttr name maybeDefault (Just (comma{preTrivia = []})),
+          ParamEllipsis (ellipsis{preTrivia = trivia <> trivia'})
+        ]
 -- Inject a trailing comma on the last element if necessary
 moveParamsComments [ParamAttr name@Ann{sourceLine} def Nothing] = [ParamAttr name def (Just (ann sourceLine TComma))]
 moveParamsComments (x : xs) = x : moveParamsComments xs
 moveParamsComments [] = []
+
+-- | Whether the trivia contains a format directive.
+containsDirective :: Trivia -> Bool
+containsDirective = any $ \case
+  FormatDirective _ -> True
+  _ -> False
 
 instance Pretty Parameter where
   -- param:
@@ -654,7 +676,7 @@ isAbsorbableExpr expr = case expr of
 
 isAbsorbable :: Term -> Bool
 -- Multi-line indented string
-isAbsorbable (IndentedString Ann{value = _ : _ : _}) = True
+isAbsorbable (IndentedString _ Ann{value = _ : _ : _}) = True
 isAbsorbable (Path _) = False
 -- Non-empty sets and lists
 isAbsorbable (Set _ _ (Items (_ : _)) _) = True
@@ -723,7 +745,7 @@ absorbRHS expr = case expr of
   -- Not all strings are absorbable, but in this case we always want to keep them attached.
   -- Because there's nothing to gain from having them start on a new line.
   (Term (SimpleString _)) -> nest $ hardspace <> group expr
-  (Term (IndentedString _)) -> nest $ hardspace <> group expr
+  (Term (IndentedString _ _)) -> nest $ hardspace <> group expr
   -- Same for path
   (Term (Path _)) -> nest $ hardspace <> group expr
   -- Non-absorbable term
@@ -876,7 +898,7 @@ isSimpleSelector _ = False
 
 isSimple :: Expression -> Bool
 isSimple (Term (SimpleString (LoneAnn _))) = True
-isSimple (Term (IndentedString (LoneAnn _))) = True
+isSimple (Term (IndentedString _ (LoneAnn _))) = True
 isSimple (Term (Path (LoneAnn _))) = True
 isSimple (Term (Token (LoneAnn (Identifier _)))) = True
 isSimple (Term (Token (LoneAnn (Integer _)))) = True
@@ -960,13 +982,31 @@ prettySimpleString parts =
       <> sepBy (text "\n") (map pretty parts)
       <> text "\""
 
-prettyIndentedString :: [[StringPart]] -> Doc
-prettyIndentedString parts =
+-- | Render an indented string. If a disabled region cuts through it (@cut@
+-- holds the stripped indentation), all lines keep their original columns;
+-- interpolated code is still formatted normally.
+prettyIndentedString :: Maybe Text -> [[StringPart]] -> Doc
+prettyIndentedString cut parts =
   group $
     text "''"
       -- Usually the `''` is followed by a potential line break.
       -- However, for single-line strings it should be omitted, because often times a line break will
       -- not reduce the indentation at all
       <> (case parts of _ : _ : _ -> line'; _ -> mempty)
-      <> nest (sepBy newline $ map pretty parts)
+      <> nest (sepBy newline $ map prettyLine parts)
       <> text "''"
+  where
+    -- The nest above does not indent the raw lines (RawText renders as-is), but
+    -- keeps the indentation state consistent for interpolations and what follows.
+    prettyLine :: [StringPart] -> Doc
+    prettyLine = maybe pretty rawLine cut
+
+    -- Reproduce a line at its original columns: emit the leading whitespace
+    -- (stripped indentation included) as raw text and delegate the rest to the
+    -- regular rendering, with the offsets reinstated for interpolated code.
+    rawLine :: Text -> [StringPart] -> Doc
+    rawLine _ [] = mempty
+    rawLine ind (TextPart t : rest) =
+      let (ws, content) = Text.span isSpace t
+      in rawText (ind <> ws) <> offset (textWidth ws) (pretty (TextPart content : rest))
+    rawLine ind lineParts = rawText ind <> pretty lineParts

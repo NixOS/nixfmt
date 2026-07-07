@@ -11,10 +11,12 @@
 
 module Nixfmt.Types (
   ParseErrorBundle,
+  ParserState (..),
   Trivia,
   Ann (.., LoneAnn),
   ann,
   Binder (..),
+  Directive (..),
   Expression (..),
   File,
   Fixity (..),
@@ -61,8 +63,24 @@ import Text.Megaparsec (Pos)
 import qualified Text.Megaparsec as MP (ParseErrorBundle, Parsec, pos1)
 import Prelude hiding (String)
 
+-- | State threaded through the parser.
+data ParserState = ParserState
+  { -- | Trivia not yet attached to a token
+    pendingTrivia :: Trivia,
+    -- | The full original input, for slicing out raw disabled region text
+    source :: Text,
+    -- | Offset of the line start of the /*nixfmt:disable*/ directive of the
+    -- currently open disabled region, if any
+    pendingDisable :: Maybe Int,
+    -- | Number of interpolations that a disabled region cuts through, i.e.
+    -- exactly one of the region's ends lies inside the interpolation. Used to
+    -- detect strings that a region enters or leaves. Cuts of interpolations
+    -- nested deeper inside do not count
+    cutInterpolations :: Int
+  }
+
 -- | A @megaparsec@ @ParsecT@ specified for use with @nixfmt@.
-type Parser = StateT Trivia (MP.Parsec Void Text)
+type Parser = StateT ParserState (MP.Parsec Void Text)
 
 -- | A @megaparsec@ @ParseErrorBundle@ specified for use with @nixfmt@.
 type ParseErrorBundle = MP.ParseErrorBundle Text Void
@@ -77,6 +95,24 @@ data Trivium
     BlockComment Bool [Text]
   | -- | Language annotation comments like /* lua */ that should remain as block comments before strings
     LanguageAnnotation Text
+  | -- | A resolved format directive (see 'Directive'). Must never be moved
+    -- around or converted to a trailing comment.
+    FormatDirective Directive
+  deriving (Eq, Show)
+
+-- | A format directive, resolved against the open disabled region during parsing.
+data Directive
+  = -- | /*nixfmt:disable*/. Opens a disabled region (inert inside one already
+    -- open). The raw region text is carried by the closing 'Enable' or
+    -- 'DisabledToEof'.
+    Disable
+  | -- | Virtual close of a region left unclosed: it extends to the end of the
+    -- file, byte-exact including any (or no) final newline.
+    DisabledToEof Text
+  | -- | /*nixfmt:enable*/. @Just raw@ closes a disabled region, carrying the
+    -- raw source text of the whole region (both directive lines included).
+    -- @Nothing@ is a lone enable without a matching disable.
+    Enable (Maybe Text)
   deriving (Eq, Show)
 
 type Trivia = Seq Trivium
@@ -175,8 +211,10 @@ data Term
   = Token Leaf
   | -- " String
     SimpleString String
-  | -- '' String
-    IndentedString String
+  | -- '' String. The Maybe holds the common indentation stripped from the
+    -- string's lines when a disabled region cuts through it; such strings
+    -- keep their original columns (see 'prettyIndentedString').
+    IndentedString (Maybe Text) String
   | Path Path
   | List Leaf (Items Term) Leaf
   | Set (Maybe Leaf) Leaf (Items Binder) Leaf
@@ -348,7 +386,7 @@ instance LanguageElement Term where
   mapFirstToken' f = \case
     (Token leaf) -> first Token (f leaf)
     (SimpleString string) -> first SimpleString (f string)
-    (IndentedString string) -> first IndentedString (f string)
+    (IndentedString ind string) -> first (IndentedString ind) (f string)
     (Path path) -> first Path (f path)
     (List open items close) -> first (\open' -> List open' items close) (f open)
     (Set (Just rec) open items close) -> first (\rec' -> Set (Just rec') open items close) (f rec)
@@ -359,7 +397,7 @@ instance LanguageElement Term where
   mapLastToken' f = \case
     (Token leaf) -> first Token (f leaf)
     (SimpleString string) -> first SimpleString (f string)
-    (IndentedString string) -> first IndentedString (f string)
+    (IndentedString ind string) -> first (IndentedString ind) (f string)
     (Path path) -> first Path (f path)
     (List open items close) -> first (List open items) (f close)
     (Set rec open items close) -> first (Set rec open items) (f close)
@@ -406,7 +444,7 @@ instance LanguageElement Term where
   mapAllTokens f = \case
     (Token leaf) -> Token (f leaf)
     (SimpleString string) -> SimpleString (f string)
-    (IndentedString string) -> IndentedString (f string)
+    (IndentedString ind string) -> IndentedString ind (f string)
     (Path path) -> Path (f path)
     (List open items close) -> List (f open) (mapAllTokens f <$> items) (f close)
     (Set rec open items close) -> Set (f <$> rec) (f open) (mapAllTokens f <$> items) (f close)

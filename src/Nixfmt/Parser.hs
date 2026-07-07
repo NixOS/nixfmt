@@ -12,7 +12,8 @@ import qualified Control.Monad.Combinators.Expr as MPExpr (
   Operator (..),
   makeExprParser,
  )
-import Control.Monad.Trans.Class (lift)
+import Control.Monad.State.Strict (gets)
+import Data.Bifunctor (second)
 import Data.Char (isAlpha)
 import Data.Foldable (toList)
 import Data.Functor (($>))
@@ -20,7 +21,7 @@ import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Text (Text, elem, isPrefixOf, pack)
 import qualified Data.Text as Text
 import Data.Void (Void)
-import Nixfmt.Lexer (lexeme, takeTrivia, whole)
+import Nixfmt.Lexer (lexeme, takeTrivia, whole, wholeInner)
 import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Types (
   Ann (..),
@@ -35,6 +36,7 @@ import Nixfmt.Types (
   ParamAttr (..),
   Parameter (..),
   Parser,
+  ParserState (..),
   Path,
   Selector (..),
   SimpleSelector (..),
@@ -166,7 +168,7 @@ uri =
 interpolation :: Parser StringPart
 interpolation =
   Interpolation
-    <$> (rawSymbol TInterOpen *> lift (whole expression) <* rawSymbol TInterClose)
+    <$> (rawSymbol TInterOpen *> wholeInner expression <* rawSymbol TInterClose)
 
 -- Interpolation, but only allowing identifiers and simple strings inside
 interpolationRestricted :: Parser StringPart
@@ -289,10 +291,11 @@ splitLines (x : xs) =
     (xs' : xss) -> (x : xs') : xss
     _ -> error "unreachable"
 
-stripIndentation :: [[StringPart]] -> [[StringPart]]
+-- | Strip the common indentation from all lines, returning it alongside.
+stripIndentation :: [[StringPart]] -> (Text, [[StringPart]])
 stripIndentation parts = case commonIndentation $ mapMaybe lineHead parts of
-  Nothing -> map (const []) parts
-  Just indentation -> map (stripParts indentation) parts
+  Nothing -> ("", map (const []) parts)
+  Just indentation -> (indentation, map (stripParts indentation) parts)
 
 -- Merge adjacent string parts which resulted as parsing artifacts
 normalizeLine :: [StringPart] -> [StringPart]
@@ -310,19 +313,25 @@ simpleString =
     *> fmap fixSimpleString (many (simpleStringPart <|> interpolation))
     <* rawSymbol TDoubleQuote
 
-fixIndentedString :: [[StringPart]] -> [[StringPart]]
+fixIndentedString :: [[StringPart]] -> (Text, [[StringPart]])
 fixIndentedString =
-  map normalizeLine
-    . concatMap splitLines
+  second (map normalizeLine . concatMap splitLines)
     . stripIndentation
     . fixLastLine
     . fixFirstLine
 
-indentedString :: Parser [[StringPart]]
-indentedString =
-  rawSymbol TDoubleSingleQuote
-    *> fmap fixIndentedString (sepBy indentedLine (chunk "\n"))
-    <* rawSymbol TDoubleSingleQuote
+-- | The Maybe is the stripped indentation when a disabled region cuts through
+-- the string (see 'Term'). The cut check sits between the '' delimiters so
+-- that directives in the trivia after the string do not count.
+indentedString :: Parser (Maybe Text, [[StringPart]])
+indentedString = do
+  before <- gets cutInterpolations
+  (ind, parts) <-
+    rawSymbol TDoubleSingleQuote
+      *> fmap fixIndentedString (sepBy indentedLine (chunk "\n"))
+      <* rawSymbol TDoubleSingleQuote
+  cut <- gets ((/= before) . cutInterpolations)
+  pure (if cut then Just ind else Nothing, parts)
 
 -- | Parser for all string types (simple, URI, or indented)
 string :: Parser Term
@@ -333,9 +342,11 @@ string =
     -- Converts indented string syntax to appropriate string type.
     -- If the content can be represented as a simple string (no newlines, quotes or backslashes),
     -- it's reformatted as SimpleString to maintain a consistent style.
-    classifyString s
-      | shouldBeSimpleString (value s) = SimpleString (s{value = convertIndentedEscapes (value s)})
-      | otherwise = IndentedString s
+    -- Strings cut by a disabled region are exempt: the raw region text keeps
+    -- their original '' syntax, so the delimiters must not change.
+    classifyString s@Ann{value = (Nothing, parts)}
+      | shouldBeSimpleString parts = SimpleString (s{value = convertIndentedEscapes parts})
+    classifyString s@Ann{value = (cut, parts)} = IndentedString cut (s{value = parts})
 
     shouldBeSimpleString parts =
       not (containsNewlines parts) && not (any (any hasQuoteOrBackSlash) parts)

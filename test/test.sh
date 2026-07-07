@@ -69,15 +69,17 @@ for file in test/invalid/*.nix; do
 done
 
 # Verify "diff"
+tmpout=$(mktemp)
+trap 'rm -f "$tmpout"' EXIT
 for file in test/diff/**/in.nix; do
   echo "Checking $file …"
-  out="$(nixfmt --verify - < "$file")"
+  nixfmt --verify - < "$file" > "$tmpout"
   outfile="$(dirname "$file")/out.nix"
 
-  if diff --color=always --unified "$outfile" <(echo "$out"); then
+  if diff --color=always --unified "$outfile" "$tmpout"; then
     echo "[OK]"
   elif [[ -n "$updateDiff" ]]; then
-    echo "$out" > "$outfile"
+    cp "$tmpout" "$outfile"
     echo "[UPDATED] $outfile"
   else
     echo "[ERROR] (run with --update-diff to update the diff)"
@@ -85,13 +87,13 @@ for file in test/diff/**/in.nix; do
   fi
 
   echo "Checking $file with --strict …"
-  out="$(nixfmt --strict --verify - < "$file")"
+  nixfmt --strict --verify - < "$file" > "$tmpout"
   outfile="$(dirname "$file")/out-pure.nix"
 
-  if diff --color=always --unified "$outfile" <(echo "$out"); then
+  if diff --color=always --unified "$outfile" "$tmpout"; then
     echo "[OK]"
   elif [[ -n "$updateDiff" ]]; then
-    echo "$out" > "$outfile"
+    cp "$tmpout" "$outfile"
     echo "[UPDATED] $outfile"
   else
     echo "[ERROR] (run with --update-diff to update the diff)"

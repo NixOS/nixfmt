@@ -1,0 +1,4 @@
+/*nixfmt:disable*/
+{
+  everything   =   raw;
+}
