@@ -291,6 +291,25 @@ to return back to the unmerged state.
 * `nixfmt < input.nix` – reads Nix code from `stdin`, formats it, and outputs to `stdout`
 * `nixfmt file.nix` – format the file in place
 
+## Disabling Formatting
+
+If you're using `treefmt`, you can [include](https://treefmt.com/latest/getting-started/configure/#includes) and [exclude](https://treefmt.com/latest/getting-started/configure/#excludes_1) files via treefmt's configuration.
+
+Within formatted nix files, you can use Nixfmt "directives" to enable and disable formatting from that line onwards.
+
+For example:
+```nix
+{
+  terrible-example-you-should-not-copy = {
+    /*nixfmt:disable*/
+    foo    =    1;
+    bar    =    2;
+    /*nixfmt:enable*/
+    baz = 3;
+  };
+}
+```
+
 ## Acknowledgements
 
 `nixfmt` was originally developed by [Serokell](https://github.com/serokell) and later donated to become an official Nix project with the acceptance of [RFC 166](https://github.com/NixOS/rfcs/pull/166).
