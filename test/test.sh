@@ -58,6 +58,9 @@ done
 
 verifyCorrect test/correct-indent-4.nix --indent=4
 
+verifyCorrect test/correct-tab.nix --tabs
+verifyCorrect test/correct-tab-indented.nix --tabs
+
 # Verify "invalid"
 for file in test/invalid/*.nix; do
   if nixfmt - < "$file" > /dev/null 2>&1; then
