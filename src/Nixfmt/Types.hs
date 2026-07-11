@@ -29,6 +29,9 @@ module Nixfmt.Types (
   Token (..),
   Whole (..),
   TrailingComment (..),
+  Indentation (..),
+  indentWidth,
+  indentChar,
   Trivium (..),
   removeLineInfo,
   hasTrivia,
@@ -112,6 +115,21 @@ data Directive
 type Trivia = Seq Trivium
 
 newtype TrailingComment = TrailingComment Text deriving (Eq, Show)
+
+data Indentation
+  = Spaces Int
+  | Tabs
+  deriving (Show, Eq)
+
+indentWidth :: Indentation -> Int
+indentWidth = \case
+  Spaces n -> n
+  Tabs -> 1
+
+indentChar :: Indentation -> Char
+indentChar = \case
+  Spaces _ -> ' '
+  Tabs -> '\t'
 
 data Ann a = Ann
   { preTrivia :: Trivia,
