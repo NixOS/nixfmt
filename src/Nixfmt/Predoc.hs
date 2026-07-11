@@ -55,8 +55,11 @@ import Data.Text as Text (Text, concat, length, replicate, singleton, strip, str
 import GHC.Stack (HasCallStack)
 import Nixfmt.Types (
   Ann (..),
+  Indentation (..),
   LanguageElement,
   Trivium (..),
+  indentChar,
+  indentWidth,
   mapAllTokens,
   mapFirstToken,
   removeLineInfo,
@@ -421,8 +424,8 @@ mergeSpacings Hardspace (Newlines x) = Newlines x
 mergeSpacings _ (Newlines x) = Newlines (x + 1)
 mergeSpacings _ y = y
 
-layout :: (Pretty a, LanguageElement a) => Int -> Int -> Char -> Bool -> a -> Text
-layout width indentWidth indentChar strict a = finalize $ layoutGreedy width indentWidth indentChar doc
+layout :: (Pretty a, LanguageElement a) => Int -> Indentation -> Bool -> a -> Text
+layout width indentation strict a = finalize $ layoutGreedy width indentation doc
   where
     doc =
       fixup
@@ -583,10 +586,13 @@ indent c n = Text.replicate n (Text.singleton c)
 type St = (Int, NonEmpty (Int, Int), Bool)
 
 -- tw   Target Width
-layoutGreedy :: Int -> Int -> Char -> Doc -> Text
-layoutGreedy tw iw ic doc =
+layoutGreedy :: Int -> Indentation -> Doc -> Text
+layoutGreedy tw indentation doc =
   Text.concat $ evalState (go [Group RegularG doc] []) (0, NonEmpty.singleton (0, 0), False)
   where
+    iw = indentWidth indentation
+    ic = indentChar indentation
+
     -- Simple helpers around `put` with a tuple state
     -- NOTE: making putL strict removes the allocation for the Int
     putL v = modify' (\(_, indents, suppress) -> (v, indents, suppress))
