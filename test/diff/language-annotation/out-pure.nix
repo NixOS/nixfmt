@@ -191,4 +191,10 @@
   trailingCommentArg =
     runCommand /* bash */ "echo hi" # trailing comment
       A;
+
+  # Language annotation on the subject of a chained member check
+  memberCheckSubject = /* lua */ "print(1)" ? foo ? bar;
+
+  # Language annotations before quoted selectors in a chained member check
+  memberCheckSelector = a ? b."c" ? /* json */ "d".e ? /* sh */ "f";
 }

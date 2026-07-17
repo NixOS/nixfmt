@@ -128,6 +128,44 @@
 }:
     a;
 
+  # -- Member check chains --
+
+  # Disabled region around a chained member check is preserved byte-exactly
+/*nixfmt:disable*/
+  chainDisabled = a    ?   b   ?   c;
+/*nixfmt:enable*/
+
+  # Directive sharing a line inside a chain is inert (demoted to a plain comment)
+  chainInert = a ? b /*nixfmt:disable*/ ? c;
+  chainInertAfterQmark = a ?/*nixfmt:disable*/b ? c;
+
+  # Region opening and closing between fallbacks.
+  # The unformatted region affects the formatted part of the chain: its hard
+  # line breaks force the whole chain to expand.
+  chainRegionBetween =
+    x ? a
+/*nixfmt:disable*/
+    ?   b   ?   c
+/*nixfmt:enable*/
+    ? d;
+
+  # Region opening mid-chain and closing after the binding.
+  # Same as above: unformatted region affecting the formatted part of the chain.
+  chainRegionAcrossEnd =
+    x ? a
+/*nixfmt:disable*/
+    ?   b   ?   c   ;
+/*nixfmt:enable*/
+
+  # Region opening mid-chain: the part before the directive is still formatted.
+  # Same as above (unformatted region affecting the formatted part), here
+  # leaving a dangling question mark line.
+  chainRegionTail = x    ?   a   ?
+/*nixfmt:disable*/
+    b   ?   c;
+/*nixfmt:enable*/
+  afterChainRegion   =   1;
+
   # -- Directly after a string token --
 
   # The directive must not affect the string preceding it:

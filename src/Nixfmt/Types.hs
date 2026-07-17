@@ -51,7 +51,7 @@ module Nixfmt.Types (
 ) where
 
 import Control.Monad.State.Strict (StateT)
-import Data.Bifunctor (first)
+import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Foldable (toList)
 import Data.Function (on)
 import Data.List.NonEmpty as NonEmpty
@@ -258,7 +258,7 @@ data Expression
   | Abstraction Parameter Leaf Expression
   | Application Expression Expression
   | Operation Expression Leaf Expression
-  | MemberCheck Expression Leaf [Selector]
+  | MemberCheck Expression (NonEmpty (Leaf, [Selector]))
   | Negation Leaf Expression
   | Inversion Leaf Expression
   deriving (Eq, Show)
@@ -462,7 +462,7 @@ instance LanguageElement Expression where
     (Abstraction param colon body) -> first (\param' -> Abstraction param' colon body) (mapFirstToken' f param)
     (Application g a) -> first (`Application` a) (mapFirstToken' f g)
     (Operation left op right) -> first (\left' -> Operation left' op right) (mapFirstToken' f left)
-    (MemberCheck name dot selectors) -> first (\name' -> MemberCheck name' dot selectors) (mapFirstToken' f name)
+    (MemberCheck expr exprFallbacks) -> first (`MemberCheck` exprFallbacks) (mapFirstToken' f expr)
     (Negation not_ expr) -> first (`Negation` expr) (f not_)
     (Inversion tilde expr) -> first (`Inversion` expr) (f tilde)
 
@@ -475,8 +475,12 @@ instance LanguageElement Expression where
     (Abstraction param colon body) -> first (Abstraction param colon) (mapLastToken' f body)
     (Application g a) -> first (Application g) (mapLastToken' f a)
     (Operation left op right) -> first (Operation left op) (mapLastToken' f right)
-    (MemberCheck name dot []) -> first (\dot' -> MemberCheck name dot' []) (mapLastToken' f dot)
-    (MemberCheck name dot sels) -> first (MemberCheck name dot . NonEmpty.toList) (mapLastToken' f $ NonEmpty.fromList sels)
+    (MemberCheck expr exprFallbacks) -> case NonEmpty.last exprFallbacks of
+      (qmark, []) -> first (\qmark' -> MemberCheck expr $ replaceLast exprFallbacks (qmark', [])) (mapLastToken' f qmark)
+      (qmark, sl) -> first (\selec' -> MemberCheck expr $ replaceLast exprFallbacks (qmark, NonEmpty.toList selec')) (mapLastToken' f $ NonEmpty.fromList sl)
+      where
+        -- Replace the last element of a NonEmpty list with a new value
+        replaceLast ne newItem = NonEmpty.fromList (NonEmpty.init ne ++ [newItem])
     (Negation not_ expr) -> first (Negation not_) (mapLastToken' f expr)
     (Inversion tilde expr) -> first (Inversion tilde) (mapLastToken' f expr)
 
@@ -500,7 +504,8 @@ instance LanguageElement Expression where
     (Abstraction param colon@Ann{sourceLine} body) -> [Abstraction param colon (Term (Token (ann sourceLine (Identifier "_")))), body]
     (Application g a) -> [g, a]
     (Operation left _ right) -> [left, right]
-    (MemberCheck name _ sels) -> name : (sels >>= walkSubprograms)
+    (MemberCheck expr exprFallbacks) ->
+      expr : foldMap (foldMap walkSubprograms . snd) exprFallbacks
     (Negation _ expr) -> [expr]
     (Inversion _ expr) -> [expr]
 
@@ -513,7 +518,7 @@ instance LanguageElement Expression where
     (Abstraction param colon body) -> Abstraction (mapAllTokens f param) (f colon) (mapAllTokens f body)
     (Application g a) -> Application (mapAllTokens f g) (mapAllTokens f a)
     (Operation left op right) -> Operation (mapAllTokens f left) (f op) (mapAllTokens f right)
-    (MemberCheck name dot sels) -> MemberCheck (mapAllTokens f name) (f dot) (Prelude.map (mapAllTokens f) sels)
+    (MemberCheck expr exprFallbacks) -> MemberCheck (mapAllTokens f expr) (bimap f (fmap $ mapAllTokens f) <$> exprFallbacks)
     (Negation not_ expr) -> Negation (f not_) (mapAllTokens f expr)
     (Inversion tilde expr) -> Inversion (f tilde) (mapAllTokens f expr)
 
