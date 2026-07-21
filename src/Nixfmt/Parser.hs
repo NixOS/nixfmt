@@ -434,39 +434,49 @@ itemComment = do
 
 -- ABSTRACTIONS
 
-attrParameter :: Maybe (Parser Leaf) -> Parser ParamAttr
-attrParameter parseComma =
-  ParamAttr
-    <$> identifier
-    <*> optional (liftM2 (,) (symbol TQuestion) expression)
-    <*> sequence parseComma
-
-idParameter :: Parser Parameter
-idParameter = IDParameter <$> identifier
-
-setParameter :: Parser Parameter
-setParameter = SetParameter <$> bopen <*> attrs <*> bclose
+parameter :: Parser Parameter
+parameter =
+  try ctxOrSetParameter
+    <|> idParameter
   where
-    bopen = symbol TBraceOpen
-    bclose = symbol TBraceClose
-    commaAttrs = many $ try $ attrParameter $ Just $ symbol TComma
-    ellipsis = ParamEllipsis <$> symbol TEllipsis
-    lastAttr = attrParameter Nothing <|> ellipsis
-    attrs = commaAttrs <> (toList <$> optional lastAttr)
+    idParameter = IDParameter <$> identifier
 
-contextParameter :: Parser Parameter
-contextParameter =
-  try (ContextParameter <$> setParameter <*> symbol TAt <*> idParameter)
-    <|> try (ContextParameter <$> idParameter <*> symbol TAt <*> setParameter)
+    -- Parse the set parameter once and only then look for the `@` of a
+    -- ContextParameter, so that a plain set parameter is never reparsed.
+    ctxOrSetParameter =
+      (withContext <$> setParameter <*> optional (liftM2 (,) (symbol TAt) idParameter))
+        <|> (ContextParameter <$> idParameter <*> symbol TAt <*> setParameter)
+
+    setParameter = SetParameter <$> symbol TBraceOpen <*> paramAttrs <*> symbol TBraceClose
+
+    -- A set parameter is a context parameter if `@ identifier` follows it.
+    withContext :: Parameter -> Maybe (Leaf, Parameter) -> Parameter
+    withContext set' Nothing = set'
+    withContext set' (Just (at, ident)) = ContextParameter set' at ident
+
+    -- Parse each attribute once and only then look for its comma, so that an
+    -- attribute (and any set parameters nested in its default) is never
+    -- reparsed; reparsing would be exponential in nesting depth.
+    paramAttrs =
+      (pure . ParamEllipsis <$> symbol TEllipsis)
+        <|> (withRest <$> attrParameter <*> optional (liftM2 (,) (symbol TComma) paramAttrs))
+        <|> pure []
+
+    -- An attribute is the last one, or its comma is followed by the rest.
+    withRest :: (Maybe Leaf -> ParamAttr) -> Maybe (Leaf, [ParamAttr]) -> [ParamAttr]
+    withRest mkAttr Nothing = [mkAttr Nothing]
+    withRest mkAttr (Just (comma, rest)) = mkAttr (Just comma) : rest
+
+    -- Parses everything of an attribute except the optional trailing comma,
+    -- which is applied to the returned constructor by the caller.
+    attrParameter :: Parser (Maybe Leaf -> ParamAttr)
+    attrParameter =
+      ParamAttr
+        <$> identifier
+        <*> optional (liftM2 (,) (symbol TQuestion) expression)
 
 abstraction :: Parser Expression
-abstraction =
-  try
-    ( Abstraction
-        <$> (contextParameter <|> setParameter <|> idParameter)
-        <*> symbol TColon
-    )
-    <*> expression
+abstraction = Abstraction <$> parameter <*> symbol TColon <*> expression
 
 -- SETS AND LISTS
 
