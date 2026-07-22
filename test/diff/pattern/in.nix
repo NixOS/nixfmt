@@ -153,4 +153,24 @@
 
   # Deeply nested parameter defaults
   ({a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?{a?1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1)
+
+  # Deeply nested context parameter defaults
+  (x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?x@{a?1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1}:1)
+
+  # Lambdas with simple parameters inside parameter defaults
+  ({ a ? { b ? c: c }: b, d ? e: e@{ f ? g: g }: f }: a)
+
+  # simple cases with some comments in between
+  (foo/*comment*/: bar)
+  ({}/*comment*/: bar)
+  (/*comment*/{}: bar)
+  (foo@{}: bar)
+  (foo@/*comment*/{}: bar)
+  (foo/*comment*/@{}: bar)
+  (foo@{/*comment*/}: bar)
+  ({}@foo: bar)
+  ({/*comment*/}@foo: bar)
+  ({}/*comment*/@foo: bar)
+  ({}@/*comment*/foo: bar)
+  ({}@foo/*comment*/: bar)
 ]
