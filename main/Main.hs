@@ -6,7 +6,7 @@
 
 module Main where
 
-import Control.Monad (forM, unless)
+import Control.Monad (forM, unless, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT (ExceptT), runExceptT, throwE)
 import Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
@@ -15,13 +15,14 @@ import Data.ByteString.Char8 (unpack)
 import Data.Either (lefts)
 import Data.FileEmbed
 import Data.List (intersperse, isSuffixOf)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import qualified Data.Text.IO as TextIO (getContents, hPutStr, putStr)
 import Data.Version (showVersion)
 import GHC.IO.Encoding (utf8)
 import qualified Nixfmt
 import Nixfmt.Predoc (layout)
+import Nixfmt.Types (Indentation (..))
 import Paths_nixfmt (version)
 import System.Console.CmdArgs (
   Data,
@@ -42,6 +43,9 @@ import System.Posix.Process (exitImmediately)
 import System.Posix.Signals (Handler (..), installHandler, keyboardSignal)
 import System.Process (callProcess)
 
+defaultIndent :: Int
+defaultIndent = 2
+
 type Result = Either String ()
 
 type Width = Int
@@ -49,7 +53,8 @@ type Width = Int
 data Nixfmt = Nixfmt
   { files :: [FilePath],
     width :: Width,
-    indent :: Int,
+    indent :: Maybe Int,
+    tabs :: Bool,
     check :: Bool,
     mergetool :: Bool,
     quiet :: Bool,
@@ -67,7 +72,6 @@ versionFromFile = maybe (showVersion version) unpack $(embedFileIfExists ".versi
 options :: Nixfmt
 options =
   let defaultWidth = 100
-      defaultIndent = 2
       addDefaultHint value message =
         message ++ "\n[default: " ++ show value ++ "]"
   in Nixfmt
@@ -75,7 +79,8 @@ options =
          width =
            defaultWidth
              &= help (addDefaultHint defaultWidth "Maximum width in characters"),
-         indent = defaultIndent &= help (addDefaultHint defaultIndent "Number of spaces to use for indentation"),
+         indent = Nothing &= typ "INT" &= help (addDefaultHint defaultIndent "Number of spaces to use for indentation"),
+         tabs = False &= help "Use tabs for indentation instead of spaces (WARNING: NixCpp has gotchas with indented string syntax — especially if trying to mix tabs & spaces)",
          check = False &= help "Check whether files are formatted without modifying them",
          mergetool = False &= help "Whether to run in git mergetool mode, see https://github.com/NixOS/nixfmt?tab=readme-ov-file#git-mergetool for more info",
          quiet = False &= help "Do not report errors",
@@ -176,13 +181,21 @@ toTargets Nixfmt{files = ["-"], filename} = pure [stdioTarget filename]
 toTargets Nixfmt{check = False, files = paths} = map fileTarget <$> collectAllNixFiles paths
 toTargets Nixfmt{check = True, files = paths} = map checkFileTarget <$> collectAllNixFiles paths
 
+indentation :: Maybe Int -> Bool -> Indentation
+indentation Nothing False = Spaces defaultIndent
+indentation (Just iw) False = Spaces iw
+indentation Nothing True = Tabs
+indentation (Just _) True = error "Must be spaces or tabs" -- should be handled my main
+
 type Formatter = FilePath -> Text -> Either String Text
 
 toFormatter :: Nixfmt -> Formatter
 toFormatter Nixfmt{ast = True} = Nixfmt.printAst
 toFormatter Nixfmt{ir = True} = Nixfmt.printIR
-toFormatter Nixfmt{width, indent, verify = True, strict} = Nixfmt.formatVerify (layout width indent strict)
-toFormatter Nixfmt{width, indent, verify = False, strict} = Nixfmt.format (layout width indent strict)
+toFormatter Nixfmt{width, indent, tabs, verify = True, strict} =
+  Nixfmt.formatVerify (layout width (indentation indent tabs) strict)
+toFormatter Nixfmt{width, indent, tabs, verify = False, strict} =
+  Nixfmt.format (layout width (indentation indent tabs) strict)
 
 type Operation = Formatter -> Target -> IO Result
 
@@ -255,6 +268,8 @@ main = withUtf8StdHandles $ do
       (Catch (exitImmediately $ ExitFailure 2))
       Nothing
   opts <- cmdArgs options
+  when (tabs opts && isJust (indent opts)) $
+    ioError (userError "--tabs & --indent are mutually exclusive")
   results <- runJobs (toWriteError opts) =<< toJobs opts
   case lefts results of
     [] -> exitSuccess
