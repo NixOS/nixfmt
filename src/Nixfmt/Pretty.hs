@@ -874,12 +874,12 @@ instance Pretty Expression where
         pretty a <> softline <> pretty op <> hardspace <> pretty b
   -- all other operators
   pretty operation@(Operation _ op _) = prettyOp False operation op
-  pretty (MemberCheck expr qmark sel) =
-    pretty expr
-      <> softline
-      <> pretty qmark
-      <> hardspace
-      <> hcat sel
+  pretty (MemberCheck expr exprFallbacks) =
+    group $
+      pretty expr
+        <> nest (foldMap prettyExprFallback exprFallbacks)
+    where
+      prettyExprFallback (qmark, sel) = line <> pretty (moveTrailingCommentUp qmark) <> hardspace <> hcat sel
   pretty (Negation minus expr) =
     pretty minus <> pretty expr
   pretty (Inversion bang expr) =

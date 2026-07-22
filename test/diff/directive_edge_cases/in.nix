@@ -35,6 +35,96 @@
 /*nixfmt:enable*/
   ];
 
+  # -- Region closing inside a term --
+  # The cases in this section share byte-identical enabled regions and differ
+  # only inside the disabled region, asserting that a change confined to the
+  # disabled region can change the enabled output. What leaks is the region's
+  # would-be formatted layout, not its raw text: the enabled items shift
+  # exactly when the formatter would have put the bracket on its own line
+  # (blank lines and comments are preserved by formatting, a plain newline
+  # is joined away).
+
+  # Baseline: binding and opening bracket inside the region on one line
+  /*nixfmt:disable*/
+  listOpenInRegion = [
+  /*nixfmt:enable*/
+    "a"
+    "b"
+    "c"
+  ];
+
+  # Bracket on its own raw line: same output as the baseline, because the
+  # formatter would join `= [` back onto one line.
+  /*nixfmt:disable*/
+  listOpenNewline =
+    [
+  /*nixfmt:enable*/
+    "a"
+    "b"
+    "c"
+  ];
+
+  # Differs from listOpenNewline only by the blank line inside the disabled
+  # region, yet the enabled items below are indented one level deeper.
+  /*nixfmt:disable*/
+  listOpenInRegionIndented =
+
+    [
+  /*nixfmt:enable*/
+    "a"
+    "b"
+    "c"
+  ];
+
+  # Differs from listOpenNewline only by the comment inside the disabled
+  # region; the enabled items shift just like with the blank line.
+  /*nixfmt:disable*/
+  listOpenAfterComment = # why
+    [
+  /*nixfmt:enable*/
+    "a"
+    "b"
+    "c"
+  ];
+
+  # Same repro with an attribute set: only the disabled regions differ (a
+  # blank line), yet the enabled bindings change indentation.
+  /*nixfmt:disable*/
+  attrOpenInRegion = {
+  /*nixfmt:enable*/
+    a = 1;
+    b = 2;
+  };
+
+  /*nixfmt:disable*/
+  attrOpenInRegionIndented =
+
+    {
+  /*nixfmt:enable*/
+    a = 1;
+    b = 2;
+  };
+
+  # The canonical use case, a package list behind `with`, repros the same
+  # way. So do parentheses and function application (`mkDerivation {`),
+  # not repeated here: the family is "any opener the formatter would have
+  # absorbed onto the binder's line".
+  /*nixfmt:disable*/
+  withOpenInRegion = with pkgs; [
+  /*nixfmt:enable*/
+    foo
+    bar
+  ];
+
+  /*nixfmt:disable*/
+  withOpenInRegionIndented =
+
+    with pkgs; [
+  /*nixfmt:enable*/
+    foo
+    bar
+  ];
+
   # -- Blank lines --
   # Multiple consecutive blank lines before a directive (should be collapsed)
   beforeBlank   =   1;

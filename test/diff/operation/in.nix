@@ -229,4 +229,47 @@
     |> b
     |> c
   )
+
+  # Member checks and chained fallbacks
+
+  # Simple member check
+  (a ? b)
+  # Member check with a selector path
+  (a ? b.c.d)
+  # Chained fallbacks
+  ({ } ? foo ? bar)
+  ({ } ? a ? b ? null)
+  # Chained fallbacks with selector paths and quoted/interpolated selectors
+  (a ? b.c.d ? e."f".${g} ? h.i)
+  (config ? services.nginx.enable ? services.httpd.enable ? false)
+  # Whitespace is normalized
+  (a?b?c?d)
+  (a   ?   b
+     ?   c)
+  # Member check on a selection
+  (a.b ? c ? d)
+  # Parenthesized member check as the left operand
+  ((a ? b) ? c)
+  # Interaction with other operators
+  (a ? b || c ? d ? e)
+  (!(a ? b ? c) && a ? b)
+  (if a ? b ? c then a.b else null)
+  # Chained fallbacks in bindings
+  {
+    x = a ? b ? c;
+    y = a ? b ? c; # trailing comment
+  }
+  # A long chain breaks between the fallbacks
+  (aaaaaaaaaaaaaaaaaaaaaaaaaa ? bbbbbbbbbbbbbbbbbb ? cccccccccccccccccc ? dddddddddddddddddd ? eeeeeeeeeeeeeeeeee)
+  # A member check that breaks as the operand of an operation that also breaks:
+  # the question mark is indented past the subject
+  (bus_type.name == "PCI" && devices ? "${vendorHex}:${deviceHex}:${subVendorHex}:${subDeviceHex}/${baseClassHex}-${subClassHex}-${revisionHex}")
+  # Comments between fallbacks
+  (a # one
+    ? b # two
+    ? c)
+  # Non-empty block comments become line comments (moved above the question mark); empty ones are dropped
+  (a ?/*x*/b.c)
+  (a ? b /*y*/ ? c)
+  (a ?/*x*/b/*y*/? c ?/**/d.e)
 ]

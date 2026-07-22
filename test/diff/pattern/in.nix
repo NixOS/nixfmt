@@ -110,6 +110,15 @@
   ({ /*a*/ b /*c*/ , /*d*/ e /*f*/ , /*g*/ ... /*h*/ }: _)
 
   ({ a ? null }: _)
+
+  # Chained fallbacks as default values
+  ({ a ? b ? c }: _)
+  ({ a ? b ? c ? d }: _)
+  ({ a ? b.c ? d."e" ? null }: _)
+  ({ foo
+  , bar ? a ? b ? c # comment
+  }: _)
+
   ({ /*a*/ b /*a*/ ? /*a*/ null /*c*/ , /*d*/ e /*a*/ ? /*a*/ null /*f*/ , /*g*/ ... /*h*/ }: _)
 
   ({

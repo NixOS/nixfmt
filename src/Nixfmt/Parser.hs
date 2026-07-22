@@ -17,6 +17,7 @@ import Data.Bifunctor (second)
 import Data.Char (isAlpha)
 import Data.Foldable (toList)
 import Data.Functor (($>))
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Text (Text, elem, isPrefixOf, pack)
 import qualified Data.Text as Text
@@ -546,9 +547,10 @@ opCombiner (Op Prefix TNot) = chainPrefixOps $ Inversion <$> operator TNot
 opCombiner (Op Prefix _) = undefined
 opCombiner (Op Postfix TQuestion) =
   MPExpr.Postfix $
-    (\question sel expr -> MemberCheck expr question sel)
-      <$> operator TQuestion
-      <*> selectorPath
+    flip MemberCheck
+      <$> ((:|) <$> exprFallback <*> many exprFallback)
+  where
+    exprFallback = (,) <$> operator TQuestion <*> selectorPath
 opCombiner (Op Postfix _) = undefined
 -- HACK: We parse TPlus as left-associative, but convert it to right-associative in the AST
 -- This is allowed because addition is fully associative

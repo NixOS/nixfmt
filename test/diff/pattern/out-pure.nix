@@ -640,6 +640,34 @@
     }:
     _
   )
+
+  # Chained fallbacks as default values
+  (
+    {
+      a ? b ? c,
+    }:
+    _
+  )
+  (
+    {
+      a ? b ? c ? d,
+    }:
+    _
+  )
+  (
+    {
+      a ? b.c ? d."e" ? null,
+    }:
+    _
+  )
+  (
+    {
+      foo,
+      bar ? a ? b ? c, # comment
+    }:
+    _
+  )
+
   (
     # a
     {
