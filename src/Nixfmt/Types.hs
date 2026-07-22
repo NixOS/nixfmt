@@ -51,7 +51,7 @@ module Nixfmt.Types (
 ) where
 
 import Control.Monad.State.Strict (StateT)
-import Data.Bifunctor (first)
+import Data.Bifunctor (bimap, first)
 import Data.Foldable (toList)
 import Data.Function (on)
 import Data.List.NonEmpty as NonEmpty
@@ -222,31 +222,37 @@ data Term
   | Parenthesized Leaf Expression Leaf
   deriving (Eq, Show)
 
+-- Also called "formal" in Nix
 data ParamAttr
   = -- name, Maybe question mark and default, maybe comma
     ParamAttr Leaf (Maybe (Leaf, Expression)) (Maybe Leaf)
   | ParamEllipsis Leaf
   deriving (Eq, Show)
 
+-- Also called "pattern" in Nix
 data Parameter
-  = IDParameter Leaf
-  | SetParameter Leaf [ParamAttr] Leaf
-  | ContextParameter Parameter Leaf Parameter
+  = -- Also called "simple pattern" in Nix
+    IDParameter Leaf
+    -- Also called "attrs pattern" in Nix
+    -- Can be either `{ ... }`, `{ ... }@ident`, `ident@{ ... }`
+    -- Cannot be `ident@{}@ident`, though our CST could theoretically represent it
+  | SetParameter (Maybe (Leaf, Leaf)) Leaf [ParamAttr] Leaf (Maybe (Leaf, Leaf))
   deriving (Show)
 
 instance Eq Parameter where
   (IDParameter l) == (IDParameter r) = l == r
-  (SetParameter l1 l2 l3) == (SetParameter r1 r2 r3) =
-    l1 == r1
+  (SetParameter lCtxLeft l1 l2 l3 lCtxRight) == (SetParameter rCtxLeft r1 r2 r3 rCtxRight) =
+    lCtxLeft == rCtxLeft
+      && l1 == r1
       && cmp l2 r2
       && l3 == r3
+      && lCtxRight == rCtxRight
     where
       -- Compare two lists of parameters, but for the last argument don't compare whether or not there is a trailing comma
       cmp [] [] = True
       cmp [ParamAttr x1 x2 _] [ParamAttr y1 y2 _] = x1 == y1 && x2 == y2
       cmp (x : xs) (y : ys) = x == y && cmp xs ys
       cmp _ _ = False
-  (ContextParameter l1 l2 l3) == (ContextParameter r1 r2 r3) = l1 == r1 && l2 == r2 && l3 == r3
   _ == _ = False
 
 data Expression
@@ -364,23 +370,29 @@ instance LanguageElement ParamAttr where
 instance LanguageElement Parameter where
   mapFirstToken' f = \case
     (IDParameter name) -> first IDParameter (f name)
-    (SetParameter open items close) -> first (\open' -> SetParameter open' items close) (f open)
-    (ContextParameter first' at second) -> first (\first'' -> ContextParameter first'' at second) (mapFirstToken' f first')
+    (SetParameter (Just (ident, at)) open items close ctxRight) ->
+      first (\ident' -> SetParameter (Just (ident', at)) open items close ctxRight) (f ident)
+    (SetParameter Nothing open items close ctxRight) ->
+      first (\open' -> SetParameter Nothing open' items close ctxRight) (f open)
 
   mapLastToken' f = \case
     (IDParameter name) -> first IDParameter (f name)
-    (SetParameter open items close) -> first (SetParameter open items) (f close)
-    (ContextParameter first' at second) -> first (ContextParameter first' at) (mapLastToken' f second)
+    (SetParameter ctxLeft open items close (Just (at, ident))) ->
+      first (\ident' -> SetParameter ctxLeft open items close (Just (at, ident'))) (f ident)
+    (SetParameter ctxLeft open items close Nothing) ->
+      first (\close' -> SetParameter ctxLeft open items close' Nothing) (f close)
 
   walkSubprograms = \case
     (IDParameter ident) -> [Term $ Token ident]
-    (SetParameter _ bindings _) -> bindings >>= walkSubprograms
-    (ContextParameter left _ right) -> walkSubprograms left ++ walkSubprograms right
+    (SetParameter ctxLeft _ bindings _ ctxRight) ->
+      Prelude.map (Term . Token . fst) (maybeToList ctxLeft)
+        ++ (bindings >>= walkSubprograms)
+        ++ Prelude.map (Term . Token . snd) (maybeToList ctxRight)
 
   mapAllTokens f = \case
     (IDParameter name) -> IDParameter (f name)
-    (SetParameter open items close) -> SetParameter (f open) (Prelude.map (mapAllTokens f) items) (f close)
-    (ContextParameter first' at second) -> ContextParameter (mapAllTokens f first') (f at) (mapAllTokens f second)
+    (SetParameter ctxLeft open items close ctxRight) ->
+      SetParameter (bimap f f <$> ctxLeft) (f open) (Prelude.map (mapAllTokens f) items) (f close) (bimap f f <$> ctxRight)
 
 instance LanguageElement Term where
   mapFirstToken' f = \case

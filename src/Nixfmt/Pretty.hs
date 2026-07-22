@@ -408,21 +408,26 @@ containsDirective = any $ \case
   _ -> False
 
 instance Pretty Parameter where
-  -- param:
+  -- Simple: `param`
   pretty (IDParameter i) = pretty i
-  -- {}:
-  pretty (SetParameter bopen [] bclose) =
+
+  -- Empty attrs: `{}`
+  pretty (SetParameter Nothing bopen [] bclose Nothing) =
     group $ pretty (moveTrailingCommentUp bopen) <> sep <> pretty bclose
     where
       -- If the braces are on different lines, keep them like that
       sep = if sourceLine bopen /= sourceLine bclose then hardline else hardspace
-  -- { stuff }:
-  pretty (SetParameter bopen attrs bclose) =
-    group $
-      pretty (moveTrailingCommentUp bopen)
-        <> surroundWith sep (nest $ sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments attrs)
-        <> nest (pretty (preTrivia bclose))
-        <> pretty (bclose{preTrivia = []})
+
+  -- Non-empty attrs: `{ stuff }`, `{ stuff }@param`, `param@{ stuff }`
+  pretty (SetParameter paramLeft bopen attrs bclose paramRight) =
+    pretty paramLeft
+      <> group
+        ( pretty (moveTrailingCommentUp bopen)
+            <> surroundWith sep (nest $ sepBy sep $ handleTrailingComma $ map moveParamAttrComment $ moveParamsComments attrs)
+            <> nest (pretty (preTrivia bclose))
+            <> pretty (bclose{preTrivia = []})
+        )
+      <> pretty paramRight
     where
       -- pretty all ParamAttrs, but mark the trailing comma of the last element specially
       -- This is so that the trailing comma will only be printed in the expanded form
@@ -437,8 +442,6 @@ instance Pretty Parameter where
         if canFlattenAttrs bopen attrs bclose
           then line
           else hardline
-  pretty (ContextParameter param1 at param2) =
-    pretty param1 <> pretty at <> pretty param2
 
 -- Function application
 -- Some example mapping of Nix code to Doc (using brackets as groups, but omitting the outermost group
@@ -666,7 +669,8 @@ isAbsorbableExpr expr = case expr of
   (Abstraction (IDParameter _) _ (Term t)) | isAbsorbable t -> True
   (Abstraction (IDParameter _) _ body@(Abstraction{})) -> isAbsorbableExpr body
   -- Absorb function declarations with attribute set parameters if the attribute set is simple enough, and the body is absorbable.
-  (Abstraction (SetParameter bopen attrs bclose) colon body)
+  -- Parameters with a context identifier are never absorbed.
+  (Abstraction (SetParameter Nothing bopen attrs bclose Nothing) colon body)
     | canFlattenAttrs bopen attrs bclose,
       not (hasPreTrivia bopen), -- Comments on the opening brace force a line break, preventing absorption
       isNothing (trailComment bopen),
@@ -852,8 +856,9 @@ instance Pretty Expression where
       absorbAbs depth x =
         (if depth <= 2 then line else hardline) <> pretty x
 
-  -- Set parameter: absorb if flattenable and on the same line, force multiline otherwise
-  pretty (Abstraction param@(SetParameter bopen attrs bclose) colon body)
+  -- Set parameter without context identifier: absorb if flattenable and on
+  -- the same line, force multiline otherwise
+  pretty (Abstraction param@(SetParameter Nothing bopen attrs bclose Nothing) colon body)
     | canFlattenAttrs bopen attrs bclose,
       sourceLine colon == firstTokenLine body,
       isAbsorbableExpr body =

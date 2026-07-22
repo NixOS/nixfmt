@@ -434,49 +434,61 @@ itemComment = do
 
 -- ABSTRACTIONS
 
-parameter :: Parser Parameter
-parameter =
-  try ctxOrSetParameter
-    <|> idParameter
+-- The lookahead ensures that a lone identifier is only accepted as parameter
+-- when directly followed by the body (i.e. the colon, which is parsed by
+-- `abstraction`); an `ident@` context instead backtracks into `setParameter`.
+idParameter :: Parser Parameter
+idParameter = IDParameter <$> identifier <* lookAhead (symbol TColon)
+
+setParameter :: Parser Parameter
+setParameter =
+  -- Case 1: `ident@{}:`
+  ( SetParameter
+      <$> (Just <$> liftM2 (,) identifier (symbol TAt))
+      <*> bopen
+      <*> formals
+      <*> bclose
+      <*> pure Nothing
+  )
+    -- Case 2: `{}@ident:` and `{}:`
+    <|> ( SetParameter Nothing
+            <$> bopen
+            <*> formals
+            <*> bclose
+            -- Either a context identifier follows, or the body (i.e. the
+            -- colon, which is parsed by `abstraction`) must come directly.
+            -- Once the `@` is consumed, the identifier is committed to.
+            <*> ( (Just <$> liftM2 (,) (symbol TAt) identifier)
+                    <|> (Nothing <$ lookAhead (symbol TColon))
+                )
+        )
   where
-    idParameter = IDParameter <$> identifier
+    bopen = symbol TBraceOpen
+    bclose = symbol TBraceClose
 
-    -- Parse the set parameter once and only then look for the `@` of a
-    -- ContextParameter, so that a plain set parameter is never reparsed.
-    ctxOrSetParameter =
-      (withContext <$> setParameter <*> optional (liftM2 (,) (symbol TAt) idParameter))
-        <|> (ContextParameter <$> idParameter <*> symbol TAt <*> setParameter)
-
-    setParameter = SetParameter <$> symbol TBraceOpen <*> paramAttrs <*> symbol TBraceClose
-
-    -- A set parameter is a context parameter if `@ identifier` follows it.
-    withContext :: Parameter -> Maybe (Leaf, Parameter) -> Parameter
-    withContext set' Nothing = set'
-    withContext set' (Just (at, ident)) = ContextParameter set' at ident
-
-    -- Parse each attribute once and only then look for its comma, so that an
-    -- attribute (and any set parameters nested in its default) is never
-    -- reparsed; reparsing would be exponential in nesting depth.
-    paramAttrs =
-      (pure . ParamEllipsis <$> symbol TEllipsis)
-        <|> (withRest <$> attrParameter <*> optional (liftM2 (,) (symbol TComma) paramAttrs))
-        <|> pure []
-
-    -- An attribute is the last one, or its comma is followed by the rest.
-    withRest :: (Maybe Leaf -> ParamAttr) -> Maybe (Leaf, [ParamAttr]) -> [ParamAttr]
-    withRest mkAttr Nothing = [mkAttr Nothing]
-    withRest mkAttr (Just (comma, rest)) = mkAttr (Just comma) : rest
-
-    -- Parses everything of an attribute except the optional trailing comma,
-    -- which is applied to the returned constructor by the caller.
-    attrParameter :: Parser (Maybe Leaf -> ParamAttr)
+    -- Also called a "formal" in the Nix codebase.
+    attrParameter :: Parser ParamAttr
     attrParameter =
       ParamAttr
         <$> identifier
         <*> optional (liftM2 (,) (symbol TQuestion) expression)
+        <*> optional (symbol TComma)
+
+    -- Mirrors the `formals` rule of the Lix grammar.hh, but with the comma
+    -- lookahead replaced by inspecting the comma of the formal just parsed.
+    formals =
+      (pure . ParamEllipsis <$> symbol TEllipsis)
+        <|> ( attrParameter >>= \attr -> case attr of
+                -- The comma means the list may continue (`{ a, b }`, `{ a, }`, `{ a, ... }`)
+                -- Note: This parses a list via explicit recursion
+                ParamAttr _ _ (Just _) -> (attr :) <$> formals
+                -- No comma: this was the last formal (`{ a }`)
+                _ -> pure [attr]
+            )
+        <|> pure []
 
 abstraction :: Parser Expression
-abstraction = Abstraction <$> parameter <*> symbol TColon <*> expression
+abstraction = Abstraction <$> (try idParameter <|> setParameter) <*> symbol TColon <*> expression
 
 -- SETS AND LISTS
 
