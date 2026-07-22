@@ -956,7 +956,8 @@
     { }@foo: bar
   )
   (
-    { } # comment
+    {
+    } # comment
     @foo:
     bar
   )
