@@ -1,0 +1,82 @@
+[package]
+changelog = "CHANGELOG.md"
+assets = "result/bin/nixfmt"
+
+[[package.versioned_files]]
+path = "nixfmt.cabal"
+regex = '(?m)^version[ \t]*:[ \t]*(?<version>.+)$'
+
+
+[github]
+owner = "NixOS"
+repo = "nixfmt"
+
+
+[release_notes]
+change_templates = [
+    "### $summary ($commit_hash)\n\n$details\n\nBy $commit_author_name",
+    "- **$summary** by $commit_author_name ($commit_hash)",
+    "### $summary\n\n$details",
+    "- **$summary**",
+]
+extra_changelog_sections = [
+    { types = ["major"], name = "Major changes" },
+    { types = ["minor"], name = "Minor changes" },
+    { types = ["patch"], name = "Patch changes" },
+    { types = ["note"], footers = ["Changelog-Note"], name = "Notes" }
+]
+
+
+[[workflows]]
+name = "prepare-release"
+help_text = "Prepare a new release (bump version & update changelog)"
+
+[[workflows.steps]]
+type = "PrepareRelease"
+allow_empty = true # Fail silently when there's nothing to release
+
+
+[[workflows]]
+name = "create-release-pr"
+help_text = "Create or update a PR for the current release"
+
+[[workflows.steps]]
+type = "CreatePullRequest"
+base = "master"
+
+[workflows.steps.title]
+template = "chore: release $version"
+
+[workflows.steps.body]
+template = """
+**This PR was created by Knope. Merging it will release $version.**
+
+---
+
+$changelog
+"""
+
+
+[[workflows]]
+name = "release"
+help_text = "Publish the current release"
+
+[[workflows.steps]]
+type = "Release"
+
+
+[[workflows]]
+name = "document-change"
+help_text = "Create a new change file to be included in the next release"
+
+[[workflows.steps]]
+type = "CreateChangeFile"
+
+
+[[workflows]]
+name = "print-version"
+help_text = "Print the current version of the project"
+
+[[workflows.steps]]
+type = "Command"
+command = "echo '$version'"

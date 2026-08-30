@@ -163,6 +163,7 @@ in
       haskellPackages.haskell-language-server
       shellcheck
       hlint
+      knope
       treefmtEval.config.build.wrapper
     ];
   };

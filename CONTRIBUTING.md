@@ -48,6 +48,32 @@ However this is not always avoidable and they occasionally need manual adjustmen
 When editing a test or adding a new one, try to put it into a separate commit as to not mix input changes with diff changes.
 Retrospectively fixing this requires advanced git rebasing skills, and using a helper tool like [lazygit](https://github.com/jesseduffield/lazygit) is strongly recommended.
 
+### Documenting changes
+
+User-facing changes should be documented for inclusion in the changelog and release notes, either via [changesets](https://knope.tech/reference/concepts/change-file/) or [conventional commits](https://knope.tech/reference/concepts/conventional-commits/).
+
+> [!IMPORTANT]
+> The actual `CHANGELOG.md` file should not be edited manually, as it is managed by Knope.
+
+To create a "change file" in `.changeset`, you can run:
+```console
+knope document-change
+```
+This will interactively create a change file, prompting for summary and severity.
+
+Alternatively, manually write a markdown file in `.changeset`, declaring the [semver](https://knope.tech/reference/concepts/semantic-versioning/) severity of the change:
+```markdown
+---
+default: minor
+---
+
+# Summary of the change
+
+Optional longer description of the change.
+```
+
+In the frontmatter, you are declaring how this change affects packages managed by Knope, of which we only have one: "default".
+
 ## Debugging
 
 Short strings can easily be tested with `cabal v2-run --verbose=0 nixfmt -- -w=80 < <(echo $'some code here')`.
@@ -88,3 +114,106 @@ We call this process "expanding" groups, and the rendering algorithm will try to
 This frees the Pretty phase of having to think too much about whether or not a piece of code will fit onto the rest of the line.
 
 `layout` in `Predoc.hs` is the entry point of the rendering process, it will do various pre-processing on the IR and then call into `layoutGreedy` which implements the actual algorithm.
+
+## Releasing
+
+Releases are managed using [Knope](https://knope.tech), a CLI tool for generating changelogs and bumping versions using semver, conventional commits, and `.changeset/*.md` files.
+
+Whenever we have unreleased changes, there should be a release PR showing what the next release will look like.
+To publish the release, just merge the PR and CI will handle the rest.
+
+### Manually preparing a release
+
+If you wish to make a release that differs from the automated release PR, you can create your own release PR.
+
+#### Create a release branch
+
+Before starting, switch to a new branch:
+```console
+git switch --create my-custom-release
+```
+
+Alternatively, checkout your new branch in a separate worktree:
+```console
+git worktree add ../my-custom-release
+```
+
+#### Prepare the release
+
+Use Knope to bump the version and write release notes to the changelog:
+```console
+knope prepare-release
+```
+
+> [!TIP]
+> See `knope prepare-release --help` for more options, including pre-release labels and manually specified version numbers.
+
+> [!TIP]
+> If Knope can't identify any changes since the latest tag, `prepare-release` will do nothing.
+>
+> Usually that's what you want, but if you need to prepare an "empty" release you can create a bogus change file in `.changeset`:
+> ```markdown
+> ---
+> default: invalid
+> ---
+> ```
+>
+> `knope prepare-release` will empty `.changeset` anyway, so this file will not be committed.
+
+Optionally, at this point you can manually edit the changelog entry that Knope created.
+
+#### Commit changes
+
+`prepare-release` will have staged its changes, but if you've edited anything you may need to stage your changes (e.g. using `git add --patch`).
+
+Commit the release using:
+```bash
+git commit -m "chore: release $(knope print-version)"
+```
+
+#### Open a Pull Request
+
+Create a Pull Request manually, or using the GitHub CLI:
+```console
+gh pr create
+```
+
+### Publishing a release
+
+We've discussed automatic release PRs and manually creating a release PR, but a release is only published after the release has been merged.
+
+Usually, we merge releases into `master` because they are part of Nixfmt's mainline development.
+Releases merged into `master` are automatically published by CI:
+- The version is checked, to see whether it has been published already.
+- A static `nixfmt` binary is compiled.
+- A release is published to GitHub Releases, with the static `nixfmt` binary attached.
+
+If CI fails, re-running the release workflow will attempt to publish again.
+Additionally, any push to `master` that has an unpublished version will attempt to create a release, so followup fixes will also attempt to release if the initial release failed.
+
+#### Manually publishing a release
+
+If you need to publish a release manually, you can do so using `knope release`.
+
+Before starting, checkout the commit to be published (typically the `chore: release` commit).
+
+> [!TIP]
+> To release on a branch other than `master`, you must manually edit `knope.toml`:
+> ```diff
+>   [[workflows.steps]]
+>   type = "CreatePullRequest"
+> - base = "master"
+> + base = "your-branch"
+> ```
+>
+> You do not need to commit this change, however you could consider committing it if `your-branch` is a LTS branch that may get further releases.
+
+Build the static binary:
+```console
+nix-build -A packages.nixfmt-static
+```
+
+Publish the release:
+```console
+knope release
+```
