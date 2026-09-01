@@ -288,6 +288,8 @@ to return back to the unmerged state.
 
 * `nixfmt < input.nix` – reads Nix code from `stdin`, formats it, and outputs to `stdout`
 * `nixfmt file.nix` – format the file in place
+* `nixfmt --follow-symlinks link.nix` – if `link.nix` is a symbolic link, format the regular file it points at (resolving any symlinks along the way).
+  Without `--follow-symlinks`, the symlink is replaced by a regular file holding the formatted result, and a warning is printed to stderr
 
 ## Disabling Formatting
 
