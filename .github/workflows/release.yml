@@ -2,8 +2,6 @@ name: Release
 
 on:
   push:
-    branches:
-      - master
 
 # Group workflow runs by ref.
 # New runs cancel any pending run.
@@ -26,6 +24,7 @@ jobs:
     permissions:
       contents: read # Needed to checkout content & get published releases
 
+    # Note: outputs are empty on non-release branches
     outputs:
       version: ${{ steps.get_version.outputs.version }}
       published: ${{ steps.check_published.outputs.published }}
@@ -37,9 +36,49 @@ jobs:
         with:
           persist-credentials: false
           sparse-checkout-cone-mode: false
-          sparse-checkout: nixfmt.cabal
+          sparse-checkout: |
+            nixfmt.cabal
+            knope.toml
+
+      - name: Get release branch from knope.toml
+        id: get_branch
+        shell: python
+        run: |
+          import os, sys, tomllib
+
+          try:
+              with open("knope.toml", "rb") as f:
+                  config = tomllib.load(f)
+          except FileNotFoundError:
+              sys.exit("::error file=knope.toml::File not found.")
+
+          # Collect CreatePullRequest workflow steps
+          pr_steps = [
+              step
+              for workflow in config.get("workflows", [])
+              for step in workflow.get("steps", [])
+              if step.get("type") == "CreatePullRequest"
+          ]
+
+          if len(pr_steps) != 1:
+              sys.exit("::error file=knope.toml::Expected exactly 1 'CreatePullRequest' step, found {len(pr_steps)}.")
+
+          try:
+              release_branch = pr_steps[0]["base"]
+          except KeyError:
+              sys.exit("::error file=knope.toml::No 'base' key for 'CreatePullRequest' step.")
+
+          current_branch = os.environ["GITHUB_REF_NAME"]
+
+          if release_branch == current_branch:
+              print(f"::notice::Current branch '{current_branch}' is the release branch.", file=sys.stderr)
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  print("is-release-branch=true", file=f)
+          else:
+              print(f"::notice::Current branch '{current_branch}' is not the release branch '{release_branch}'.", file=sys.stderr)
 
       - name: Get version from nixfmt.cabal
+        if: steps.get_branch.outputs.is-release-branch
         id: get_version
         run: |
           VERSION=$(grep -m1 "^version:" nixfmt.cabal | awk '{print $2}')
@@ -48,6 +87,7 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Check if version is published
+        if: steps.get_branch.outputs.is-release-branch
         id: check_published
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
@@ -133,7 +173,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
         run: |
-          git switch -c prepare-release
+          git switch -c "prepare-release/$GITHUB_REF_NAME"
           knope prepare-release --verbose
           echo "version=$(knope print-version)" >> "$GITHUB_OUTPUT"
 
@@ -144,7 +184,7 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
         run: |
           git commit -m "chore: release $VERSION"
-          git push --force --set-upstream origin prepare-release
+          git push --force --set-upstream origin "prepare-release/$GITHUB_REF_NAME"
           knope create-release-pr --verbose
 
 
