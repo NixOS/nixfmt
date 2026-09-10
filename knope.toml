@@ -14,7 +14,9 @@ repo = "nixfmt"
 
 [release_notes]
 change_templates = [
+    "### $summary (#$pr_number)\n\n$details\n\nBy $commit_author_name",
     "### $summary ($commit_hash)\n\n$details\n\nBy $commit_author_name",
+    "- **$summary** by $commit_author_name (#$pr_number)",
     "- **$summary** by $commit_author_name ($commit_hash)",
     "### $summary\n\n$details",
     "- **$summary**",
