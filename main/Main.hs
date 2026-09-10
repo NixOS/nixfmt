@@ -3,7 +3,7 @@
 
 module Main where
 
-import Control.Monad (forM, unless)
+import Control.Monad (forM, unless, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT (ExceptT), runExceptT, throwE)
 import Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
@@ -24,12 +24,14 @@ import System.Console.CmdArgs (
   Data,
   args,
   cmdArgs,
+  explicit,
   help,
+  name,
   summary,
   typ,
   (&=),
  )
-import System.Directory (doesDirectoryExist, listDirectory, renameFile)
+import System.Directory (canonicalizePath, doesDirectoryExist, listDirectory, pathIsSymbolicLink, renameFile)
 import System.Exit (ExitCode (..), exitFailure, exitSuccess)
 import System.FilePath ((</>))
 import System.IO (hPutStrLn, hSetEncoding, stderr)
@@ -48,6 +50,7 @@ data Nixfmt = Nixfmt
     width :: Width,
     indent :: Int,
     check :: Bool,
+    followSymlinks :: Bool,
     mergetool :: Bool,
     quiet :: Bool,
     strict :: Bool,
@@ -74,6 +77,11 @@ options =
              &= help (addDefaultHint defaultWidth "Maximum width in characters"),
          indent = defaultIndent &= help (addDefaultHint defaultIndent "Number of spaces to use for indentation"),
          check = False &= help "Check whether files are formatted without modifying them",
+         followSymlinks =
+           False
+             &= explicit
+             &= name "follow-symlinks"
+             &= help "Format the file a symbolic link points at, instead of replacing the link with a regular file",
          mergetool = False &= help "Whether to run in git mergetool mode, see https://github.com/NixOS/nixfmt?tab=readme-ov-file#git-mergetool for more info",
          quiet = False &= help "Do not report errors",
          strict = False &= help "Enable a stricter formatting mode that isn't influenced as much by how the input is formatted",
@@ -152,14 +160,26 @@ checkTarget format Target{tDoRead, tPath} = do
 stdioTarget :: Maybe FilePath -> Target
 stdioTarget filename = Target TextIO.getContents (fromMaybe "<stdin>" filename) (const TextIO.putStr)
 
-fileTarget :: FilePath -> Target
-fileTarget path = Target (readFileUtf8 path) path atomicWriteFile
+fileTarget :: Nixfmt -> FilePath -> Target
+fileTarget Nixfmt{followSymlinks, quiet} path = Target (readFileUtf8 path) path atomicWriteFile
   where
-    atomicWriteFile True t = withOutputFile path $ \h -> do
-      hSetEncoding h utf8
-      TextIO.hPutStr h t
+    atomicWriteFile True t = do
+      unless (followSymlinks || quiet) warnIfSymlink
+      realPath <- if followSymlinks then canonicalizePath path else pure path
+      withOutputFile realPath $ \h -> do
+        hSetEncoding h utf8
+        TextIO.hPutStr h t
     -- Don't do anything if the file is already formatted
     atomicWriteFile False _ = mempty
+
+    warnIfSymlink = do
+      isLink <- pathIsSymbolicLink path
+      when isLink $
+        hPutStrLn stderr $
+          "\ESC[33m"
+            <> path
+            <> " is a symbolic link and will be replaced by a regular file. "
+            <> "Pass --follow-symlinks to format the file it points at instead\ESC[39m"
 
 checkFileTarget :: FilePath -> Target
 checkFileTarget path = Target (readFileUtf8 path) path (const $ const $ pure ())
@@ -170,7 +190,7 @@ toTargets Nixfmt{files = [], filename = Nothing} = do
   pure [stdioTarget Nothing]
 toTargets Nixfmt{files = [], filename} = pure [stdioTarget filename]
 toTargets Nixfmt{files = ["-"], filename} = pure [stdioTarget filename]
-toTargets Nixfmt{check = False, files = paths} = map fileTarget <$> collectAllNixFiles paths
+toTargets opts@Nixfmt{check = False, files = paths} = map (fileTarget opts) <$> collectAllNixFiles paths
 toTargets Nixfmt{check = True, files = paths} = map checkFileTarget <$> collectAllNixFiles paths
 
 type Formatter = FilePath -> Text -> Either String Text
@@ -215,15 +235,15 @@ mergeToolJob opts@Nixfmt{files = [base, local, remote, merged]} = runExceptT $ d
     joinResults
       <$> forM
         inputs
-        ( \(name, path) -> do
-            first (<> "pre-formatting the " <> name <> " version failed")
-              <$> formatTarget formatter (fileTarget path)
+        ( \(inputName, path) -> do
+            first (<> "pre-formatting the " <> inputName <> " version failed")
+              <$> formatTarget formatter (fileTarget opts path)
         )
 
   lift $ callProcess "git" ["merge-file", local, base, remote]
   -- git merge-file writes the result to the local version
 
-  ExceptT $ formatTarget formatter (fileTarget local)
+  ExceptT $ formatTarget formatter (fileTarget opts local)
 
   -- Atomic move at the end
   lift $ renameFile local merged
