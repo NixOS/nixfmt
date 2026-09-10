@@ -110,7 +110,7 @@ jobs:
     if: needs.version.outputs.published
     needs: version
     runs-on: ubuntu-latest # cachix-action needs a full VM
-    timeout-minutes: 5
+    timeout-minutes: 90 # allow for cache-miss building patched Knope
 
     # Match nixfmt-ci app, for testing on forks
     permissions:
@@ -194,7 +194,7 @@ jobs:
     if: needs.version.outputs.unpublished
     needs: version
     runs-on: ubuntu-latest # use a full VM for building static binary
-    timeout-minutes: 300 # allow for a cache-miss building the static binary
+    timeout-minutes: 300 # allow for a cache-miss building the static binary or patched Knope
 
     # Match nixfmt-ci app, for testing on forks
     permissions:
