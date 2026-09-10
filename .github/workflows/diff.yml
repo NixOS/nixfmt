@@ -5,6 +5,17 @@ on:
   # We must ensure that no secrets are in any environment variables when running untrusted code, and that no secrets are persisted to disk and accessible to `readFile`
   # when evaluating Nix code
   pull_request_target: # zizmor: ignore[dangerous-triggers]
+    # When *all* paths are ignored, the workflow will not run.
+    # If any path is *not* ignored, the workflow will run.
+    paths-ignore:
+      - '*.md'
+      - LICENSE
+      - LICENSES/*
+      - test/**
+      # Ignore the cabal file, to avoid diffing release PRs (version bumps).
+      # Sadly, this also means we do not diff dependency bumps, however running
+      # our test suite should be sufficient to catch dependency issues.
+      - nixfmt.cabal
 
 permissions:
   contents: read
