@@ -13,6 +13,17 @@ let
         nixfmt = final.callCabal2nix "nixfmt" haskellSource { };
       };
     };
+
+    knope = prevPkgs.knope.overrideAttrs (
+      finalAttrs: prevAttrs: {
+        patches = prevAttrs.patches or [ ] ++ [
+          # Ignore conventional merge commits.
+          # Based on https://github.com/knope-dev/knope/pull/1931, which adds a
+          # full ignore_conventional_merge_commits option.
+          ./knope.patch
+        ];
+      }
+    );
   };
 
   pkgs = import nixpkgs {

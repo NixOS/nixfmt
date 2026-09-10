@@ -1,0 +1,16 @@
+diff --git a/crates/knope/src/integrations/git.rs b/crates/knope/src/integrations/git.rs
+index 4bcd0ed..39eb901 100644
+--- a/crates/knope/src/integrations/git.rs
++++ b/crates/knope/src/integrations/git.rs
+@@ -406,6 +406,11 @@ pub(crate) fn get_commit_messages_after_tag(tag: Option<&str>) -> Result<Vec<Com
+     for oid in revwalk.filter_map(Result::ok) {
+         if !commits_to_exclude.contains(&oid) {
+             if let Ok(commit) = repo.find_commit(oid) {
++                // Hack: unconditionally ignore merge commits.
++                // https://github.com/knope-dev/knope/pull/1931 adds an option for this.
++                if commit.parent_count() > 1 {
++                    continue;
++                }
+                 if let Some(message) = commit.message().map(String::from) {
+                     commits.push(Commit {
+                         message,
