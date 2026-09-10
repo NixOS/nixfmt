@@ -1,6 +1,6 @@
 # Revision history for nixfmt
 
-## 1.4.0 -- 2026-07-07
+## 1.4.0 (2026-07-07)
 
 - Added `/*nixfmt:disable*/` and `/*nixfmt:enable*/` comment directives to exclude regions of code from formatting: <https://github.com/NixOS/nixfmt/pull/388>
 - Fixed language annotations being detached from their string when comments are hoisted out of function applications: <https://github.com/NixOS/nixfmt/pull/425>
@@ -9,11 +9,11 @@
   - `nixpkgs` and `treefmt-nix` are now flake inputs that can "follow" downstream flake inputs.
 - Improved the Neovim setup instructions in the README: <https://github.com/NixOS/nixfmt/pull/414>, <https://github.com/NixOS/nixfmt/pull/415>
 
-## 1.3.1 -- 2026-05-31
+## 1.3.1 (2026-05-31)
 - Fixed aarch64-darwin build: <https://github.com/NixOS/nixfmt/pull/409>
 - Added aarch64-linux and aarch64-darwin builds to CI: <https://github.com/NixOS/nixfmt/pull/409>
 
-## 1.3.0 -- 2026-05-26
+## 1.3.0 (2026-05-26)
 - Updated our dependencies: <https://github.com/NixOS/nixfmt/pull/389>
 - Replaced references to `nixfmt-rfc-style` with `nixfmt`: <https://github.com/NixOS/nixfmt/pull/369>, <https://github.com/NixOS/nixfmt/pull/389>
 - Format pipe operator chains on multiple lines: <https://github.com/NixOS/nixfmt/pull/372>
@@ -35,7 +35,7 @@
 
 [nixfmt-rs]: https://github.com/Mic92/nixfmt-rs
 
-## 1.2.0 -- 2026-01-08
+## 1.2.0 (2026-01-08)
 - Reformat indented strings, reformatting to simple strings when appropriate: <https://github.com/NixOS/nixfmt/pull/348>
 - Added musl static build and nixfmt-static package: <https://github.com/NixOS/nixfmt/pull/349>
 - Added auto-release GitHub Actions workflow: <https://github.com/NixOS/nixfmt/pull/354>
@@ -49,17 +49,17 @@
 - Added link to standard.md in README: <https://github.com/NixOS/nixfmt/pull/361>
 - Fixed typo in README for nixfmt installation: <https://github.com/NixOS/nixfmt/pull/345>
 
-## 1.1.0 -- 2025-10-07
+## 1.1.0 (2025-10-07)
 
 - Added support for "language annotation" comments (e.g. `/* lang */ ""`), used by things like tree-sitter grammars: <https://github.com/NixOS/nixfmt/pull/343>
 - Fixed a regression causing incorrect path value indentation: <https://github.com/NixOS/nixfmt/pull/342>
 
-## 1.0.1 -- 2025-09-16
+## 1.0.1 (2025-09-16)
 
 - Fix bug where `--ir` would overwrite the source file: <https://github.com/NixOS/nixfmt/pull/322>
 - Fix `pre-commit` hook so it works without cabal: <https://github.com/NixOS/nixfmt/pull/311>
 
-## 1.0.0 -- 2025-07-09
+## 1.0.0 (2025-07-09)
 
 The [Nix Formatting Team](https://nixos.org/community/teams/formatting/) is happy to present the first stable release of the official Nix formatter! The basis for this milestone is [RFC 166](https://github.com/NixOS/rfcs/pull/166), which defined the [standard for Nix formatting](https://github.com/NixOS/nixfmt/blob/master/standard.md), established the Nix Formatting team and set the groundwork for nixfmt to become the official formatter.
 
@@ -75,7 +75,7 @@ Other than the above, there are some notable UX changes:
   - In stdin-mode, `--filename <path>` can now be used to specify a filename for diagnostics.
   - Number of indentation spaces can now be configured using `--indent <number>`
 
-## 0.6.0 -- 2023-10-31
+## 0.6.0 (2023-10-31)
 
 * Fix escaping of interpolations after dollar signs.
 * Fix nixfmt trying to allocate temp files that aren't used.
@@ -84,7 +84,7 @@ Other than the above, there are some notable UX changes:
 * `nixfmt [dir]` now recursively formats nix files in that directory.
 * Float and int literal parsing now matches nix.
 
-## 0.5.0 -- 2022-03-15
+## 0.5.0 (2022-03-15)
 
 * Add a nix flake to the nixfmt project.
 * Add a --verify flag to check idempotency.
@@ -92,24 +92,24 @@ Other than the above, there are some notable UX changes:
 * Fix escaping of interpolations after single quotes.
 * Fix handling of multiline strings with spaces in the last line.
 
-## 0.4.0 -- 2020-02-10
+## 0.4.0 (2020-02-10)
 
 * Report non-conforming files on the same line to aid line-oriented processing
 * Fix help, summary, and version flag contents.
 * Fix indentation of leading comments in parens
 
-## 0.3.0 -- 2019-08-29
+## 0.3.0 (2019-08-29)
 
 * Added check flag for use in CI.
 * Added quiet flag to disable all output on stderr.
 * Further improved indentation.
 * Fixed bugs where Nix code with different semantics was emitted in some cases.
 
-## 0.2.1 -- 2019-07-29
+## 0.2.1 (2019-07-29)
 
 * Fixed missing linebreaks in set abstractions.
 
-## 0.2.0 -- 2019-07-25
+## 0.2.0 (2019-07-25)
 
 * Fixed indentation of binders and some other expressions.
 * Use atomic writes to avoid data loss.
@@ -118,7 +118,7 @@ Other than the above, there are some notable UX changes:
 * Simplified some code.
 * Many other formatting improvements.
 
-## 0.1.0 -- 2019-05-11
+## 0.1.0 (2019-05-11)
 
 * The first released version of nixfmt. This project aims to provide a
   consistent formatter for Nix code. This release is capable of parsing all of

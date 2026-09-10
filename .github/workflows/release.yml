@@ -1,11 +1,13 @@
-name: Release on Version Change
+name: Release
 
 on:
   push:
-    branches:
-      - master
-    paths:
-      - 'nixfmt.cabal'
+
+# Group workflow runs by ref.
+# New runs cancel any pending run.
+# In-progress runs are allowed to complete.
+concurrency:
+  group: push-${{ github.ref }}
 
 defaults:
   run:
@@ -14,95 +16,229 @@ defaults:
 permissions: {}
 
 jobs:
-  release-if-version-changed:
-    runs-on: ubuntu-latest
+  version:
+    name: Check version
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+
     permissions:
-      # Needed to create the release
-      contents: write
+      contents: read # Needed to checkout content & get published releases
+
+    # Note: outputs are empty on non-release branches
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      published: ${{ steps.check_published.outputs.published }}
+      unpublished: ${{ steps.check_published.outputs.unpublished }}
 
     steps:
-      - name: Checkout main
+      - name: Checkout metadata
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 2  # need previous commit for comparison
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            nixfmt.cabal
+            knope.toml
+
+      - name: Get release branch from knope.toml
+        id: get_branch
+        shell: python
+        run: |
+          import os, sys, tomllib
+
+          try:
+              with open("knope.toml", "rb") as f:
+                  config = tomllib.load(f)
+          except FileNotFoundError:
+              sys.exit("::error file=knope.toml::File not found.")
+
+          # Collect CreatePullRequest workflow steps
+          pr_steps = [
+              step
+              for workflow in config.get("workflows", [])
+              for step in workflow.get("steps", [])
+              if step.get("type") == "CreatePullRequest"
+          ]
+
+          if len(pr_steps) != 1:
+              sys.exit("::error file=knope.toml::Expected exactly 1 'CreatePullRequest' step, found {len(pr_steps)}.")
+
+          try:
+              release_branch = pr_steps[0]["base"]
+          except KeyError:
+              sys.exit("::error file=knope.toml::No 'base' key for 'CreatePullRequest' step.")
+
+          current_branch = os.environ["GITHUB_REF_NAME"]
+
+          if release_branch == current_branch:
+              print(f"::notice::Current branch '{current_branch}' is the release branch.", file=sys.stderr)
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  print("is-release-branch=true", file=f)
+          else:
+              print(f"::notice::Current branch '{current_branch}' is not the release branch '{release_branch}'.", file=sys.stderr)
 
       - name: Get version from nixfmt.cabal
+        if: steps.get_branch.outputs.is-release-branch
         id: get_version
         run: |
-          CABAL_FILE="nixfmt.cabal"
-
-          # Extract the version
-          VERSION=$(grep -m1 "^version:" $CABAL_FILE | awk '{print $2}')
+          VERSION=$(grep -m1 "^version:" nixfmt.cabal | awk '{print $2}')
           echo "Version found in cabal: $VERSION"
-
-          # Get previous version from last commit
-          PREV_VERSION=$(git show HEAD~1:"$CABAL_FILE" | grep -m1 "^version:" | awk '{print $2}')
-          echo "Previous version: $PREV_VERSION"
-
-          # Export for later steps
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "prev_version=$PREV_VERSION" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
-      - name: Check if version changed
-        id: compare
+      - name: Check if version is published
+        if: steps.get_branch.outputs.is-release-branch
+        id: check_published
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const tag = `v${process.env.VERSION}`
+            try {
+              const { data } = await github.rest.repos.getReleaseByTag({ ...context.repo, tag })
+              core.notice(`${tag} already published (${data.published_at})`)
+              core.setOutput("published", "true")
+            } catch (err) {
+              if (err.status !== 404) throw err
+              core.notice(`${tag} not published`)
+              core.setOutput("unpublished", "true")
+            }
+
+
+  create-release-pr:
+    name: Create or update release PR
+
+    if: needs.version.outputs.published
+    needs: version
+    runs-on: ubuntu-latest # cachix-action needs a full VM
+    timeout-minutes: 5
+
+    # Match nixfmt-ci app, for testing on forks
+    permissions:
+      contents: write # Needed to push the release PR branch
+      pull-requests: write # Needed to open the release PR
+
+    steps:
+      - name: Generate App Token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        if: vars.NIXFMT_CI_APP_CLIENT_ID
+        id: app-token
+        with:
+          client-id: ${{ vars.NIXFMT_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.NIXFMT_CI_APP_PRIVATE_KEY }}
+          permission-contents: write # Needed to push the release PR branch
+          permission-pull-requests: write # Needed to open the release PR
+
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # Knope needs to find the previous tag and read conventional commits
+          fetch-tags: true
+          persist-credentials: true
+          token: ${{ steps.app-token.outputs.token || github.token }}
+
+      - name: Get GitHub App User ID
+        id: app-id
+        if: steps.app-token.outputs.app-slug
         env:
-          PREV_VERSION: ${{ steps.get_version.outputs.prev_version }}
-          VERSION: ${{ steps.get_version.outputs.version }}
-        run: |
-          if [ "$PREV_VERSION" != "$VERSION" ]; then
-            echo "version_changed=true" >> "$GITHUB_ENV"
-            echo "::notice ::✅ Version changed from $PREV_VERSION to $VERSION"
-          else
-            echo "version_changed=false" >> "$GITHUB_ENV"
-            echo "::notice ::Version did not change, skipping release"
-          fi
-      - name: Extract changelog section for current version
-        if: ${{ env.version_changed == 'true' }}
+          APP_USERNAME: ${{ steps.app-token.outputs.app-slug }}[bot]
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: echo "app-id=$(gh api "/users/$APP_USERNAME" --jq .id)" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git
         env:
-          VERSION: ${{ steps.get_version.outputs.version }}
+          APP_USER_ID: ${{ steps.app-id.outputs.app-id || '41898282' }}
+          APP_USERNAME: ${{ steps.app-token.outputs.app-slug || 'github-actions' }}[bot]
         run: |
-          echo "Extracting changelog section for version $VERSION"
-
-          # Extract everything after the "## <version>" header until the next "## "
-          awk -v ver="$VERSION" '
-            $0 ~ "^##[[:space:]]+" ver {found=1; next}
-            found && /^##[[:space:]]+/ {exit}
-            found
-          ' CHANGELOG.md > RELEASE_NOTES.md
-
-          if [ ! -s RELEASE_NOTES.md ]; then
-            echo "::error ::⚠️ No changelog section found for version $VERSION"
-            echo "(Make sure you have a header like '## $VERSION -- YYYY-MM-DD')"
-            echo "- No notes will be attached to the release -"
-            echo "No changelog section found for version $VERSION." > RELEASE_NOTES.md
-            exit 1
-          fi
-
-          echo "---- Extracted Changelog ----"
-          cat RELEASE_NOTES.md
-          echo "--------------------------"
+          git config --global user.name "$APP_USERNAME"
+          git config --global user.email "$APP_USER_ID+$APP_USERNAME@users.noreply.github.com"
 
       - name: Setup Nix
-        if: ${{ env.version_changed == 'true' }}
         uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
 
       - name: Setup Cachix cache
-        if: ${{ env.version_changed == 'true' }}
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: nixos-nixfmt
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Install Knope
+        run: |
+          nix-build main.nix -A pkgs.knope
+          realpath result/bin >> "$GITHUB_PATH"
+          echo "Installed $(result/bin/knope --version)"
+          rm result
+
+      - name: Cut release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        run: |
+          git switch -c "prepare-release/$GITHUB_REF_NAME"
+          knope prepare-release --verbose
+          echo "version=$(knope print-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Create release PR
+        if: needs.version.outputs.version != steps.release.outputs.version
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        run: |
+          git commit -m "chore: release $VERSION"
+          git push --force --set-upstream origin "prepare-release/$GITHUB_REF_NAME"
+          knope create-release-pr --verbose
+
+
+  publish-release:
+    name: Publish ${{ needs.version.outputs.version }}
+
+    if: needs.version.outputs.unpublished
+    needs: version
+    runs-on: ubuntu-latest # use a full VM for building static binary
+    timeout-minutes: 300 # allow for a cache-miss building the static binary
+
+    # Match nixfmt-ci app, for testing on forks
+    permissions:
+      contents: write # Needed to create the release
+
+    steps:
+      - name: Generate App Token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        if: vars.NIXFMT_CI_APP_CLIENT_ID
+        id: app-token
+        with:
+          client-id: ${{ vars.NIXFMT_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.NIXFMT_CI_APP_PRIVATE_KEY }}
+          permission-contents: write # Needed to create the release
+
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          token: ${{ steps.app-token.outputs.token || github.token }}
+
+      - name: Setup Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+
+      - name: Setup Cachix cache
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
+        with:
+          name: nixos-nixfmt
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Install Knope
+        run: |
+          nix-build main.nix -A pkgs.knope
+          realpath result/bin >> "$GITHUB_PATH"
+          echo "Installed $(result/bin/knope --version)"
+          rm result
+
+      - name: Print version
+        run: echo "::notice::Publishing $(knope print-version)"
 
       - name: Build static binary
-        if: ${{ env.version_changed == 'true' }}
-        run: |
-          nix-build -A packages.nixfmt-static
+        run: nix-build -A packages.nixfmt-static
 
-      - name: Create GitHub Release
-        if: ${{ env.version_changed == 'true' }}
+      - name: Publish release
+        run: knope release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: "${{ steps.get_version.outputs.version }}"
-        run:
-          gh release create "v$VERSION" ./result/bin/nixfmt --title "v$VERSION" --notes-file RELEASE_NOTES.md
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}

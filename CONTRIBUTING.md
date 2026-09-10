@@ -48,6 +48,32 @@ However this is not always avoidable and they occasionally need manual adjustmen
 When editing a test or adding a new one, try to put it into a separate commit as to not mix input changes with diff changes.
 Retrospectively fixing this requires advanced git rebasing skills, and using a helper tool like [lazygit](https://github.com/jesseduffield/lazygit) is strongly recommended.
 
+### Documenting changes
+
+User-facing changes should be documented for inclusion in the changelog and release notes, either via [changesets](https://knope.tech/reference/concepts/change-file/) or [conventional commits](https://knope.tech/reference/concepts/conventional-commits/).
+
+> [!IMPORTANT]
+> The actual `CHANGELOG.md` file should not be edited manually, as it is managed by Knope.
+
+To create a "change file" in `.changeset`, you can run:
+```console
+knope document-change
+```
+This will interactively create a change file, prompting for summary and severity.
+
+Alternatively, manually write a markdown file in `.changeset`, declaring the [semver](https://knope.tech/reference/concepts/semantic-versioning/) severity of the change:
+```markdown
+---
+default: minor
+---
+
+# Summary of the change
+
+Optional longer description of the change.
+```
+
+In the frontmatter, you are declaring how this change affects packages managed by Knope, of which we only have one: "default".
+
 ## Debugging
 
 Short strings can easily be tested with `cabal v2-run --verbose=0 nixfmt -- -w=80 < <(echo $'some code here')`.
@@ -88,3 +114,123 @@ We call this process "expanding" groups, and the rendering algorithm will try to
 This frees the Pretty phase of having to think too much about whether or not a piece of code will fit onto the rest of the line.
 
 `layout` in `Predoc.hs` is the entry point of the rendering process, it will do various pre-processing on the IR and then call into `layoutGreedy` which implements the actual algorithm.
+
+## Releasing
+
+Releases are managed using [Knope](https://knope.tech), a CLI tool for generating changelogs and bumping versions using semver, conventional commits, and `.changeset/*.md` files.
+
+Whenever we have unreleased changes, there should be a release PR showing what the next release will look like.
+To publish the release, just merge the PR and CI will handle the rest.
+
+### Creating an LTS branch
+
+`knope.toml` configures the branch releases will target in the `CreatePullRequest` workflow step.
+CI automation is triggered when the pushed branch matches the `base` branch configured in Knope.
+
+If we need to maintain LTS releases for a version that `master` has diverged from, we must first create an LTS branch:
+
+#### Switch to the older release
+
+```console
+git switch --detach v1.2.3
+```
+
+#### Create an LTS branch
+
+```console
+git switch --create lts/v1.2.x
+```
+
+#### Update `knope.toml`
+
+```diff
+  [[workflows.steps]]
+  type = "CreatePullRequest"
+- base = "master"
++ base = "lts/v1.2.x"
+```
+
+```console
+git add --patch knope.toml
+git commit -m "chore(knope): set base branch to lts/v1.2.x"
+```
+
+#### Push the LTS branch
+
+```console
+git push --set-upstream upstream lts/v1.2.x
+```
+
+#### Usage
+
+CI will now recognise this as a release branch, because the branch name matches the `base` configured in `knope.toml`'s `CreatePullRequest` step.
+Changes merged into the LTS branch will cause a release PR to be created, and releases merged into the LTS branch will be automatically published.
+
+### Manually preparing a release
+
+If you wish to make a release that differs from the automated release PR, you can create your own release PR.
+
+#### Create a release branch
+
+Before starting, switch to a new branch:
+```console
+git switch --create my-custom-release
+```
+
+Alternatively, checkout your new branch in a separate worktree:
+```console
+git worktree add ../my-custom-release
+```
+
+#### Prepare the release
+
+Use Knope to bump the version and write release notes to the changelog:
+```console
+knope prepare-release
+```
+
+> [!TIP]
+> See `knope prepare-release --help` for more options, including pre-release labels and manually specified version numbers.
+
+> [!TIP]
+> If Knope can't identify any changes since the latest tag, `prepare-release` will do nothing.
+>
+> Usually that's what you want, but if you need to prepare an "empty" release you can create a bogus change file in `.changeset`:
+> ```markdown
+> ---
+> default: invalid
+> ---
+> ```
+>
+> `knope prepare-release` will empty `.changeset` anyway, so this file will not be committed.
+
+Optionally, at this point you can manually edit the changelog entry that Knope created.
+
+#### Commit changes
+
+`prepare-release` will have staged its changes, but if you've edited anything you may need to stage your changes (e.g. using `git add --patch`).
+
+Commit the release using:
+```bash
+git commit -m "chore: release $(knope print-version)"
+```
+
+#### Open a Pull Request
+
+Create a Pull Request manually, or using the GitHub CLI:
+```console
+gh pr create
+```
+
+### Publishing a release
+
+We've discussed automatic release PRs and manually creating a release PR, but a release is only published after the release has been merged.
+
+Releases merged into a release branch are automatically published by CI:
+- `knope.toml` is checked, to see whether `CreatePullRequest`→`base` matches the current branch name.
+- The version is checked, to see whether it has been published already.
+- A static `nixfmt` binary is compiled.
+- A release is published to GitHub Releases, with the static `nixfmt` binary attached.
+
+If CI fails, re-running the release workflow will attempt to publish again.
+Additionally, any push to a release branch that has an unpublished version will attempt to create a release, so followup fixes will also attempt to release if the initial release failed.
