@@ -1,5 +1,17 @@
 # Revision history for nixfmt
 
+## 1.5.0 (2026-09-10)
+
+### Features
+
+- **support chained presence checks (a ? b ? c)** by Dyego Aurélio (#433)
+- **introduce `--follow-symlinks` option** by Sergey Gulin (#455)
+
+### Fixes
+
+- **exponential parse time for nested set parameter defaults** by Dyego Aurélio (#435)
+- **indent arguments of parenthesized function application** by Ashwin Mathi (#456)
+
 ## 1.4.0 (2026-07-07)
 
 - Added `/*nixfmt:disable*/` and `/*nixfmt:enable*/` comment directives to exclude regions of code from formatting: <https://github.com/NixOS/nixfmt/pull/388>
