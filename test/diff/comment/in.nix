@@ -170,4 +170,36 @@
   "
 " # c
       t2
+
+  # Trailing comment after multiline string in binder position
+  {
+    foo = "
+" # c
+        ;
+  }
+
+  # Trailing comment after multiline string, followed by a comment block
+  "
+" # c1
+    # c2
+  t3
+
+  # Trailing block comment after multiline string
+  "
+" /* c */
+      t4
+
+  # The closing bracket is reindented onto the comment's column, so keeping the
+  # comment trailing would make it parse as leading the bracket on a reformat.
+  # Only the formatted layout reveals the collision: in the input the bracket
+  # sits well to the right of it.
+  [
+    "
+" # c
+      ]
+
+  # Trailing comment after multiline string as the last list item, one line
+  # before the closing bracket: demoted.
+  "
+" # c
 ]
