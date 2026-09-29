@@ -164,4 +164,9 @@
 "
   # c
   t
+
+  # Trailing comment after multiline string, next item indented differently
+  "
+" # c
+  t2
 ]
