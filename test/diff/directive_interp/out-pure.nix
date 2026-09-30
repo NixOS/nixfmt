@@ -146,6 +146,41 @@ text";
   # This MUST be formatted
   afterSelector = 6;
 
+  # A comment trailing the closing '' of a cut string sits at a column
+  # determined by the content; it must not be kept trailing, or a next token
+  # reindented to that column would capture it as leading on a reformat.
+  cutTrailingComment = [
+/*nixfmt:disable*/
+    ''
+      head ${
+/*nixfmt:enable*/
+              7
+            }
+x''
+    # c
+    t
+  ];
+
+  # This MUST be formatted
+  afterCutTrailingComment = 8;
+
+  # A blank line after such a trailing comment normally keeps it trailing, but
+  # not while the region is still open: the region reproduces the rest of the
+  # source verbatim, comment included, so keeping it would also print it outside
+  # the region and grow the file on every run.
+  openRegionTrailingComment =
+    "${
+/*nixfmt:disable*/
+    7
+  }
+x" # c
+
+    t;
+/*nixfmt:enable*/
+
+  # This MUST be formatted
+  afterOpenRegionTrailingComment = 9;
+
   # Two self-contained regions in different interpolations of one string:
   # the string is not cut and is reindented normally
   twoRegions = ''

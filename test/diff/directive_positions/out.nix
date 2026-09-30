@@ -123,6 +123,18 @@
   # nixfmt:disable
   alsoNotDisabled = 2;
 
+  # A directive trailing the closing quote of a multiline string is demoted to
+  # a plain comment (moved to its own line) and must not open a disabled region
+  stringTrailingDirective = [
+    "
+"
+    # nixfmt:disable
+    t
+  ];
+
+  # This MUST be formatted
+  afterStringTrailingDirective = 5;
+
   # A real region afterwards still works
 /*nixfmt:disable*/
   disabled    =    3;
