@@ -43,11 +43,11 @@
     "systems": {
       "flake": false,
       "locked": {
-        "lastModified": 1780071282,
+        "lastModified": 1791244623,
         "narHash": "sha256-uuanbkFk8a313Zfrxdcz8Us/yQtaxNnKJtX8v0ZPpd8=",
         "owner": "nix-systems",
         "repo": "default",
-        "rev": "0a2095acd8a851514365689adb65827a3b7f1b3b",
+        "rev": "d36eeed142f88b5a636f2e3856a53c61654cf29b",
         "type": "github"
       },
       "original": {
