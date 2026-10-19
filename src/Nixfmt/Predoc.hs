@@ -127,6 +127,7 @@ data DocE
     Text Int Int TextAnn Text
   | Spacing Spacing
   | Group GroupAnn Doc
+  | Nest Int Int Doc
   deriving (Show, Eq)
 
 type Doc = [DocE]
@@ -190,13 +191,18 @@ rawText t = [Text 0 0 RawText t]
 group :: (HasCallStack) => (Pretty a) => a -> Doc
 group x =
   pure . Group RegularG $
-    case p of
-      (headP : _)
-        | isSoftSpacing headP || isSoftSpacing (last p) ->
-            error $ "group should not start or end with whitespace, use `group'` if you are sure; " <> show p
-      _ -> p
+    if maybe False isSoftSpacing (firstNode p) || maybe False isSoftSpacing (lastNode p)
+      then error $ "group should not start or end with whitespace, use `group'` if you are sure; " <> show p
+      else p
   where
     p = pretty x
+    firstNode [] = Nothing
+    firstNode (Nest _ _ inner : rest) = firstNode inner <|> firstNode rest
+    firstNode (e : _) = Just e
+    lastNode = foldl' step Nothing
+      where
+        step previous (Nest _ _ inner) = lastNode inner <|> previous
+        step _ e = Just e
 
 -- | Group document elements together (see Node Group documentation)
 -- Is allowed to start or end with any kind of whitespace.
@@ -214,20 +220,28 @@ group' ann = pure . Group ann . pretty
 -- Multiple nesting levels on one line will be compacted and only result in a single
 -- indentation bump for the next line. This prevents excessive indentation.
 nest :: (Pretty a) => a -> Doc
-nest x = map go $ pretty x
-  where
-    go (Text i o ann t) = Text (i + 1) o ann t
-    go (Group ann inner) = Group ann (map go inner)
-    go spacing = spacing
+nest x = [Nest 1 0 (pretty x)]
 
 -- This is similar to nest, however it circumvents the "smart" rules that usually apply.
 -- This should only be useful to manage the indentation within indented strings.
 offset :: (Pretty a) => Int -> a -> Doc
-offset level x = map go $ pretty x
+offset 0 x = pretty x
+offset level x = [Nest 0 level (pretty x)]
+
+-- Resolve nested scopes in one traversal, rather than mapping every descendant
+-- each time its parent is nested. The work stack avoids copying scope spines.
+normalizeNesting :: Int -> Int -> Doc -> Doc
+normalizeNesting level off doc = go level off doc []
   where
-    go (Text i o ann t) = Text i (o + level) ann t
-    go (Group ann inner) = Group ann (map go inner)
-    go spacing = spacing
+    go _ _ [] [] = []
+    go _ _ [] ((i, o, rest) : pending) = go i o rest pending
+    go !i !o (Nest di doff inner : rest) pending =
+      go (i + di) (o + doff) inner ((i, o, rest) : pending)
+    go i o (e@(Text ni no ann t) : rest) pending =
+      (if i == 0 && o == 0 then e else Text (ni + i) (no + o) ann t) : go i o rest pending
+    go i o (Group ann inner : rest) pending =
+      Group ann (normalizeNesting i o inner) : go i o rest pending
+    go i o (e : rest) pending = e : go i o rest pending
 
 -- | Line break or nothing (soft)
 softline' :: Doc
@@ -332,7 +346,8 @@ unexpandSpacing' n (Spacing Softspace : xs) = (Spacing Hardspace :) <$> unexpand
 unexpandSpacing' n (Spacing Break : xs) = unexpandSpacing' n xs
 unexpandSpacing' n (Spacing Softbreak : xs) = unexpandSpacing' n xs
 unexpandSpacing' _ (Spacing _ : _) = Nothing
-unexpandSpacing' n ((Group _ xs) : ys) = unexpandSpacing' n $ xs <> ys
+unexpandSpacing' n (Group _ xs : ys) = unexpandSpacing' n $ xs <> ys
+unexpandSpacing' n (Nest i o inner : rest) = unexpandSpacing' n $ normalizeNesting i o inner <> rest
 
 -- Dissolve some groups with only one item
 simplifyGroup :: GroupAnn -> Doc -> Doc
@@ -346,37 +361,34 @@ simplifyGroup _ x = x
 --   This is especially important because it moves out hardlines from comments out of groups,
 --   which would otherwise wrongly cause them to expand.
 -- - Merge consecutive spacings.
--- - Spacings are not merged across Group or Nest boundaries, although this may happen for those
---   spacings that are moved.
--- - Remove empty Groups and Nests
+-- - Resolve nesting scopes, preserving group boundaries except for moved spacings.
+-- - Remove empty groups
 -- After running, any nodes are guaranteed to start/end with at most one whitespace element respectively.
 fixup :: Doc -> Doc
-fixup [] = []
--- Merge consecutive spacings
-fixup (Spacing a : Spacing b : xs) = fixup $ Spacing (mergeSpacings a b) : xs
--- Merge consecutive texts. Take indentation and offset from the left one
-fixup (Text level off ann a : Text _ _ ann' b : xs) | ann == ann' = fixup $ Text level off ann (a <> b) : xs
--- Move/Merge hard spaces into groups
-fixup ((Spacing Hardspace) : Group ann xs : ys) = fixup $ Group ann (Spacing Hardspace : xs) : ys
--- Handle group, with stuff in front of it to potentially merge with
-fixup (a@(Spacing _) : Group ann xs : ys) =
-  let -- Recurse onto xs, split out leading and trailing whitespace into pre and post.
-      -- For the leading side, also move out comments out of groups, they are kinda the same thing
-      -- (We could move out trailing comments too but it would make no difference)
-      (pre, rest) = span (\x -> isHardSpacing x || isComment x || isVerbatim x) $ fixup xs
-      (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
-  in if null body
-       then -- Dissolve empty group
-         fixup $ (a : pre) ++ post ++ ys
-       else fixup (a : pre) ++ [Group ann body] ++ fixup (post ++ ys)
--- Handle group, almost the same thing as above
-fixup (Group ann xs : ys) =
-  let (pre, rest) = span (\x -> isHardSpacing x || isComment x || isVerbatim x) $ fixup xs
-      (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
-  in if null body
-       then fixup $ pre ++ post ++ ys
-       else fixup pre ++ [Group ann body] ++ fixup (post ++ ys)
-fixup (x : xs) = x : fixup xs
+fixup = go . normalizeNesting 0 0
+  where
+    go :: Doc -> Doc
+    go [] = []
+    -- Merge consecutive spacings
+    go (Spacing a : Spacing b : xs) = go $ Spacing (mergeSpacings a b) : xs
+    -- Merge consecutive texts. Take indentation and offset from the left one
+    go (Text level off ann a : Text _ _ ann' b : xs) | ann == ann' = go $ Text level off ann (a <> b) : xs
+    -- Move/Merge hard spaces into groups
+    go ((Spacing Hardspace) : Group ann xs : ys) = go $ Group ann (Spacing Hardspace : xs) : ys
+    -- Handle groups, including preceding spacing to potentially merge with.
+    go (a@(Spacing _) : Group ann xs : ys) = fixupGroup [a] ann xs ys
+    go (Group ann xs : ys) = fixupGroup [] ann xs ys
+    go (x : xs) = x : go xs
+
+    fixupGroup :: Doc -> GroupAnn -> Doc -> Doc -> Doc
+    fixupGroup prefix ann xs ys =
+      let -- Move leading comments and whitespace, and trailing whitespace, out of the group.
+          (pre, rest) = span (\x -> isHardSpacing x || isComment x || isVerbatim x) $ go xs
+          (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
+          before = prefix ++ pre
+      in if null body
+           then go $ before ++ post ++ ys
+           else go before ++ [Group ann body] ++ go (post ++ ys)
 
 -- | Turn DisableMarkers with no Verbatim after them into plain comments, so
 -- they do not suppress anything. Such markers cannot result from a full parse
@@ -391,6 +403,9 @@ removeDisabled = snd . go False
     go after = foldr step (after, [])
 
     step e ~(later, rest) = case e of
+      Nest i o inner ->
+        let (before, body) = go later inner
+        in (before, Nest i o body : rest)
       Text i o DisableMarker _ ->
         ( later,
           if later then e : rest else Text i o Comment "/*nixfmt:disable*/" : Spacing Hardline : rest
@@ -511,6 +526,7 @@ fits ni c (x : xs) = case x of
   Spacing Emptyline -> Nothing
   Spacing (Newlines _) -> Nothing
   Group _ ys -> fits ni c $ ys ++ xs
+  Nest i o inner -> fits ni c $ normalizeNesting i o inner ++ xs
 
 -- | Find the width of the first line in a list of documents, using target
 -- width 0, which always forces line breaks when possible.
@@ -525,6 +541,7 @@ firstLineWidth (Spacing a : Spacing b : xs) = firstLineWidth (Spacing (mergeSpac
 firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
 firstLineWidth (Spacing _ : _) = 0
 firstLineWidth (Group _ xs : ys) = firstLineWidth $ xs ++ ys
+firstLineWidth (Nest i o inner : rest) = firstLineWidth $ normalizeNesting i o inner ++ rest
 
 -- | Check if the first line in a document fits a target width given
 -- a maximum width, without breaking up groups.
@@ -533,6 +550,7 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
   where
     go c _ | c < 0 = False
     go c [] = maxWidth - c <= targetWidth
+    go c (Nest i o inner : rest) = go c $ normalizeNesting i o inner ++ rest
     go c (Text _ _ RegularT t : xs) = go (c - textWidth t) xs
     -- A disabled region ends the line, like a line break
     go c (Text _ _ (Verbatim _) _ : _) = maxWidth - c <= targetWidth
@@ -552,6 +570,7 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
 nextIndent :: Doc -> (Int, Int)
 nextIndent ((Text i o _ _) : _) = (i, o)
 nextIndent ((Group _ xs) : _) = nextIndent xs
+nextIndent (Nest i o inner : rest) = nextIndent $ normalizeNesting i o inner ++ rest
 nextIndent (_ : xs) = nextIndent xs
 nextIndent _ = (0, 0)
 
@@ -643,6 +662,7 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
             putNL :: Int -> State St [Text]
             putNL n = put (0, indents, suppress) *> emit [newlines n]
         in case x of
+             Nest i o inner -> go (normalizeNesting i o inner) xs
              -- Special case trailing comments. Because in cases like
              -- [ # comment
              --   1
