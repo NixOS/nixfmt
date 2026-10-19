@@ -383,29 +383,23 @@ fixup (x : xs) = x : fixup xs
 -- (unclosed regions are closed at end of file), but may appear in minimized
 -- fragments produced by `walkSubprograms`.
 removeDisabled :: Doc -> Doc
-removeDisabled doc = evalState (go doc) (countVerbatims doc)
+removeDisabled = snd . go False
   where
-    countVerbatims :: Doc -> Int
-    countVerbatims = sum . map countE
-      where
-        countE (Text _ _ (Verbatim _) _) = 1
-        countE (Group _ inner) = countVerbatims inner
-        countE _ = 0
+    -- Propagate only whether a Verbatim follows, not a count. Keeping the
+    -- suffix lazy avoids forcing and rebuilding the whole IR before rendering.
+    go :: Bool -> Doc -> (Bool, Doc)
+    go after = foldr step (after, [])
 
-    -- State: Verbatim nodes not yet passed
-    go :: Doc -> State Int Doc
-    go = fmap Prelude.concat . traverse goE
-
-    goE :: DocE -> State Int Doc
-    goE m@(Text i o DisableMarker _) = do
-      left <- get
-      pure $
-        if left > 0
-          then [m]
-          else [Text i o Comment "/*nixfmt:disable*/", Spacing Hardline]
-    goE v@(Text _ _ (Verbatim _) _) = modify' (subtract 1) $> [v]
-    goE (Group ann inner) = pure . Group ann <$> go inner
-    goE e = pure [e]
+    step e ~(later, rest) = case e of
+      Text i o DisableMarker _ ->
+        ( later,
+          if later then e : rest else Text i o Comment "/*nixfmt:disable*/" : Spacing Hardline : rest
+        )
+      Text _ _ (Verbatim _) _ -> (True, e : rest)
+      Group ann inner ->
+        let (before, body) = go later inner
+        in (before, Group ann body : rest)
+      _ -> (later, e : rest)
 
 mergeSpacings :: Spacing -> Spacing -> Spacing
 mergeSpacings x y | x > y = mergeSpacings y x
