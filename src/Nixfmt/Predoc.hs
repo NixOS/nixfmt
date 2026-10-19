@@ -38,7 +38,7 @@ module Nixfmt.Predoc (
 where
 
 import Control.Applicative (asum, empty, (<|>))
-import Control.Monad.Trans.State.Strict (State, StateT (..), evalState, get, mapStateT, modify', put, runState, state)
+import Control.Monad.Trans.State.Strict (State, StateT (..), get, mapStateT, modify', put, runState, state)
 import Data.Bifunctor (second)
 import Data.Function ((&))
 import Data.Functor (($>), (<&>))
@@ -326,7 +326,11 @@ unexpandSpacing (s@(Spacing _) : xs) = s : unexpandSpacing xs
 unexpandSpacing (x : xs) = x : unexpandSpacing xs
 
 spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
-spanEnd p = fmap reverse . span p . reverse
+spanEnd p = foldr step ([], [])
+  where
+    step x ~(post, body)
+      | p x && null body = (x : post, [])
+      | otherwise = (post, x : body)
 
 -- Manually force a group to its compact layout, by replacing all relevant whitespace.
 -- Does recurse into inner groups.
@@ -428,7 +432,9 @@ mergeSpacings _ (Newlines x) = Newlines (x + 1)
 mergeSpacings _ y = y
 
 layout :: (Pretty a, LanguageElement a) => Int -> Int -> Bool -> a -> Text
-layout width indentWidth strict a = finalize $ layoutGreedy width indentWidth doc
+layout width indentWidth strict a =
+  let (rendered, preserveEof) = layoutGreedy width indentWidth doc
+  in if preserveEof then Text.stripStart rendered else Text.strip rendered <> "\n"
   where
     doc =
       fixup
@@ -441,20 +447,6 @@ layout width indentWidth strict a = finalize $ layoutGreedy width indentWidth do
         -- In strict mode, set the line number of all tokens to zero
         . (if strict then mapAllTokens removeLineInfo else id)
         $ a
-
-    -- The output always ends with exactly one newline, except when a
-    -- disabled region extends to the end of the file, which reproduces the
-    -- input byte-exactly, including any (or no) final newline.
-    finalize
-      | endsWithEofRegion doc = Text.stripStart
-      | otherwise = (<> "\n") . Text.strip
-
-    endsWithEofRegion = go . reverse
-      where
-        go (Spacing _ : xs) = go xs
-        go (Text _ _ (Verbatim True) _ : _) = True
-        go (Group _ inner : _) = go (reverse inner)
-        go _ = False
 
 -- 1. Move and merge Spacings.
 -- 2. Convert Softlines to Grouped Lines and Hardspaces to Texts.
@@ -582,28 +574,33 @@ newlines n = Text.replicate n "\n"
 indent :: Int -> Text
 indent n = Text.replicate n " "
 
--- All state is (cc, indents, suppress)
+-- All state is (cc, indents, mode)
 -- cc: current column (within the current line, *not including indentation*)
 -- indents:
 --   A stack of tuples (currentIndent, nestingLevel)
 --   This is guaranteed to never be empty, as we start with [(0, 0)] and never go below that.
--- suppress: whether we are inside a format-disabled region: content is still
---   rendered (cc and indents evolve as usual) but nothing is emitted, until
---   the region's Verbatim node emits the raw text and clears the flag.
-type St = (Int, NonEmpty (Int, Int), Bool)
+-- mode: suppress output inside disabled regions, or preserve the final EOF
+--   region. These modes are mutually exclusive; track them during rendering
+--   instead of inspecting the whole IR in advance.
+data RenderMode = Normal | Suppressed | PreserveEof
+  deriving (Eq)
+
+type St = (Int, NonEmpty (Int, Int), RenderMode)
 
 -- tw   Target Width
-layoutGreedy :: Int -> Int -> Doc -> Text
-layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, singleton (0, 0), False)
+layoutGreedy :: Int -> Int -> Doc -> (Text, Bool)
+layoutGreedy tw iw doc =
+  let (chunks, (_, _, mode)) = runState (go [Group RegularG doc] []) (0, singleton (0, 0), Normal)
+  in (Text.concat chunks, mode == PreserveEof)
   where
     -- Simple helpers around `put` with a tuple state
     -- NOTE: making putL strict removes the allocation for the Int
-    putL v = modify' (\(_, indents, suppress) -> (v, indents, suppress))
-    putR v = modify' (\(cc, _, suppress) -> (cc, v, suppress))
+    putL v = modify' (\(_, indents, mode) -> (v, indents, mode))
+    putR v = modify' (\(cc, _, mode) -> (cc, v, mode))
 
     -- Emit the given texts, unless we are inside a format-disabled region
     emit :: [Text] -> State St [Text]
-    emit ts = get <&> \(_, _, suppress) -> if suppress then [] else ts
+    emit ts = get <&> \(_, _, mode) -> if mode == Suppressed then [] else ts
 
     -- Print a given text. If this is the first token on a line, it will
     -- do the appropriate calculations for indentation and print that in addition to the text.
@@ -640,9 +637,9 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
     -- Simply put text without caring about line-start indentation
     putText' :: [Text] -> State St [Text]
     putText' ts = do
-      (cc, indents, suppress) <- get
+      (cc, indents, mode) <- get
       let !cc' = cc + sum (map textWidth ts)
-      put (cc', indents, suppress)
+      put (cc', indents, mode)
       emit ts
 
     -- First argument: chunks to render
@@ -654,13 +651,20 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
     -- First argument: chunk to render. This will recurse into nests/groups if the chunk is one.
     -- Second argument: lookahead of following chunks
     goOne :: DocE -> Doc -> State St [Text]
-    goOne x xs =
-      get >>= \(cc, indents, suppress) ->
+    goOne x xs = do
+      modify' $ \s@(cc, indents, mode) -> case mode of
+        PreserveEof -> case x of
+          Spacing _ -> s
+          Nest{} -> s
+          Text _ _ (Verbatim _) _ -> s -- Set by the verbatim handler below.
+          _ -> (cc, indents, Normal)
+        _ -> s
+      get >>= \(cc, indents, mode) ->
         let -- The last printed character was a line break
             needsIndent = (cc == 0)
 
             putNL :: Int -> State St [Text]
-            putNL n = put (0, indents, suppress) *> emit [newlines n]
+            putNL n = put (0, indents, mode) *> emit [newlines n]
         in case x of
              Nest i o inner -> go (normalizeNesting i o inner) xs
              -- Special case trailing comments. Because in cases like
@@ -681,7 +685,7 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
                  lineNL = snd $ NonEmpty.head indents
              -- Start of a format-disabled region: suppress output from here on.
              -- The region's content is still rendered to keep the state exact.
-             Text _ _ DisableMarker _ -> put (cc, indents, True) $> []
+             Text _ _ DisableMarker _ -> put (cc, indents, Suppressed) $> []
              -- Raw line prefix of a cut string: emit as-is, without any indentation
              Text nl off RawText t -> putRawText nl off t
              -- Raw text of a disabled region: emit as-is and stop suppressing.
@@ -689,9 +693,9 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
              -- the region's marker, so we are at a line start regardless of the
              -- simulated cursor. The cursor is set to the raw text's last-line
              -- width so the following hardline behaves.
-             Text _ _ (Verbatim _) t ->
-               put (textWidth (Text.takeWhileEnd (/= '\n') t), indents, False)
-                 $> (if needsIndent || suppress then [t] else ["\n", t])
+             Text _ _ (Verbatim atEof) t ->
+               put (textWidth (Text.takeWhileEnd (/= '\n') t), indents, if atEof then PreserveEof else Normal)
+                 $> (if needsIndent || mode == Suppressed then [t] else ["\n", t])
              Text nl off _ t -> putText nl off t
              -- This code treats whitespace as "expanded"
              -- A new line resets the column counter and sets the target indentation as current indentation
@@ -755,26 +759,30 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
     -- In general groups are never empty as empty groups are removed in `fixup`, however this also
     -- gets called for pre and post of priority groups, which may be empty.
     goGroup [] _ = pure []
-    goGroup grp rest = StateT $ \(cc, ci, suppress) ->
-      if cc == 0
-        then
-          let -- We know that the last printed character was a line break (cc == 0),
-              -- therefore drop any leading whitespace within the group to avoid duplicate newlines
-              grp' = case grp of
-                Spacing _ : tl -> tl
-                Group ann ((Spacing _) : inner) : tl -> Group ann inner : tl
-                _ -> grp
-              (nl, off) = nextIndent grp'
+    goGroup grp rest = StateT $ \(cc, ci, mode) ->
+      let !mode' =
+            if mode == PreserveEof && any (\case Spacing _ -> False; _ -> True) grp
+              then Normal
+              else mode
+      in if cc == 0
+           then
+             let -- We know that the last printed character was a line break (cc == 0),
+                 -- therefore drop any leading whitespace within the group to avoid duplicate newlines
+                 grp' = case grp of
+                   Spacing _ : tl -> tl
+                   Group ann ((Spacing _) : inner) : tl -> Group ann inner : tl
+                   _ -> grp
+                 (nl, off) = nextIndent grp'
 
-              indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
-                where
-                  lastLineNL = snd $ NonEmpty.head ci
-                  lineNL = lastLineNL + (if nl > lastLineNL then iw else 0)
-          in fits indentWillIncrease (tw - firstLineWidth rest) grp'
-               <&> \t -> runState (putText nl off t) (cc, ci, suppress)
-        else
-          let indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
-                where
-                  lineNL = snd $ NonEmpty.head ci
-          in fits (indentWillIncrease - cc) (tw - cc - firstLineWidth rest) grp
-               <&> \t -> ([t | not suppress], (cc + textWidth t, ci, suppress))
+                 indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
+                   where
+                     lastLineNL = snd $ NonEmpty.head ci
+                     lineNL = lastLineNL + (if nl > lastLineNL then iw else 0)
+             in fits indentWillIncrease (tw - firstLineWidth rest) grp'
+                  <&> \t -> runState (putText nl off t) (cc, ci, mode')
+           else
+             let indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
+                   where
+                     lineNL = snd $ NonEmpty.head ci
+             in fits (indentWillIncrease - cc) (tw - cc - firstLineWidth rest) grp
+                  <&> \t -> ([t | mode /= Suppressed], (cc + textWidth t, ci, mode'))
