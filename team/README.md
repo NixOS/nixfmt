@@ -8,7 +8,7 @@ This page collects information and processes for the Nix formatting team.
 
 ## Meetings
 
-There is an open team meeting **every second Tuesday at [20:00 (Europe/Zurich)](https://dateful.com/convert/zurich?t=20)**.
+There is an open team meeting **every other Wednesday at [20:00 (Europe/Zurich)](https://dateful.com/convert/zurich?t=20)**.
 See the [google calendar](https://calendar.google.com/calendar/u/0/embed?src=b9o52fobqjak8oq8lfkhg3t0qg@group.calendar.google.com)
 (search for "Nix formatting") to see the next date.
 
