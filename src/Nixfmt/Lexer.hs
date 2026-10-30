@@ -54,6 +54,7 @@ import Text.Megaparsec (
   lookAhead,
   many,
   manyTill,
+  mkPos,
   notFollowedBy,
   optional,
   some,
@@ -101,17 +102,17 @@ formatDirective = try $ do
 
 lineComment :: Parser ParseTrivium
 lineComment = preLexeme $ do
-  SourcePos{sourceColumn = col} <- getSourcePos
   _ <- chunk "#"
+  SourcePos{sourceColumn = col} <- getSourcePos
   text <- stripEnd <$> manyP (\x -> x /= '\n' && x /= '\r')
-  return (PTLineComment text col)
+  return (PTLineComment text (mkPos $ unPos col - 1))
 
 blockComment :: Parser ParseTrivium
 blockComment = try $ preLexeme $ do
-  SourcePos{sourceColumn = pos} <- getSourcePos
-  -- Positions start counting at 1, which we don't want here
-  let pos' = unPos pos - 1
   _ <- chunk "/*"
+  SourcePos{sourceColumn = pos} <- getSourcePos
+  -- Subtract the delimiter width and convert from one-based columns.
+  let pos' = unPos pos - 3
   -- Try to parse /** before /*, but don't parse /**/ (i.e. the empty comment)
   isDoc <- try ((True <$ char '*') <* notFollowedBy (char '/')) <|> pure False
 

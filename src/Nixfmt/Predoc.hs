@@ -38,7 +38,7 @@ module Nixfmt.Predoc (
 where
 
 import Control.Applicative (asum, empty, (<|>))
-import Control.Monad.Trans.State.Strict (State, StateT (..), evalState, get, mapStateT, modify', put, runState, state)
+import Control.Monad.Trans.State.Strict (State, StateT (..), get, mapStateT, modify', put, runState, state)
 import Data.Bifunctor (second)
 import Data.Function ((&))
 import Data.Functor (($>), (<&>))
@@ -127,6 +127,7 @@ data DocE
     Text Int Int TextAnn Text
   | Spacing Spacing
   | Group GroupAnn Doc
+  | Nest Int Int Doc
   deriving (Show, Eq)
 
 type Doc = [DocE]
@@ -190,13 +191,18 @@ rawText t = [Text 0 0 RawText t]
 group :: (HasCallStack) => (Pretty a) => a -> Doc
 group x =
   pure . Group RegularG $
-    case p of
-      (headP : _)
-        | isSoftSpacing headP || isSoftSpacing (last p) ->
-            error $ "group should not start or end with whitespace, use `group'` if you are sure; " <> show p
-      _ -> p
+    if maybe False isSoftSpacing (firstNode p) || maybe False isSoftSpacing (lastNode p)
+      then error $ "group should not start or end with whitespace, use `group'` if you are sure; " <> show p
+      else p
   where
     p = pretty x
+    firstNode [] = Nothing
+    firstNode (Nest _ _ inner : rest) = firstNode inner <|> firstNode rest
+    firstNode (e : _) = Just e
+    lastNode = foldl' step Nothing
+      where
+        step previous (Nest _ _ inner) = lastNode inner <|> previous
+        step _ e = Just e
 
 -- | Group document elements together (see Node Group documentation)
 -- Is allowed to start or end with any kind of whitespace.
@@ -214,20 +220,28 @@ group' ann = pure . Group ann . pretty
 -- Multiple nesting levels on one line will be compacted and only result in a single
 -- indentation bump for the next line. This prevents excessive indentation.
 nest :: (Pretty a) => a -> Doc
-nest x = map go $ pretty x
-  where
-    go (Text i o ann t) = Text (i + 1) o ann t
-    go (Group ann inner) = Group ann (map go inner)
-    go spacing = spacing
+nest x = [Nest 1 0 (pretty x)]
 
 -- This is similar to nest, however it circumvents the "smart" rules that usually apply.
 -- This should only be useful to manage the indentation within indented strings.
 offset :: (Pretty a) => Int -> a -> Doc
-offset level x = map go $ pretty x
+offset 0 x = pretty x
+offset level x = [Nest 0 level (pretty x)]
+
+-- Resolve nested scopes in one traversal, rather than mapping every descendant
+-- each time its parent is nested. The work stack avoids copying scope spines.
+normalizeNesting :: Int -> Int -> Doc -> Doc
+normalizeNesting level off doc = go level off doc []
   where
-    go (Text i o ann t) = Text i (o + level) ann t
-    go (Group ann inner) = Group ann (map go inner)
-    go spacing = spacing
+    go _ _ [] [] = []
+    go _ _ [] ((i, o, rest) : pending) = go i o rest pending
+    go !i !o (Nest di doff inner : rest) pending =
+      go (i + di) (o + doff) inner ((i, o, rest) : pending)
+    go i o (e@(Text ni no ann t) : rest) pending =
+      (if i == 0 && o == 0 then e else Text (ni + i) (no + o) ann t) : go i o rest pending
+    go i o (Group ann inner : rest) pending =
+      Group ann (normalizeNesting i o inner) : go i o rest pending
+    go i o (e : rest) pending = e : go i o rest pending
 
 -- | Line break or nothing (soft)
 softline' :: Doc
@@ -312,7 +326,11 @@ unexpandSpacing (s@(Spacing _) : xs) = s : unexpandSpacing xs
 unexpandSpacing (x : xs) = x : unexpandSpacing xs
 
 spanEnd :: (a -> Bool) -> [a] -> ([a], [a])
-spanEnd p = fmap reverse . span p . reverse
+spanEnd p = foldr step ([], [])
+  where
+    step x ~(post, body)
+      | p x && null body = (x : post, [])
+      | otherwise = (post, x : body)
 
 -- Manually force a group to its compact layout, by replacing all relevant whitespace.
 -- Does recurse into inner groups.
@@ -332,7 +350,8 @@ unexpandSpacing' n (Spacing Softspace : xs) = (Spacing Hardspace :) <$> unexpand
 unexpandSpacing' n (Spacing Break : xs) = unexpandSpacing' n xs
 unexpandSpacing' n (Spacing Softbreak : xs) = unexpandSpacing' n xs
 unexpandSpacing' _ (Spacing _ : _) = Nothing
-unexpandSpacing' n ((Group _ xs) : ys) = unexpandSpacing' n $ xs <> ys
+unexpandSpacing' n (Group _ xs : ys) = unexpandSpacing' n $ xs <> ys
+unexpandSpacing' n (Nest i o inner : rest) = unexpandSpacing' n $ normalizeNesting i o inner <> rest
 
 -- Dissolve some groups with only one item
 simplifyGroup :: GroupAnn -> Doc -> Doc
@@ -346,66 +365,60 @@ simplifyGroup _ x = x
 --   This is especially important because it moves out hardlines from comments out of groups,
 --   which would otherwise wrongly cause them to expand.
 -- - Merge consecutive spacings.
--- - Spacings are not merged across Group or Nest boundaries, although this may happen for those
---   spacings that are moved.
--- - Remove empty Groups and Nests
+-- - Resolve nesting scopes, preserving group boundaries except for moved spacings.
+-- - Remove empty groups
 -- After running, any nodes are guaranteed to start/end with at most one whitespace element respectively.
 fixup :: Doc -> Doc
-fixup [] = []
--- Merge consecutive spacings
-fixup (Spacing a : Spacing b : xs) = fixup $ Spacing (mergeSpacings a b) : xs
--- Merge consecutive texts. Take indentation and offset from the left one
-fixup (Text level off ann a : Text _ _ ann' b : xs) | ann == ann' = fixup $ Text level off ann (a <> b) : xs
--- Move/Merge hard spaces into groups
-fixup ((Spacing Hardspace) : Group ann xs : ys) = fixup $ Group ann (Spacing Hardspace : xs) : ys
--- Handle group, with stuff in front of it to potentially merge with
-fixup (a@(Spacing _) : Group ann xs : ys) =
-  let -- Recurse onto xs, split out leading and trailing whitespace into pre and post.
-      -- For the leading side, also move out comments out of groups, they are kinda the same thing
-      -- (We could move out trailing comments too but it would make no difference)
-      (pre, rest) = span (\x -> isHardSpacing x || isComment x || isVerbatim x) $ fixup xs
-      (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
-  in if null body
-       then -- Dissolve empty group
-         fixup $ (a : pre) ++ post ++ ys
-       else fixup (a : pre) ++ [Group ann body] ++ fixup (post ++ ys)
--- Handle group, almost the same thing as above
-fixup (Group ann xs : ys) =
-  let (pre, rest) = span (\x -> isHardSpacing x || isComment x || isVerbatim x) $ fixup xs
-      (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
-  in if null body
-       then fixup $ pre ++ post ++ ys
-       else fixup pre ++ [Group ann body] ++ fixup (post ++ ys)
-fixup (x : xs) = x : fixup xs
+fixup = go . normalizeNesting 0 0
+  where
+    go :: Doc -> Doc
+    go [] = []
+    -- Merge consecutive spacings
+    go (Spacing a : Spacing b : xs) = go $ Spacing (mergeSpacings a b) : xs
+    -- Merge consecutive texts. Take indentation and offset from the left one
+    go (Text level off ann a : Text _ _ ann' b : xs) | ann == ann' = go $ Text level off ann (a <> b) : xs
+    -- Move/Merge hard spaces into groups
+    go ((Spacing Hardspace) : Group ann xs : ys) = go $ Group ann (Spacing Hardspace : xs) : ys
+    -- Handle groups, including preceding spacing to potentially merge with.
+    go (a@(Spacing _) : Group ann xs : ys) = fixupGroup [a] ann xs ys
+    go (Group ann xs : ys) = fixupGroup [] ann xs ys
+    go (x : xs) = x : go xs
+
+    fixupGroup :: Doc -> GroupAnn -> Doc -> Doc -> Doc
+    fixupGroup prefix ann xs ys =
+      let -- Move leading comments and whitespace, and trailing whitespace, out of the group.
+          (pre, rest) = span (\x -> isHardSpacing x || isComment x || isVerbatim x) $ go xs
+          (post, body) = second (simplifyGroup ann) $ spanEnd isHardSpacing rest
+          before = prefix ++ pre
+      in if null body
+           then go $ before ++ post ++ ys
+           else go before ++ [Group ann body] ++ go (post ++ ys)
 
 -- | Turn DisableMarkers with no Verbatim after them into plain comments, so
 -- they do not suppress anything. Such markers cannot result from a full parse
 -- (unclosed regions are closed at end of file), but may appear in minimized
 -- fragments produced by `walkSubprograms`.
 removeDisabled :: Doc -> Doc
-removeDisabled doc = evalState (go doc) (countVerbatims doc)
+removeDisabled = snd . go False
   where
-    countVerbatims :: Doc -> Int
-    countVerbatims = sum . map countE
-      where
-        countE (Text _ _ (Verbatim _) _) = 1
-        countE (Group _ inner) = countVerbatims inner
-        countE _ = 0
+    -- Propagate only whether a Verbatim follows, not a count. Keeping the
+    -- suffix lazy avoids forcing and rebuilding the whole IR before rendering.
+    go :: Bool -> Doc -> (Bool, Doc)
+    go after = foldr step (after, [])
 
-    -- State: Verbatim nodes not yet passed
-    go :: Doc -> State Int Doc
-    go = fmap Prelude.concat . traverse goE
-
-    goE :: DocE -> State Int Doc
-    goE m@(Text i o DisableMarker _) = do
-      left <- get
-      pure $
-        if left > 0
-          then [m]
-          else [Text i o Comment "/*nixfmt:disable*/", Spacing Hardline]
-    goE v@(Text _ _ (Verbatim _) _) = modify' (subtract 1) $> [v]
-    goE (Group ann inner) = pure . Group ann <$> go inner
-    goE e = pure [e]
+    step e ~(later, rest) = case e of
+      Nest i o inner ->
+        let (before, body) = go later inner
+        in (before, Nest i o body : rest)
+      Text i o DisableMarker _ ->
+        ( later,
+          if later then e : rest else Text i o Comment "/*nixfmt:disable*/" : Spacing Hardline : rest
+        )
+      Text _ _ (Verbatim _) _ -> (True, e : rest)
+      Group ann inner ->
+        let (before, body) = go later inner
+        in (before, Group ann body : rest)
+      _ -> (later, e : rest)
 
 mergeSpacings :: Spacing -> Spacing -> Spacing
 mergeSpacings x y | x > y = mergeSpacings y x
@@ -419,7 +432,9 @@ mergeSpacings _ (Newlines x) = Newlines (x + 1)
 mergeSpacings _ y = y
 
 layout :: (Pretty a, LanguageElement a) => Int -> Int -> Bool -> a -> Text
-layout width indentWidth strict a = finalize $ layoutGreedy width indentWidth doc
+layout width indentWidth strict a =
+  let (rendered, preserveEof) = layoutGreedy width indentWidth doc
+  in if preserveEof then Text.stripStart rendered else Text.strip rendered <> "\n"
   where
     doc =
       fixup
@@ -432,20 +447,6 @@ layout width indentWidth strict a = finalize $ layoutGreedy width indentWidth do
         -- In strict mode, set the line number of all tokens to zero
         . (if strict then mapAllTokens removeLineInfo else id)
         $ a
-
-    -- The output always ends with exactly one newline, except when a
-    -- disabled region extends to the end of the file, which reproduces the
-    -- input byte-exactly, including any (or no) final newline.
-    finalize
-      | endsWithEofRegion doc = Text.stripStart
-      | otherwise = (<> "\n") . Text.strip
-
-    endsWithEofRegion = go . reverse
-      where
-        go (Spacing _ : xs) = go xs
-        go (Text _ _ (Verbatim True) _ : _) = True
-        go (Group _ inner : _) = go (reverse inner)
-        go _ = False
 
 -- 1. Move and merge Spacings.
 -- 2. Convert Softlines to Grouped Lines and Hardspaces to Texts.
@@ -517,6 +518,7 @@ fits ni c (x : xs) = case x of
   Spacing Emptyline -> Nothing
   Spacing (Newlines _) -> Nothing
   Group _ ys -> fits ni c $ ys ++ xs
+  Nest i o inner -> fits ni c $ normalizeNesting i o inner ++ xs
 
 -- | Find the width of the first line in a list of documents, using target
 -- width 0, which always forces line breaks when possible.
@@ -531,6 +533,7 @@ firstLineWidth (Spacing a : Spacing b : xs) = firstLineWidth (Spacing (mergeSpac
 firstLineWidth (Spacing Hardspace : xs) = 1 + firstLineWidth xs
 firstLineWidth (Spacing _ : _) = 0
 firstLineWidth (Group _ xs : ys) = firstLineWidth $ xs ++ ys
+firstLineWidth (Nest i o inner : rest) = firstLineWidth $ normalizeNesting i o inner ++ rest
 
 -- | Check if the first line in a document fits a target width given
 -- a maximum width, without breaking up groups.
@@ -539,6 +542,7 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
   where
     go c _ | c < 0 = False
     go c [] = maxWidth - c <= targetWidth
+    go c (Nest i o inner : rest) = go c $ normalizeNesting i o inner ++ rest
     go c (Text _ _ RegularT t : xs) = go (c - textWidth t) xs
     -- A disabled region ends the line, like a line break
     go c (Text _ _ (Verbatim _) _ : _) = maxWidth - c <= targetWidth
@@ -558,6 +562,7 @@ firstLineFits targetWidth maxWidth docs = go maxWidth docs
 nextIndent :: Doc -> (Int, Int)
 nextIndent ((Text i o _ _) : _) = (i, o)
 nextIndent ((Group _ xs) : _) = nextIndent xs
+nextIndent (Nest i o inner : rest) = nextIndent $ normalizeNesting i o inner ++ rest
 nextIndent (_ : xs) = nextIndent xs
 nextIndent _ = (0, 0)
 
@@ -569,28 +574,33 @@ newlines n = Text.replicate n "\n"
 indent :: Int -> Text
 indent n = Text.replicate n " "
 
--- All state is (cc, indents, suppress)
+-- All state is (cc, indents, mode)
 -- cc: current column (within the current line, *not including indentation*)
 -- indents:
 --   A stack of tuples (currentIndent, nestingLevel)
 --   This is guaranteed to never be empty, as we start with [(0, 0)] and never go below that.
--- suppress: whether we are inside a format-disabled region: content is still
---   rendered (cc and indents evolve as usual) but nothing is emitted, until
---   the region's Verbatim node emits the raw text and clears the flag.
-type St = (Int, NonEmpty (Int, Int), Bool)
+-- mode: suppress output inside disabled regions, or preserve the final EOF
+--   region. These modes are mutually exclusive; track them during rendering
+--   instead of inspecting the whole IR in advance.
+data RenderMode = Normal | Suppressed | PreserveEof
+  deriving (Eq)
+
+type St = (Int, NonEmpty (Int, Int), RenderMode)
 
 -- tw   Target Width
-layoutGreedy :: Int -> Int -> Doc -> Text
-layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0, singleton (0, 0), False)
+layoutGreedy :: Int -> Int -> Doc -> (Text, Bool)
+layoutGreedy tw iw doc =
+  let (chunks, (_, _, mode)) = runState (go [Group RegularG doc] []) (0, singleton (0, 0), Normal)
+  in (Text.concat chunks, mode == PreserveEof)
   where
     -- Simple helpers around `put` with a tuple state
     -- NOTE: making putL strict removes the allocation for the Int
-    putL v = modify' (\(_, indents, suppress) -> (v, indents, suppress))
-    putR v = modify' (\(cc, _, suppress) -> (cc, v, suppress))
+    putL v = modify' (\(_, indents, mode) -> (v, indents, mode))
+    putR v = modify' (\(cc, _, mode) -> (cc, v, mode))
 
     -- Emit the given texts, unless we are inside a format-disabled region
     emit :: [Text] -> State St [Text]
-    emit ts = get <&> \(_, _, suppress) -> if suppress then [] else ts
+    emit ts = get <&> \(_, _, mode) -> if mode == Suppressed then [] else ts
 
     -- Print a given text. If this is the first token on a line, it will
     -- do the appropriate calculations for indentation and print that in addition to the text.
@@ -627,9 +637,9 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
     -- Simply put text without caring about line-start indentation
     putText' :: [Text] -> State St [Text]
     putText' ts = do
-      (cc, indents, suppress) <- get
+      (cc, indents, mode) <- get
       let !cc' = cc + sum (map textWidth ts)
-      put (cc', indents, suppress)
+      put (cc', indents, mode)
       emit ts
 
     -- First argument: chunks to render
@@ -641,14 +651,22 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
     -- First argument: chunk to render. This will recurse into nests/groups if the chunk is one.
     -- Second argument: lookahead of following chunks
     goOne :: DocE -> Doc -> State St [Text]
-    goOne x xs =
-      get >>= \(cc, indents, suppress) ->
+    goOne x xs = do
+      modify' $ \s@(cc, indents, mode) -> case mode of
+        PreserveEof -> case x of
+          Spacing _ -> s
+          Nest{} -> s
+          Text _ _ (Verbatim _) _ -> s -- Set by the verbatim handler below.
+          _ -> (cc, indents, Normal)
+        _ -> s
+      get >>= \(cc, indents, mode) ->
         let -- The last printed character was a line break
             needsIndent = (cc == 0)
 
             putNL :: Int -> State St [Text]
-            putNL n = put (0, indents, suppress) *> emit [newlines n]
+            putNL n = put (0, indents, mode) *> emit [newlines n]
         in case x of
+             Nest i o inner -> go (normalizeNesting i o inner) xs
              -- Special case trailing comments. Because in cases like
              -- [ # comment
              --   1
@@ -667,7 +685,7 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
                  lineNL = snd $ NonEmpty.head indents
              -- Start of a format-disabled region: suppress output from here on.
              -- The region's content is still rendered to keep the state exact.
-             Text _ _ DisableMarker _ -> put (cc, indents, True) $> []
+             Text _ _ DisableMarker _ -> put (cc, indents, Suppressed) $> []
              -- Raw line prefix of a cut string: emit as-is, without any indentation
              Text nl off RawText t -> putRawText nl off t
              -- Raw text of a disabled region: emit as-is and stop suppressing.
@@ -675,9 +693,9 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
              -- the region's marker, so we are at a line start regardless of the
              -- simulated cursor. The cursor is set to the raw text's last-line
              -- width so the following hardline behaves.
-             Text _ _ (Verbatim _) t ->
-               put (textWidth (Text.takeWhileEnd (/= '\n') t), indents, False)
-                 $> (if needsIndent || suppress then [t] else ["\n", t])
+             Text _ _ (Verbatim atEof) t ->
+               put (textWidth (Text.takeWhileEnd (/= '\n') t), indents, if atEof then PreserveEof else Normal)
+                 $> (if needsIndent || mode == Suppressed then [t] else ["\n", t])
              Text nl off _ t -> putText nl off t
              -- This code treats whitespace as "expanded"
              -- A new line resets the column counter and sets the target indentation as current indentation
@@ -741,26 +759,30 @@ layoutGreedy tw iw doc = Text.concat $ evalState (go [Group RegularG doc] []) (0
     -- In general groups are never empty as empty groups are removed in `fixup`, however this also
     -- gets called for pre and post of priority groups, which may be empty.
     goGroup [] _ = pure []
-    goGroup grp rest = StateT $ \(cc, ci, suppress) ->
-      if cc == 0
-        then
-          let -- We know that the last printed character was a line break (cc == 0),
-              -- therefore drop any leading whitespace within the group to avoid duplicate newlines
-              grp' = case grp of
-                Spacing _ : tl -> tl
-                Group ann ((Spacing _) : inner) : tl -> Group ann inner : tl
-                _ -> grp
-              (nl, off) = nextIndent grp'
+    goGroup grp rest = StateT $ \(cc, ci, mode) ->
+      let !mode' =
+            if mode == PreserveEof && any (\case Spacing _ -> False; _ -> True) grp
+              then Normal
+              else mode
+      in if cc == 0
+           then
+             let -- We know that the last printed character was a line break (cc == 0),
+                 -- therefore drop any leading whitespace within the group to avoid duplicate newlines
+                 grp' = case grp of
+                   Spacing _ : tl -> tl
+                   Group ann ((Spacing _) : inner) : tl -> Group ann inner : tl
+                   _ -> grp
+                 (nl, off) = nextIndent grp'
 
-              indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
-                where
-                  lastLineNL = snd $ NonEmpty.head ci
-                  lineNL = lastLineNL + (if nl > lastLineNL then iw else 0)
-          in fits indentWillIncrease (tw - firstLineWidth rest) grp'
-               <&> \t -> runState (putText nl off t) (cc, ci, suppress)
-        else
-          let indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
-                where
-                  lineNL = snd $ NonEmpty.head ci
-          in fits (indentWillIncrease - cc) (tw - cc - firstLineWidth rest) grp
-               <&> \t -> ([t | not suppress], (cc + textWidth t, ci, suppress))
+                 indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
+                   where
+                     lastLineNL = snd $ NonEmpty.head ci
+                     lineNL = lastLineNL + (if nl > lastLineNL then iw else 0)
+             in fits indentWillIncrease (tw - firstLineWidth rest) grp'
+                  <&> \t -> runState (putText nl off t) (cc, ci, mode')
+           else
+             let indentWillIncrease = if fst (nextIndent rest) > lineNL then iw else 0
+                   where
+                     lineNL = snd $ NonEmpty.head ci
+             in fits (indentWillIncrease - cc) (tw - cc - firstLineWidth rest) grp
+                  <&> \t -> ([t | mode /= Suppressed], (cc + textWidth t, ci, mode'))
