@@ -211,10 +211,9 @@ indentedStringPart =
         -- While this rule doesn't have a fixed length, it's non-conflicting with the rules below,
         -- so we can do it first without worrying about the length matching
         someText
-          ( Text.singleton
-              <$> satisfy (\t -> t /= '$' && t /= '\'' && t /= '\n')
-                <|> try (Text.snoc <$> chunk "$" <*> satisfy (\t -> t /= '{' && t /= '\'' && t /= '\n'))
-                <|> try (Text.snoc <$> chunk "'" <*> satisfy (\t -> t /= '\'' && t /= '$' && t /= '\n'))
+          ( someP (\t -> t /= '$' && t /= '\'' && t /= '\n')
+              <|> try (Text.snoc <$> chunk "$" <*> satisfy (\t -> t /= '{' && t /= '\'' && t /= '\n'))
+              <|> try (Text.snoc <$> chunk "'" <*> satisfy (\t -> t /= '\'' && t /= '$' && t /= '\n'))
           )
           -- These rules are of length 3, they need to come before shorter ones
           -- <IND_STRING>\'\'\$
