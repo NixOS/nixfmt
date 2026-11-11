@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Nixfmt.Lexer (lexeme, pushTrivia, takeTrivia, whole, wholeInner) where
+module Nixfmt.Lexer (lexeme, prependTrivia, pushTrivia, takeTrivia, whole, wholeInner) where
 
 import Control.Monad (guard)
 import Control.Monad.State.Strict (evalStateT, get, gets, modify', state)
@@ -266,6 +266,11 @@ takeTrivia = state $ \s -> (pendingTrivia s, s{pendingTrivia = []})
 
 pushTrivia :: Trivia -> Parser ()
 pushTrivia t = modify' (\s -> s{pendingTrivia = pendingTrivia s <> t})
+
+-- | Like 'pushTrivia', but the trivia goes before what is already pending.
+-- Used to demote a trailing comment into the leading trivia of the next token.
+prependTrivia :: Trivia -> Parser ()
+prependTrivia t = modify' (\s -> s{pendingTrivia = t <> pendingTrivia s})
 
 lexeme :: Parser a -> Parser (Ann a)
 lexeme p = do

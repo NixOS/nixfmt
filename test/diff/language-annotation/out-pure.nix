@@ -192,6 +192,24 @@
     runCommand /* bash */ "echo hi" # trailing comment
       A;
 
+  # A demoted trailing comment after a multiline string must not detach the
+  # following language annotation from its string
+  demotedCommentBeforeAnnotation = [
+    "
+"
+    # c
+    /* lua */ "x"
+  ];
+
+  # An annotated multiline string with its own trailing comment: the comment
+  # moves to its own line, the annotation stays with its string
+  annotatedWithTrailingComment = [
+    /* lua */ "
+"
+    # c
+    next
+  ];
+
   # Language annotation on the subject of a chained member check
   memberCheckSubject = /* lua */ "print(1)" ? foo ? bar;
 

@@ -10,17 +10,17 @@ import Control.Monad.Combinators.Expr qualified as MPExpr (
   Operator (..),
   makeExprParser,
  )
-import Control.Monad.State.Strict (gets)
+import Control.Monad.State.Strict (get, gets)
 import Data.Bifunctor (second)
 import Data.Char (isAlpha)
 import Data.Foldable (toList)
 import Data.Functor (($>))
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
+import Data.Maybe (fromMaybe, isNothing, mapMaybe, maybeToList)
 import Data.Text (Text, elem, isPrefixOf, pack)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Nixfmt.Lexer (lexeme, takeTrivia, whole, wholeInner)
+import Nixfmt.Lexer (lexeme, prependTrivia, takeTrivia, whole, wholeInner)
 import Nixfmt.Parser.Float (floatParse)
 import Nixfmt.Types (
   Ann (..),
@@ -42,6 +42,8 @@ import Nixfmt.Types (
   StringPart (..),
   Term (..),
   Token (..),
+  TrailingComment (..),
+  Trivium (..),
   Whole (..),
   operators,
   tokenText,
@@ -61,6 +63,7 @@ import Nixfmt.Util (
 import Text.Megaparsec (
   Parsec,
   anySingle,
+  atEnd,
   chunk,
   empty,
   eof,
@@ -335,9 +338,36 @@ indentedString = do
 -- | Parser for all string types (simple, URI, or indented)
 string :: Parser Term
 string =
-  (SimpleString <$> lexeme (simpleString <|> uri))
-    <|> (classifyString <$> lexeme indentedString)
+  ( (SimpleString <$> lexeme (simpleString <|> uri))
+      <|> (classifyString <$> lexeme indentedString)
+  )
+    >>= demoteTrailing
   where
+    -- These strings close at a column set by their content rather than by the
+    -- indentation, so a trailing comment can share a column with whatever is
+    -- printed below it and be reparsed as leading that token. Hand it to the
+    -- next token as leading trivia ourselves, unless it is safe where it is.
+    demoteTrailing (SimpleString str) | isMultiline (value str) = SimpleString <$> demote str
+    demoteTrailing (IndentedString cut@(Just _) str) = IndentedString cut <$> demote str
+    demoteTrailing other = pure other
+
+    demote str@Ann{trailComment = Just (TrailingComment c)} = do
+      keep <- keepable <$> get <*> atEnd
+      if keep
+        then pure str
+        else str{trailComment = Nothing} <$ prependTrivia [LineComment (" " <> c)]
+    demote str = pure str
+
+    -- Safe only if nothing can be printed on the comment's column right below
+    -- it: end of file, or an empty line. Neither counts inside an open disabled
+    -- region, which reprints the comment as part of its raw text.
+    keepable ParserState{pendingTrivia, pendingDisable} atEof =
+      isNothing pendingDisable && (atEof || startsWithEmptyLine pendingTrivia)
+
+    startsWithEmptyLine t = case toList t of
+      EmptyLine : _ -> True
+      _ -> False
+
     -- Converts indented string syntax to appropriate string type.
     -- If the content can be represented as a simple string (no newlines, quotes or backslashes),
     -- it's reformatted as SimpleString to maintain a consistent style.
@@ -348,9 +378,9 @@ string =
     classifyString s@Ann{value = (cut, parts)} = IndentedString cut (s{value = parts})
 
     shouldBeSimpleString parts =
-      not (containsNewlines parts) && not (any (any hasQuoteOrBackSlash) parts)
+      not (isMultiline parts) && not (any (any hasQuoteOrBackSlash) parts)
 
-    containsNewlines parts = length parts > 1
+    isMultiline parts = length parts > 1
 
     hasQuoteOrBackSlash (TextPart t) = '"' `elem` t || '\\' `elem` t
     hasQuoteOrBackSlash (Interpolation _) = False
