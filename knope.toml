@@ -12,6 +12,10 @@ owner = "NixOS"
 repo = "nixfmt"
 
 
+[changes]
+ignore_conventional_merge_commits = true
+
+
 [release_notes]
 change_templates = [
     "### $summary (#$pr_number)\n\n$details\n\nBy $commit_author_name",
